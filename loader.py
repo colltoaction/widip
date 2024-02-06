@@ -165,6 +165,10 @@ class HypergraphComposer:
             node @= kv
         end_event = self.get_event()
         node.end_mark = end_event.end_mark
+        left = H.from_box(Box(tag, Ty(tag), keys.dom))
+        mid = H.from_box(Box("", keys.cod, values.dom))
+        right = H.from_box(Box(tag, values.cod, Ty(tag)))
+        node = left >> keys >> mid >> values >> right
         # node = compose_entry(H.id(keys.dom), node)
         #     keys, H.id(values.dom))
         # node <<= values
