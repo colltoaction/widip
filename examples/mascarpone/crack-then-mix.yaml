@@ -1,0 +1,10 @@
+egg:
+  !crack
+  - egg
+  - white:
+    yolk:
+---
+!mix
+- white:
+  yolk:
+- egg

@@ -133,9 +133,11 @@ class HypergraphComposer:
             b = H.from_box(Box(
                 tag.lstrip("!"),
                 node.dom,
-                node.dom))
-            node = b >> node
-            # node = compose_entry(b, node)
+                node.cod))
+            # spiders should be less intrusive
+            node = H.spiders(1, 2, node.dom) \
+                >> b @ node \
+                >> H.spiders(2, 1, node.cod)
         return node
 
 
@@ -149,30 +151,22 @@ class HypergraphComposer:
         if anchor is not None:
             self.anchors[anchor] = node
         keys, values = H.id(), H.id()
-        # TODO nodes with tags already have the tag boxes in them
         while not self.check_event(MappingEndEvent):
-            key_tag = self.peek_event().tag
-            item_key = self.compose_node(tag, None)
-            # if key_tag:
-            #     mid = H.from_box(Box(key_tag.lstrip("!"), item_key.dom, item_key.cod))
-            #     item_key = mid >> item_key
-            value_tag = self.peek_event().tag
-            item_value = self.compose_node(tag, item_key)
-            keys @= item_key
-            # if value_tag:
-            #     mid = H.from_box(Box(value_tag.lstrip("!"), item_key.cod, item_value.dom))
-            #     item_value = mid >> item_value
-            values @= item_value
-            kv = compose_entry(item_key, item_value)
+            key = self.compose_node(tag, None)
+            value = self.compose_node(tag, key)
+            keys @= key
+            values @= value
+            # TODO if tag
+            kv = compose_entry(key, value)
             node @= kv
         end_event = self.get_event()
         node.end_mark = end_event.end_mark
-        # keys << mid
-        # mid.to_diagram().draw()
-        # node = compose_entry(keys, values)
         if tag:
-            mid = H.from_box(Box(tag, keys.cod, values.dom))
-            node = keys >> mid >> values
+            b = H.from_box(Box(
+                tag,
+                node.dom,
+                node.cod))
+            node = compose_entry(b, node)
         return node
 
 def compose_entry(k, v):

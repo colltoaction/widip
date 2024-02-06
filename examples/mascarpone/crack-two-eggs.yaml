@@ -1,0 +1,13 @@
+# egg:
+#   !crack
+#   - egg
+#   - white:
+#     yolk:
+# egg:
+#   !crack
+#   - egg
+#   - white:
+#     yolk:
+# ---
+!merge { white: , white: }: white
+# { yolk: , yolk: }: yolk
