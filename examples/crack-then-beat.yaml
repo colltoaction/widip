@@ -1,0 +1,8 @@
+egg: !crack
+  yolk:
+  white:
+---
+!beat
+- sugar:
+  yolk:
+- yolky_paste

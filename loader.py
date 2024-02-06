@@ -155,7 +155,7 @@ class HypergraphComposer:
             item_value = self.compose_node(tag, item_key)
             keys @= item_key
             if value_tag:
-                mid = H.from_box(Box(value_tag.lstrip("!"), item_key.cod, item_value.cod))
+                mid = H.from_box(Box(value_tag.lstrip("!"), item_key.cod, item_value.dom))
                 item_value = mid >> item_value
             values @= item_value
             kv = compose_entry(item_key, item_value)
