@@ -90,33 +90,23 @@ class HypergraphComposer:
     def compose_scalar_node(self, parent, anchor):
         event = self.get_event()
         tag = event.tag
-        if tag is None:
-            tag = ""
-        tag = tag.lstrip("!")
-        if parent is None:
-            parent = ""
-        parent = parent.lstrip("!")
-        # node = H(
-        #     dom=Ty(str(event.value)), cod=Ty(str(event.value)),
-        #     boxes=(),
-        #     wires=(
-        #         (
-        #             Ob(str(event.value)),
-        #         ), (), (
-        #             Ob(str(event.value)),
-        #         ),
-        #     ),
-        #     spider_types={Ob(str(event.value)): Ty(str(event.value))},
-        # ) \
-        # node = H.spiders(1, 1, Ty(str(event.value))) \
-        # node = H.id(Ty(str(event.value))) \
-        # node = H.from_box(Box(str(event.value), Ty(str(event.value)), Ty(str(event.value)))) \
-        parent = parent or ""
-        if event.value == "":
-            node = H.id() if tag == "" else H.id(Ty(tag))
-        else:
-            node = H.from_box(Box(str(event.value), Ty(parent), Ty(tag))) \
-        # node.to_diagram().draw()
+        if event.value and tag:
+            node = H.id(Ty(str(event.value)))
+            # node = H.from_box(Box(
+            #     tag.lstrip("!"),
+            #     Ty(str(event.value)),
+            #     Ty(str(event.value))))
+        elif not event.value and not tag:
+            node = H.id()
+        elif event.value:
+            node = H.id(Ty(str(event.value)))
+        elif tag:
+            node = H.id(Ty(tag.lstrip("!") if tag else ""))
+        # elif event.value and not tag:
+        #     node = H.from_box(Box(str(event.value), Ty(""), Ty("")))
+        # elif tag and not event.value:
+        #     node = H.from_box(Id(Ty(tag.lstrip("!"))))
+        
         if anchor is not None:
             self.anchors[anchor] = node
         return node
@@ -124,18 +114,21 @@ class HypergraphComposer:
     def compose_sequence_node(self, parent, anchor):
         start_event = self.get_event()
         tag = start_event.tag
-        if tag is None or tag == '!':
-            tag = self.DEFAULT_SEQUENCE_TAG
+        tag = tag.lstrip("!") if tag else ""
         node = H.id()
-        # node = SequenceNode(tag, [],
-        #         start_event.start_mark, None,
-        #         flow_style=start_event.flow_style)
         if anchor is not None:
             self.anchors[anchor] = node
         index = 0
         while not self.check_event(SequenceEndEvent):
             item = self.compose_node(parent, index)
-            node = compose_entry(node, item)
+            if node == H.id():
+                node = item
+            else:
+                if tag:
+                    mid = H.from_box(Box(tag, node.dom, item.dom))
+                    node = mid >> item
+                    # node = item >> node
+                node = compose_entry(node, item)
             index += 1
         end_event = self.get_event()
         node.end_mark = end_event.end_mark
@@ -148,56 +141,62 @@ class HypergraphComposer:
         if tag is None:
             tag = ""
         tag = tag.lstrip("!")
-        if parent is None:
-            parent = ""
-        parent = parent.lstrip("!")
-        node = H.id()#Ty(str(start_event.start_mark)))
+        node = H.id()
         if anchor is not None:
             self.anchors[anchor] = node
         keys, values = H.id(), H.id()
         while not self.check_event(MappingEndEvent):
+            key_tag = self.peek_event().tag
             item_key = self.compose_node(tag, None)
+            if key_tag:
+                mid = H.from_box(Box(key_tag.lstrip("!"), item_key.dom, item_key.cod))
+                item_key = mid >> item_key
             value_tag = self.peek_event().tag
             item_value = self.compose_node(tag, item_key)
             keys @= item_key
+            if value_tag:
+                mid = H.from_box(Box(value_tag.lstrip("!"), item_key.cod, item_value.cod))
+                item_value = mid >> item_value
             values @= item_value
             kv = compose_entry(item_key, item_value)
             node @= kv
         end_event = self.get_event()
         node.end_mark = end_event.end_mark
-        left = H.from_box(Box(tag, Ty(tag), keys.dom))
-        mid = H.from_box(Box("", keys.cod, values.dom))
-        right = H.from_box(Box(tag, values.cod, Ty(tag)))
-        node = left >> keys >> mid >> values >> right
-        # node = compose_entry(H.id(keys.dom), node)
-        #     keys, H.id(values.dom))
-        # node <<= values
-        # node = compose_entry(
-        #     H.spiders(1, 0, Ty(parent)) if parent else H.id(), node)
+        # keys << mid
+        # mid.to_diagram().draw()
+        # node = compose_entry(keys, values)
+        if tag:
+            mid = H.from_box(Box(tag, keys.cod, values.dom))
+            node = keys >> mid >> values
         return node
 
 def compose_entry(k, v):
-    # if v == H.id():
-    #     return k
-    spider_types = {
-        Ob(s.name)
-        for s in k.boxes + v.boxes}
+    """connects two diagrams by creating spiders between them"""
+    if v == H.id():
+        return k
+    names = {x.name for x in k.dom.inside + k.cod.inside + v.dom.inside + v.cod.inside}
+    # scalar_spiders = {
+    #     n.name
+    #     for s in k.scalar_spiders + v.scalar_spiders
+        # for n in s.inside}
+    names = tuple(sorted(names))
+    io_names = tuple(sorted({x.name for x in k.dom.inside + v.cod.inside}))
+    spider_types = {n: Ty(n) if n in io_names else Ty("") for n in names}
     g = H(
         dom=k.cod, cod=v.dom,
         boxes=(),
         wires=(
             # tuple(Ob(s.name) for s in k.cod.inside), # input wires of the hypergraph
-            k.cod.inside, # input wires of the hypergraph
-            (),#tuple(((s,),(s,)) for s in spider_types),
+            tuple(x.name for x in k.cod.inside), # input wires of the hypergraph
+            (
+            ),#tuple(((s,),(s,)) for s in spider_types),
             # tuple(Ob(s.name) for s in v.dom.inside), # input wires of the hypergraph
-            v.dom.inside, # input wires of the hypergraph
+            tuple(x.name for x in v.dom.inside), # input wires of the hypergraph
         ),
         # spider_types=spider_types,
     )
-    entry = k >> g >> v
-    # print(entry.scalar_spiders)
-    # g.to_diagram().draw()
-    return entry
+    g = k >> g >> v
+    return g
 
 
 class HypergraphLoader(Reader, Scanner, Parser, HypergraphComposer, SafeConstructor, Resolver):
