@@ -4,6 +4,6 @@ egg:
   yolk:
 ---
 !mix
-- white:
+? white:
   yolk:
-- egg
+: egg

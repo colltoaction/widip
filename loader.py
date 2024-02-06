@@ -91,21 +91,19 @@ class HypergraphComposer:
         event = self.get_event()
         tag = event.tag
         if event.value and tag:
-            node = H.id(Ty(str(event.value)))
-            # node = H.from_box(Box(
-            #     tag.lstrip("!"),
-            #     Ty(str(event.value)),
-            #     Ty(str(event.value))))
-        elif not event.value and not tag:
-            node = H.id()
+            node = H.from_box(Box(
+                tag.lstrip("!"),
+                Ty(str(event.value)),
+                Ty(str(event.value))))
         elif event.value:
             node = H.id(Ty(str(event.value)))
         elif tag:
-            node = H.id(Ty(tag.lstrip("!") if tag else ""))
-        # elif event.value and not tag:
-        #     node = H.from_box(Box(str(event.value), Ty(""), Ty("")))
-        # elif tag and not event.value:
-        #     node = H.from_box(Id(Ty(tag.lstrip("!"))))
+            node = H.from_box(Box(
+                tag.lstrip("!"),
+                Ty(""),
+                Ty("")))
+        elif not event.value and not tag:
+            node = H.id()
         
         if anchor is not None:
             self.anchors[anchor] = node
@@ -115,23 +113,29 @@ class HypergraphComposer:
         start_event = self.get_event()
         tag = start_event.tag
         tag = tag.lstrip("!") if tag else ""
-        node = H.id()
+        node = None
         if anchor is not None:
             self.anchors[anchor] = node
         index = 0
         while not self.check_event(SequenceEndEvent):
-            item = self.compose_node(parent, index)
-            if node == H.id():
-                node = item
+            value_tag = self.peek_event().tag
+            value_tag = value_tag.lstrip("!") if value_tag else ""
+            value = self.compose_node(parent, index)
+            if node is None:
+                node = value
             else:
-                if tag:
-                    mid = H.from_box(Box(tag, node.dom, item.dom))
-                    node = mid >> item
-                    # node = item >> node
-                node = compose_entry(node, item)
+                node = compose_entry(node, value)
             index += 1
         end_event = self.get_event()
         node.end_mark = end_event.end_mark
+
+        if tag:
+            b = H.from_box(Box(
+                tag.lstrip("!"),
+                node.dom,
+                node.dom))
+            node = b >> node
+            # node = compose_entry(b, node)
         return node
 
 
@@ -145,18 +149,19 @@ class HypergraphComposer:
         if anchor is not None:
             self.anchors[anchor] = node
         keys, values = H.id(), H.id()
+        # TODO nodes with tags already have the tag boxes in them
         while not self.check_event(MappingEndEvent):
             key_tag = self.peek_event().tag
             item_key = self.compose_node(tag, None)
-            if key_tag:
-                mid = H.from_box(Box(key_tag.lstrip("!"), item_key.dom, item_key.cod))
-                item_key = mid >> item_key
+            # if key_tag:
+            #     mid = H.from_box(Box(key_tag.lstrip("!"), item_key.dom, item_key.cod))
+            #     item_key = mid >> item_key
             value_tag = self.peek_event().tag
             item_value = self.compose_node(tag, item_key)
             keys @= item_key
-            if value_tag:
-                mid = H.from_box(Box(value_tag.lstrip("!"), item_key.cod, item_value.dom))
-                item_value = mid >> item_value
+            # if value_tag:
+            #     mid = H.from_box(Box(value_tag.lstrip("!"), item_key.cod, item_value.dom))
+            #     item_value = mid >> item_value
             values @= item_value
             kv = compose_entry(item_key, item_value)
             node @= kv
