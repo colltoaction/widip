@@ -31,7 +31,7 @@ def compose_graph_file(path: pathlib.Path):
         )
     diagram = compose_graphs(G)
     # TODO temporary path
-    Diagram.to_gif(diagram.simplify(), path=path.with_suffix(".gif"), loop=True, timestep=100)
+    Diagram.to_gif(diagram, path=path.with_suffix(".gif"), loop=True, timestep=100, with_labels=False)
     return diagram
 
 def compose_all_graphs():

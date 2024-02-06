@@ -1,4 +1,5 @@
-egg: !crack
+!crack
+egg:
   yolk:
   white:
 ---
