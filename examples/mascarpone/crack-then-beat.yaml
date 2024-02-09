@@ -1,18 +1,10 @@
-egg:
-  !crack
-  - egg
-  - white:
-    yolk:
+egg: !crack
+  white:
+  yolk:
 sugar:
-
-# egg: !crack
-#   white:
-#   yolk:
-# sugar:
 ---
 white:
-{ yolk: , sugar: }:
-  !beat
-  - yolk:
-    sugar:
-  - yolky_paste
+? !beat
+  yolk:
+  sugar:
+: yolky_paste

@@ -53,8 +53,14 @@ class HypergraphComposer:
         self.get_event()
 
         # Compose the root node.
-        tag = self.peek_event().tag
+        tag = (self.peek_event().tag or "").lstrip("!")
         node = self.compose_node(tag, None)
+        if tag:
+            b = H.from_box(Box(
+                tag,
+                node.dom,
+                node.cod))
+            node = compose_entry(b, node)
 
         # Drop the DOCUMENT-END event.
         self.get_event()
@@ -89,84 +95,103 @@ class HypergraphComposer:
 
     def compose_scalar_node(self, parent, anchor):
         event = self.get_event()
-        tag = event.tag
-        if event.value and tag:
-            node = H.from_box(Box(
-                tag.lstrip("!"),
-                Ty(str(event.value)),
-                Ty(str(event.value))))
-        elif event.value:
+        if event.value:
             node = H.id(Ty(str(event.value)))
-        elif tag:
-            node = H.from_box(Box(
-                tag.lstrip("!"),
-                Ty(""),
-                Ty("")))
-        elif not event.value and not tag:
+        else:
             node = H.id()
-        
+
         if anchor is not None:
             self.anchors[anchor] = node
         return node
 
     def compose_sequence_node(self, parent, anchor):
         start_event = self.get_event()
-        tag = start_event.tag
-        tag = tag.lstrip("!") if tag else ""
+        tag = (start_event.tag or "").lstrip("!")
         node = None
         if anchor is not None:
             self.anchors[anchor] = node
         index = 0
+        prev_value_tag, value_tag = None, None
         while not self.check_event(SequenceEndEvent):
-            value_tag = self.peek_event().tag
-            value_tag = value_tag.lstrip("!") if value_tag else ""
+            prev_value_tag = value_tag
+            value_tag = (self.peek_event().tag or "").lstrip("!")
             value = self.compose_node(parent, index)
             if node is None:
                 node = value
             else:
+                if prev_value_tag:
+                    b = H.from_box(Box(
+                        prev_value_tag,
+                        node.cod,
+                        value.cod))
+                    node = node >> b
                 node = compose_entry(node, value)
             index += 1
         end_event = self.get_event()
         node.end_mark = end_event.end_mark
 
-        if tag:
+        if value_tag and not prev_value_tag:
             b = H.from_box(Box(
-                tag.lstrip("!"),
-                node.dom,
+                value_tag,
+                node.cod,
                 node.cod))
-            # spiders should be less intrusive
-            node = H.spiders(1, 2, node.dom) \
-                >> b @ node \
-                >> H.spiders(2, 1, node.cod)
+            node = node >> b
         return node
 
 
     def compose_mapping_node(self, parent, anchor):
         start_event = self.get_event()
-        tag = start_event.tag
-        if tag is None:
-            tag = ""
-        tag = tag.lstrip("!")
+        tag = (start_event.tag or "").lstrip("!")
         node = H.id()
         if anchor is not None:
             self.anchors[anchor] = node
         keys, values = H.id(), H.id()
         while not self.check_event(MappingEndEvent):
+            key_tag = (self.peek_event().tag or "").lstrip("!")
             key = self.compose_node(tag, None)
+            value_tag = (self.peek_event().tag or "").lstrip("!")
             value = self.compose_node(tag, key)
+
+            kv = None
+            if key_tag and value_tag:
+                bk = H.from_box(Box(
+                    key_tag,
+                    key.cod,
+                    value.dom))
+                bv = H.from_box(Box(
+                    value_tag,
+                    value.cod,
+                    value.dom))
+                key = key >> bk
+                value = value >> bv
+            elif key_tag:
+                b = H.from_box(Box(
+                    key_tag,
+                    key.cod,
+                    value.dom))
+                key = key >> b
+                kv = compose_entry(key, value)
+            elif value_tag:
+                b = H.from_box(Box(
+                    value_tag,
+                    key.cod,
+                    value.dom))
+                value = b >> value
+                kv = compose_entry(key, value)
+            else:
+                kv = compose_entry(key, value)
             keys @= key
             values @= value
             # TODO if tag
-            kv = compose_entry(key, value)
             node @= kv
         end_event = self.get_event()
         node.end_mark = end_event.end_mark
-        if tag:
-            b = H.from_box(Box(
-                tag,
-                node.dom,
-                node.cod))
-            node = compose_entry(b, node)
+        # if tag:
+        #     b = H.from_box(Box(
+        #         tag,
+        #         node.dom,
+        #         node.dom))
+        #     node = b >> node
         return node
 
 def compose_entry(k, v):
