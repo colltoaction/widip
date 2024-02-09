@@ -1,0 +1,40 @@
+egg: !crack
+  white:
+  yolk:
+egg: !crack
+  white:
+  yolk:
+sugar:
+mascarpone:
+---
+white:
+? yolk:
+  white:
+: !swap
+  white:
+  yolk:
+yolk:
+sugar:
+mascarpone:
+---
+? !whisk
+  white:
+  white:
+: whisked whites
+? !beat
+  yolk:
+  yolk:
+  sugar:
+: yolky paste
+mascarpone:
+---
+whisked whites:
+? !stir
+  yolky paste:
+  mascarpone:
+: thick paste
+---
+- !fold
+  whisked whites:
+  thick paste:
+- crema di mascarpone

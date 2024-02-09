@@ -1,5 +1,5 @@
 import yaml
-from discopy.frobenius import Box, Ty, Spider, Diagram, Id
+from discopy.frobenius import Box, Ty, Spider, Diagram, Id, Functor
 
 from loader import HypergraphLoader
 
