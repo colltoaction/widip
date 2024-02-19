@@ -169,7 +169,7 @@ class HypergraphComposer:
                     key_tag,
                     key.cod,
                     value.dom))
-                key = key >> b
+                value = value << b
                 kv = compose_entry(key, value)
             elif value_tag:
                 b = H.from_box(Box(
@@ -219,7 +219,9 @@ def compose_entry(k, v):
         ),
         # spider_types=spider_types,
     )
+    # g.to_diagram().draw()
     g = k >> g >> v
+    # g.draw()
     return g
 
 

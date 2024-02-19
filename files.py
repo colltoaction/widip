@@ -33,17 +33,17 @@ native_boxes = {
 }
 def compose_graphs(graphs):
     graph = functools.reduce(
-        # compose_entry,
-        lambda k, v: k >> v,
+        compose_entry,
+        # lambda k, v: k >> v,
         graphs)
-    f = Functor(
-        ob=lambda x: x,
-        ar={box: native_boxes[box.name](box) if box.name in native_boxes else box for box in graph.boxes})
-    graph = f(graph.to_diagram())
-    f2 = eval_functor(graph.boxes)
-    # graph.draw()
-    graph = f2(graph)
-    return graph
+    # f = Functor(
+    #     ob=lambda x: x,
+    #     ar={box: native_boxes[box.name](box) if box.name in native_boxes else box for box in graph.boxes})
+    # graph = f(graph.to_diagram())
+    # f2 = eval_functor(graph.boxes)
+    # # graph.draw()
+    # graph = f2(graph)
+    return graph.to_diagram()
 
 # TODO expose this in the DSL to start bootstrapping.
 # e.g detect !tag when tag dir and/or tag.yaml are present.
