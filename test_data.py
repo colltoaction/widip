@@ -1,6 +1,6 @@
 import pathlib
 import yaml
-from discopy.frobenius import Box, Ty, Spider, Diagram, Id, Functor, Category
+from discopy.frobenius import Box, Ty, Spider, Diagram, Id, Functor, Category, Hypergraph as H
 from discopy import python
 
 from files import compose_graph_file
@@ -27,10 +27,15 @@ def test_bool_and():
     bool_diagram = compose_graph_file(pathlib.Path("src/yaml/data/bool.yaml"))
     bool_and_diagram = compose_graph_file(pathlib.Path("src/yaml/data/bool/and.yaml"))
     d = compose_entry(bool_diagram.to_hypergraph(), bool_and_diagram.to_hypergraph())
-    and_boxes = {Box("and", bn.dom, b): Id(bn.cod) for bn in d.boxes}
+    and_boxes = {
+        Box("and", bn.dom, b):
+            (H.spiders(1, 0, bn.dom) >> H.spiders(0, 1, bn.cod)).to_diagram()
+        for bn in d.boxes}
     bool_and_functor = Functor(
         ob=lambda x: x,
         ar=lambda bd: and_boxes.get(bd, bd))
+    assert bool_and_functor(
+        (Box("and", t @ f, b) @ Box("and", t @ f, b)) >> Id(b @ b))
     assert bool_and_functor(Box("and", t @ f, b)) == Id(f)
     assert bool_and_functor(Box("and", f @ t, b)) == Id(f)
     assert bool_and_functor(Box("and", f @ f, b)) == Id(f)
