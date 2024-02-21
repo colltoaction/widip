@@ -194,34 +194,40 @@ class HypergraphComposer:
         #     node = b >> node
         return node
 
-def compose_entry(k, v):
-    """connects two diagrams by creating spiders between them"""
-    if v == H.id():
-        return k
-    names = {x.name for x in k.dom.inside + k.cod.inside + v.dom.inside + v.cod.inside}
-    # scalar_spiders = {
-    #     n.name
-    #     for s in k.scalar_spiders + v.scalar_spiders
-        # for n in s.inside}
-    names = tuple(sorted(names))
-    io_names = tuple(sorted({x.name for x in k.dom.inside + v.cod.inside}))
-    spider_types = {n: Ty(n) if n in io_names else Ty("") for n in names}
+def compose_entry(left, right):
+    """connects two diagrams by removing the interfaces and connecting open wires"""
+    if right == H.id():
+        return left
+    mid = Ty(*set(left.cod.inside + right.dom.inside))
+    mid_to_left_ports = {
+        t: tuple(i for i, lt in enumerate(left.cod) if lt == t)
+        for t in mid}
+    mid_to_right_ports = {
+        t: tuple(i + len(left.cod) for i, lt in enumerate(right.dom) if lt == t)
+        for t in mid}
+    boxes = tuple(
+        # special cases to avoid dots in drawings,
+        Id() if len(mid_to_left_ports[t]) == len(mid_to_right_ports[t]) == 0
+        else (
+            Id(Ty(*tuple(t.name for _ in range(len(mid_to_right_ports[t])))))
+            if len(mid_to_left_ports[t]) == len(mid_to_right_ports[t])
+            else Spider(
+                len(mid_to_left_ports[t]),
+                len(mid_to_right_ports[t]),
+                t))
+        for t in mid)
+
     g = H(
-        dom=k.cod, cod=v.dom,
-        boxes=(),
+        dom=left.cod, cod=right.dom,
+        boxes=boxes,
         wires=(
-            # tuple(Ob(s.name) for s in k.cod.inside), # input wires of the hypergraph
-            tuple(x.name for x in k.cod.inside), # input wires of the hypergraph
-            (
-            ),#tuple(((s,),(s,)) for s in spider_types),
-            # tuple(Ob(s.name) for s in v.dom.inside), # input wires of the hypergraph
-            tuple(x.name for x in v.dom.inside), # input wires of the hypergraph
+            tuple(i for i in range(len(left.cod))), # input wires of the hypergraph
+            tuple((mid_to_left_ports[t], mid_to_right_ports[t]) for t in mid),
+            tuple(i + len(left.cod) for i in range(len(right.dom))), # input wires of the hypergraph
         ),
-        # spider_types=spider_types,
+        # spider_types=mid,
     )
-    # g.to_diagram().draw()
-    g = k >> g >> v
-    # g.draw()
+    g = left >> g >> right
     return g
 
 

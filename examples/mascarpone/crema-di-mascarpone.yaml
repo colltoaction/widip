@@ -16,8 +16,7 @@ mascarpone:
 white:
 ? yolk:
   white:
-: !swap
-  white:
+: white:
   yolk:
 yolk:
 sugar:
