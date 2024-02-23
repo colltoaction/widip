@@ -1,0 +1,16 @@
+{ true: , false: }:
+{ true: , false: }:
+
+---
+
+? !bool { true: , true: }
+: false
+
+? !bool { false: , true: }
+: true
+
+? !bool { true: , false: }
+: true
+
+? !bool { false: , false: }
+: true

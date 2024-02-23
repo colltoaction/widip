@@ -1,4 +1,4 @@
-!merge
-? white:
+? !merge
+  white:
   white:
 : white

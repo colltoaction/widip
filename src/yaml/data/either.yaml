@@ -1,2 +1,2 @@
-!a : left
-!b : right
+a: !left left
+b: !right right

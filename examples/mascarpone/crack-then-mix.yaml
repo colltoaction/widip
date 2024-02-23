@@ -2,7 +2,7 @@ egg: !crack
   white:
   yolk:
 ---
-- !mix
+? !mix
   white:
   yolk:
-- egg
+: egg
