@@ -10,6 +10,6 @@ u = Ty("unit")
 
 
 def test_monoid():
-    diagram = compose_graph_file(pathlib.Path("src/yaml/monoid.yaml"))
+    diagram = compose_graph_file(pathlib.Path("src/yaml/data/monoid.yaml"))
     with Diagram.hypergraph_equality:
         assert diagram == Box("unit", Ty(), Ty("")) @ Box("product", Ty("") @ Ty(""), Ty(""))

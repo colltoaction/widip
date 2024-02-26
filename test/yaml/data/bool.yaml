@@ -1,11 +1,1 @@
-!a true: true
-!b true: true
-!c false: false
----
-- !not false: true
-  true:
-  true:
-- ? !and
-    true:
-    true:
-  : true
+- !src/yaml/data/bool/not.yaml

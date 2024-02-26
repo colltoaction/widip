@@ -1,6 +1,7 @@
 import functools
 import pathlib
 import sys
+from urllib.parse import urlparse
 
 import yaml
 from discopy.frobenius import Ty, Diagram, Hypergraph as H, Box, Functor, Spider, Swap, Category, Id, Ob
@@ -8,7 +9,7 @@ from discopy.closed import Eval
 from discopy import python
 
 from loader import HypergraphLoader
-from composing import compose_entry
+from composing import compose_entry, rewrite_functor
 
 def swap(box):
     (l, r) = tuple(map(Ty, box.cod.inside))
@@ -29,40 +30,33 @@ def eval_functor(boxes):
             ar[box] = Id(Ty(eval_result))
     return Functor(lambda x: ob.get(x, x), lambda x: ar.get(x, x))
 
+def file_functor(diagram):
+    ar = {}
+    for box in diagram.boxes:
+        # TODO replacing ob clashes with other uses
+        path = pathlib.Path(box.name)
+        if path.exists():
+            file_diagram = compose_graph_file(path)
+            ar[box] = rewrite_functor(file_diagram, box.name)(box)
+    return Functor(lambda x: x, lambda x: ar.get(x, x))
+
+def compose_graph_file(path):
+    diagrams = path_diagrams(path)
+    diagram = functools.reduce(compose_entry, diagrams, Id(Ty("")))
+    Diagram.to_gif(diagram, path=path.with_suffix(".gif"), loop=True, timestep=100, with_labels=False)
+    return diagram
+
+def path_diagrams(path):
+    if path.is_dir():
+        for subpath in path.iterdir():
+            if subpath.suffix == ".yaml":
+                yield Box(str(subpath), Ty(""), Ty(""))
+    else:
+        yield from yaml.compose_all(open(path), Loader=HypergraphLoader)
+
 native_boxes = {
     'swap': swap,
 }
 
-# TODO expose this in the DSL to start bootstrapping.
-# e.g detect !tag when tag dir and/or tag.yaml are present.
-def compose_graph_file(path: pathlib.Path):
-    if path.is_dir():
-        # TODO
-        G = compose_dir(path)
-    else:
-        G = (
-            # H.id(),
-            *yaml.compose_all(open(path), Loader=HypergraphLoader),
-            # H.id(),
-        )
-    graph = functools.reduce(compose_entry, G)
-    diagram = graph.to_diagram()
-    # try:
-    #     diagram = diagram.normal_form()
-    # except Exception as ex:
-    #     diagram = ex.last_step
-    # TODO temporary path
-    Diagram.to_gif(diagram, path=path.with_suffix(".gif"), loop=True, timestep=100, with_labels=False)
-    return diagram
-
-def compose_all_graphs():
-    paths = iter(sys.argv[1:])
-    for f in paths:
-        compose_graph_file(pathlib.Path(f))
-
-def compose_dir(path):
-    diagram = H.id()
-    for subpath in path.iterdir():
-        if subpath.suffix == ".yaml":
-            diagram @= H.id(Ty(subpath.stem))
-    yield diagram
+def compose_diagrams(diagrams):
+    return functools.reduce(compose_entry, diagrams, Id(Ty("")))

@@ -4,7 +4,7 @@ from discopy.frobenius import Box, Ty, Spider, Diagram, Id, Functor, Category, H
 from discopy import python
 
 from files import compose_graph_file
-from composing import adapt_to_interface
+from composing import rewrite_functor
 
 b, t, f = Ty("bool"), Ty("true"), Ty("false")
 # not_bool = Box("not", b, b)
@@ -36,9 +36,9 @@ f_box = Box("bool", f, f)
 
 def test_bool_full():
     test_diagram = compose_graph_file(pathlib.Path("test/yaml/data/bool.yaml"))
-    bool_functor = graph_to_functor("bool", "src/yaml/data/bool.yaml")
-    not_functor = graph_to_functor("not", "src/yaml/data/bool/not.yaml")
-    and_functor = graph_to_functor("and", "src/yaml/data/bool/and.yaml")
+    bool_functor = rewrite_functor("bool", "src/yaml/data/bool.yaml")
+    not_functor = rewrite_functor("not", "src/yaml/data/bool/not.yaml")
+    and_functor = rewrite_functor("and", "src/yaml/data/bool/and.yaml")
     functor = not_functor >> bool_functor
     with Diagram.hypergraph_equality:
         assert functor(test_diagram) == Spider(0, 0, f) @ Id(t)
@@ -52,7 +52,7 @@ def test_bool_full():
 #     e = compose_entry(bool_diagram.to_hypergraph(), e.to_hypergraph())
 #     e = compose_entry(e, bool_diagram.to_hypergraph()[::-1])
 #     # e = compose_entry(e, bool_diagram.to_hypergraph()[::-1])
-#     e.to_diagram().draw()
+#     e.draw()
 
 # def test_bool_and():
 #     bool_diagram = compose_graph_file(pathlib.Path("src/yaml/data/bool.yaml"))
@@ -75,10 +75,3 @@ def test_bool_full():
 #     # assert bool_and_functor(Box("and", f @ t, b)) == Id(f)
 #     # assert bool_and_functor(Box("and", f @ f, b)) == Id(f)
 #     # assert bool_and_functor(Box("and", t @ t, b)) == Id(t)
-
-
-def graph_to_functor(tag, path):
-    diagram = compose_graph_file(pathlib.Path(path))
-    return Functor(
-        ob=lambda x: x,
-        ar=lambda x: adapt_to_interface(diagram, x) if x.name == tag else x)

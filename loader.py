@@ -58,10 +58,10 @@ class HypergraphComposer:
         tag = (self.peek_event().tag or "").lstrip("!")
         node = self.compose_node(tag, None)
         if tag:
-            b = H.from_box(Box(
+            b = Box(
                 tag,
                 node.dom,
-                node.cod))
+                node.cod)
             node = compose_entry(b, node)
 
         # Drop the DOCUMENT-END event.
@@ -98,10 +98,9 @@ class HypergraphComposer:
     def compose_scalar_node(self, parent, anchor):
         event = self.get_event()
         if event.value:
-            node = H.id(Ty(str(event.value)))
+            node = Id(Ty(str(event.value)))
         else:
-            # node = H.id()
-            node = H.id(Ty(""))
+            node = Id(Ty(""))
 
         if anchor is not None:
             self.anchors[anchor] = node
@@ -123,10 +122,10 @@ class HypergraphComposer:
                 node = value
             else:
                 if prev_value_tag:
-                    b = H.from_box(Box(
+                    b = Box(
                         prev_value_tag,
                         node.cod,
-                        value.cod))
+                        value.cod)
                     node = node >> b
                 node = compose_entry(node, value)
             index += 1
@@ -134,10 +133,10 @@ class HypergraphComposer:
         node.end_mark = end_event.end_mark
 
         if value_tag and not prev_value_tag:
-            b = H.from_box(Box(
+            b = Box(
                 value_tag,
                 node.cod,
-                node.cod))
+                node.cod)
             node = node >> b
         return node
 
@@ -145,10 +144,9 @@ class HypergraphComposer:
     def compose_mapping_node(self, parent, anchor):
         start_event = self.get_event()
         tag = (start_event.tag or "").lstrip("!")
-        node = H.id()
+        node = Id()
         if anchor is not None:
             self.anchors[anchor] = node
-        keys, values = H.id(), H.id()
         while not self.check_event(MappingEndEvent):
             key_tag = (self.peek_event().tag or "").lstrip("!")
             key = self.compose_node(tag, None)
@@ -157,34 +155,32 @@ class HypergraphComposer:
 
             kv = None
             if key_tag and value_tag:
-                bk = H.from_box(Box(
+                bk = Box(
                     key_tag,
                     key.cod,
-                    value.dom))
-                bv = H.from_box(Box(
+                    value.dom)
+                bv = Box(
                     value_tag,
                     value.cod,
-                    value.dom))
+                    value.dom)
                 key = key >> bk
                 value = value >> bv
                 kv = compose_entry(key, value)
             elif key_tag:
-                b = H.from_box(Box(
+                b = Box(
                     key_tag,
                     key.cod,
-                    value.dom))
+                    value.dom)
                 kv = key >> b >> value
             elif value_tag:
-                b = H.from_box(Box(
+                b = Box(
                     value_tag,
                     key.cod,
-                    value.dom))
+                    value.dom)
                 value = b >> value
                 kv = compose_entry(key, value)
             else:
                 kv = compose_entry(key, value)
-            keys @= key
-            values @= value
             node @= kv
         end_event = self.get_event()
         node.end_mark = end_event.end_mark
