@@ -58,3 +58,10 @@ def test_either():
     t = yaml.compose(open("src/yaml/data/either.yaml"), Loader=HypergraphLoader)
     with Diagram.hypergraph_equality:
         assert t.to_diagram() == d
+
+def test_monoid():
+    d = Box("unit", Ty(), Ty("")) @ \
+        Box("product", Ty("") @ Ty(""), Ty(""))
+    t = yaml.compose(open("src/yaml/data/monoid.yaml"), Loader=HypergraphLoader)
+    with Diagram.hypergraph_equality:
+        assert t.to_diagram() == d
