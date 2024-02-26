@@ -4,7 +4,7 @@ from discopy.frobenius import Box, Ty, Spider, Diagram, Id, Functor, Category, H
 from discopy import python
 
 from files import compose_graph_file
-from loader import compose_entry, adapt_to_interface
+from composing import adapt_to_interface
 
 b, t, f = Ty("bool"), Ty("true"), Ty("false")
 # not_bool = Box("not", b, b)
@@ -41,7 +41,6 @@ def test_bool_full():
     and_functor = graph_to_functor("and", "src/yaml/data/bool/and.yaml")
     functor = not_functor >> bool_functor
     with Diagram.hypergraph_equality:
-        test_diagram
         assert functor(test_diagram) == Spider(0, 0, f) @ Id(t)
 
 # def test_bool_and():
@@ -78,17 +77,8 @@ def test_bool_full():
 #     # assert bool_and_functor(Box("and", t @ t, b)) == Id(t)
 
 
-# TODO boxes replaced with diagrams
-# that are bound left and right with spiders
 def graph_to_functor(tag, path):
     diagram = compose_graph_file(pathlib.Path(path))
-    # TODO rewriting a box requires
-    # binding left and right to the context
-    # with monoidal, frobenius
-    # boxes = {
-    #     Box(tag, bn.dom, bn.cod): adapt_to_interface(diagram, bn)
-    #     for bn in set(diagram.boxes)}
-    functor = Functor(
+    return Functor(
         ob=lambda x: x,
         ar=lambda x: adapt_to_interface(diagram, x) if x.name == tag else x)
-    return functor

@@ -9,6 +9,8 @@ from yaml.composer import ComposerError
 
 from discopy.frobenius import Hypergraph as H, Id, Ob, Ty, Box, Spider
 
+from composing import compose_entry
+
 class HypergraphComposer:
 
     def __init__(self):
@@ -98,8 +100,8 @@ class HypergraphComposer:
         if event.value:
             node = H.id(Ty(str(event.value)))
         else:
-            node = H.id()
-            # node = H.id(Ty(""))
+            # node = H.id()
+            node = H.id(Ty(""))
 
         if anchor is not None:
             self.anchors[anchor] = node
@@ -165,6 +167,7 @@ class HypergraphComposer:
                     value.dom))
                 key = key >> bk
                 value = value >> bv
+                kv = compose_entry(key, value)
             elif key_tag:
                 b = H.from_box(Box(
                     key_tag,
@@ -182,66 +185,10 @@ class HypergraphComposer:
                 kv = compose_entry(key, value)
             keys @= key
             values @= value
-            # TODO if tag
             node @= kv
         end_event = self.get_event()
         node.end_mark = end_event.end_mark
-        # if tag:
-        #     b = H.from_box(Box(
-        #         tag,
-        #         node.dom,
-        #         node.dom))
-        #     node = b >> node
         return node
-
-def compose_entry(left, right):
-    """connects two diagrams by removing the interfaces and connecting open wires"""
-    if left == H.id() and right == H.id():
-        return H.id(Ty(""))
-    elif left == H.id():
-        return right
-    elif right == H.id():
-        return left
-    mid = adapter_hypergraph(left, right)
-    return left >> mid >> right
-
-def adapt_to_interface(diagram, box):
-    """adapts a diagram open ports to fit in the box"""
-    left = Id(box.dom)
-    right = Id(box.cod)
-    diagram = adapter_hypergraph(left, diagram) >> \
-            diagram >> \
-            adapter_hypergraph(diagram, right)
-    g = diagram
-    return g
-
-def adapter_hypergraph(left, right):
-    mid = Ty(*set(left.cod.inside + right.dom.inside))
-    mid_to_left_ports = {
-        t: tuple(i for i, lt in enumerate(left.cod) if lt == t)
-        for t in mid}
-    mid_to_right_ports = {
-        t: tuple(i + len(left.cod) for i, lt in enumerate(right.dom) if lt == t)
-        for t in mid}
-    boxes = tuple(
-        # TODO special cases to avoid dots in drawings,
-        Spider(
-            len(mid_to_left_ports[t]),
-            len(mid_to_right_ports[t]),
-            t)
-        for t in mid)
-    g = H(
-        dom=left.cod, cod=right.dom,
-        boxes=boxes,
-        wires=(
-            tuple(i for i in range(len(left.cod))),
-            tuple(
-                (mid_to_left_ports[t], mid_to_right_ports[t])
-                for t in mid),
-            tuple(i + len(left.cod) for i in range(len(right.dom))),
-        ),
-    )
-    return g
 
 
 class HypergraphLoader(Reader, Scanner, Parser, HypergraphComposer, SafeConstructor, Resolver):

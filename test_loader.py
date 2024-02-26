@@ -12,7 +12,7 @@ def test_single_wires():
         assert a0.to_diagram() == a1.to_diagram()
 
 def test_boxes_with_empty_domain_and_codomain():
-    a = Box("a", Ty(), Ty())
+    a = Box("a", Ty(""), Ty(""))
     a0 = yaml.compose("!a", Loader=HypergraphLoader)
     a1 = yaml.compose("!a :", Loader=HypergraphLoader)
     a2 = yaml.compose("- !a", Loader=HypergraphLoader)
@@ -35,8 +35,8 @@ def test_the_empty_value():
         assert a1.to_diagram() == Id(Ty(""))
         assert a2.to_diagram() == Id(Ty("a"))
         assert a3.to_diagram() == Id(Ty("a"))
-        assert a4.to_diagram() == Box("a", Ty(), Ty())
-        assert a5.to_diagram() == Box("a", Ty(), Ty())
+        assert a4.to_diagram() == Box("a", Ty(""), Ty(""))
+        assert a5.to_diagram() == Box("a", Ty(""), Ty(""))
 
 def test_bool():
     d = Box("true", Ty("true"), Ty("true")) @ \

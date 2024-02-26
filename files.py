@@ -7,7 +7,8 @@ from discopy.frobenius import Ty, Diagram, Hypergraph as H, Box, Functor, Spider
 from discopy.closed import Eval
 from discopy import python
 
-from loader import HypergraphLoader, compose_entry
+from loader import HypergraphLoader
+from composing import compose_entry
 
 def swap(box):
     (l, r) = tuple(map(Ty, box.cod.inside))
@@ -31,19 +32,6 @@ def eval_functor(boxes):
 native_boxes = {
     'swap': swap,
 }
-def compose_graphs(graphs):
-    graph = functools.reduce(
-        compose_entry,
-        # lambda k, v: k >> v,
-        graphs)
-    # f = Functor(
-    #     ob=lambda x: x,
-    #     ar={box: native_boxes[box.name](box) if box.name in native_boxes else box for box in graph.boxes})
-    # graph = f(graph.to_diagram())
-    # f2 = eval_functor(graph.boxes)
-    # # graph.draw()
-    # graph = f2(graph)
-    return graph.to_diagram()
 
 # TODO expose this in the DSL to start bootstrapping.
 # e.g detect !tag when tag dir and/or tag.yaml are present.
@@ -57,7 +45,8 @@ def compose_graph_file(path: pathlib.Path):
             *yaml.compose_all(open(path), Loader=HypergraphLoader),
             # H.id(),
         )
-    diagram = compose_graphs(G)
+    graph = functools.reduce(compose_entry, G)
+    diagram = graph.to_diagram()
     # try:
     #     diagram = diagram.normal_form()
     # except Exception as ex:
