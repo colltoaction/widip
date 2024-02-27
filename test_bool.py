@@ -3,8 +3,7 @@ import yaml
 from discopy.frobenius import Box, Ty, Spider, Diagram, Id, Functor, Category, Hypergraph as H
 from discopy import python
 
-from files import compose_graph_file
-from composing import rewrite_functor
+from files import compose_graph_file, file_functor
 
 b, t, f = Ty("bool"), Ty("true"), Ty("false")
 # not_bool = Box("not", b, b)
@@ -35,19 +34,16 @@ f_box = Box("bool", f, f)
 #         assert functor(Box("not", t, f)).draw() == Spider(0, 0, f) @ Id(t)
 
 def test_bool_full():
-    test_diagram = compose_graph_file(pathlib.Path("test/yaml/data/bool.yaml"))
-    bool_functor = rewrite_functor("bool", "src/yaml/data/bool.yaml")
-    not_functor = rewrite_functor("not", "src/yaml/data/bool/not.yaml")
-    and_functor = rewrite_functor("and", "src/yaml/data/bool/and.yaml")
-    functor = not_functor >> bool_functor
+    test_diagram = compose_graph_file("test/yaml/data/bool.yaml")
+    functor = file_functor() >> file_functor()
     with Diagram.hypergraph_equality:
-        assert functor(test_diagram) == Spider(0, 0, f) @ Id(t)
+        assert functor(test_diagram).draw() == Spider(0, 0, f) @ Id(t)
 
 # def test_bool_and():
-#     bool_diagram = compose_graph_file(pathlib.Path("src/yaml/data/bool.yaml"))
-#     not_diagram = compose_graph_file(pathlib.Path("src/yaml/data/bool/not.yaml"))
-#     and_diagram = compose_graph_file(pathlib.Path("src/yaml/data/bool/and.yaml"))
-#     nand_diagram = compose_graph_file(pathlib.Path("src/yaml/data/bool/nand.yaml"))
+#     bool_diagram = compose_graph_file("src/yaml/data/bool.yaml"))
+#     not_diagram = compose_graph_file("src/yaml/data/bool/not.yaml"))
+#     and_diagram = compose_graph_file("src/yaml/data/bool/and.yaml"))
+#     nand_diagram = compose_graph_file("src/yaml/data/bool/nand.yaml"))
 #     e = and_diagram# @ not_diagram @ nand_diagram
 #     e = compose_entry(bool_diagram.to_hypergraph(), e.to_hypergraph())
 #     e = compose_entry(e, bool_diagram.to_hypergraph()[::-1])
@@ -55,8 +51,8 @@ def test_bool_full():
 #     e.draw()
 
 # def test_bool_and():
-#     bool_diagram = compose_graph_file(pathlib.Path("src/yaml/data/bool.yaml"))
-#     bool_and_diagram = compose_graph_file(pathlib.Path("src/yaml/data/bool/and.yaml"))
+#     bool_diagram = compose_graph_file("src/yaml/data/bool.yaml"))
+#     bool_and_diagram = compose_graph_file("src/yaml/data/bool/and.yaml"))
 #     d = bool_diagram#compose_entry(bool_diagram.to_hypergraph(), bool_and_diagram.to_hypergraph())
 #     # TyToBool = Functor(ob=lambda x: b if x == Ty("") else x, ar=lambda x: x)
 #     # d.draw()

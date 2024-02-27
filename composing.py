@@ -1,13 +1,8 @@
 from discopy.frobenius import Hypergraph as H, Id, Ob, Ty, Box, Spider, Functor
 
 
-def rewrite_functor(diagram, tag):
-    return Functor(
-        ob=lambda x: x,
-        ar=lambda x: adapt_to_interface(diagram, x.to_hypergraph()) if x.name == tag else x)
-
 def compose_entry(left, right):
-    """connects two diagrams by removing the interfaces and connecting open wires"""
+    """connects or closes two diagrams open wires"""
     if left == Id(Ty("")) and right == Id(Ty("")):
         return Id(Ty(""))
     elif left == Id(Ty("")):
@@ -19,13 +14,12 @@ def compose_entry(left, right):
 
 def adapt_to_interface(diagram, box):
     """adapts a diagram open ports to fit in the box"""
+    # TODO this breaks hello-world.yaml
     left = Id(box.dom)
     right = Id(box.cod)
-    diagram = adapter_hypergraph(left, diagram) >> \
+    return adapter_hypergraph(left, diagram) >> \
             diagram >> \
             adapter_hypergraph(diagram, right)
-    g = diagram
-    return g
 
 def adapter_hypergraph(left, right):
     mid = Ty(*set(left.cod.inside + right.dom.inside))
