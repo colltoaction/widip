@@ -14,7 +14,6 @@ def compose_entry(left, right):
 
 def adapt_to_interface(diagram, box):
     """adapts a diagram open ports to fit in the box"""
-    # TODO this breaks hello-world.yaml
     left = Id(box.dom)
     right = Id(box.cod)
     return adapter_hypergraph(left, diagram) >> \

@@ -15,7 +15,5 @@ def main_functor():
         ar=lambda box: print(eval(box.name)))
 
 diagram = Id().tensor(*argv_diagrams())
-diagram = file_functor()(diagram)
 diagram.draw()
 # diagram = main_functor()(diagram)
-# diagram.draw()
