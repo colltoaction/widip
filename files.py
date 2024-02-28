@@ -17,30 +17,42 @@ def file_functor_ar(box):
 
 def compose_graph_file(name):
     path = pathlib.Path(name)
-    diagram = Id(Ty(path.stem))
+    f = Functor(
+        ob=lambda x: replace_unnamed_wires(x, path.stem),
+        ar=lambda box: Box(box.name,
+                        replace_unnamed_wires(box.dom, path.stem),
+                        replace_unnamed_wires(box.cod, path.stem)))
+    return f(Id().tensor(*diagrams(path)))
+
+def diagrams(path):
     if not path.exists():
-        return diagram
-    if path.is_dir():
-        diagrams = dir_diagrams(path)
-        diagram = Id().tensor(*diagrams)
-        diagram = adapt_to_interface(diagram, Box("", Ty(path.stem), Ty(path.stem)))
-        diagram = file_functor()(diagram)
+        yield Id(Ty(path.stem))
+    elif path.is_dir():
+        file_path = path.with_suffix(".yaml")
+        diagram = Id().tensor(*dir_diagrams(path))
+        if file_path.exists():
+            file_d = Id().tensor(*file_diagrams(file_path))
+            diagram = compose_entry(file_d, diagram)
+        Diagram.to_gif(diagram, path=str(path.with_suffix('.gif')))
+        yield diagram
+    elif path.suffix == ".yaml":
+        file_d = functools.reduce(compose_entry, file_diagrams(path), Id(Ty("")))
+        diagram = file_d
+        dir_path = path.with_suffix("")
+        if dir_path.is_dir():
+            dir_d = Id().tensor(*dir_diagrams(dir_path))
+            diagram = compose_entry(diagram, dir_d)
+        Diagram.to_gif(diagram, path=str(path.with_suffix('.gif')))
+        yield diagram
     else:
-        f = Functor(
-            ob=lambda x: replace_unnamed_wires(x, path.parent.name),
-            ar=lambda box: Box(box.name,
-                            replace_unnamed_wires(box.dom, path.parent.name),
-                            replace_unnamed_wires(box.cod, path.parent.name)))
-        diagrams = yaml.compose_all(open(path), Loader=HypergraphLoader)
-        diagram = functools.reduce(compose_entry, diagrams, Id(Ty("")))
-        diagram = f(diagram)
-    Diagram.to_gif(diagram, path=str(path.with_suffix('.gif')))
-    return diagram
+        yield Id()
 
 def dir_diagrams(dir_path):
     for subpath in dir_path.iterdir():
-        if subpath.suffix == ".yaml":
-            yield Box(str(subpath), Ty(dir_path.name), Ty(dir_path.name))
+        yield from diagrams(subpath)
+
+def file_diagrams(file_path):
+    yield from yaml.compose_all(open(file_path), Loader=HypergraphLoader)
 
 def replace_unnamed_wires(ty, name):
     return Ty(*(name if x.name == "" else x.name for x in ty.inside))
