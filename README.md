@@ -1,3 +1,6 @@
+> Academics can check this Quantum Phisics and Logic 2024 conference submission:
+> * https://github.com/colltoaction/qpl2024/blob/main/YAML%20Diagrams/YAML%20Diagrams.pdf
+
 # YAML
 [YAML] is a human-friendly data serialization language for all programming languages.
 
