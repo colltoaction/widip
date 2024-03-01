@@ -2,64 +2,60 @@ import functools
 import pathlib
 
 import yaml
-from discopy.frobenius import Ty, Diagram, Hypergraph as H, Box, Functor, Spider, Swap, Category, Id, Ob
+from discopy.frobenius import Ty, Diagram, Hypergraph as H, Box, Functor, Swap, Category, Id
 
 from loader import HypergraphLoader
-from composing import adapt_to_interface, compose_entry
+from composing import glue_diagrams, replace_box
 
 
-def file_functor():
-    return Functor(lambda x: x, file_functor_ar)
-
-def file_functor_ar(box):
-    file_diagram = compose_graph_file(box.name)
-    return adapt_to_interface(file_diagram, box.to_hypergraph())
-
-def compose_graph_file(name):
-    path = pathlib.Path(name)
-    return Id().tensor(*diagrams(path))
-
-def diagrams(path):
-    if not path.exists():
-        yield Id(Ty(path.stem))
-    elif path.is_dir():
-        f = Functor(
-            ob=lambda x: replace_unnamed_wires(x, path.stem),
-            ar=lambda box: Box(box.name,
-                            replace_unnamed_wires(box.dom, path.stem),
-                            replace_unnamed_wires(box.cod, path.stem)))
-        diagram = Id().tensor(*dir_diagrams(path))
+def path_diagram(path):
+    dir_d = None
+    file_d = None
+    if path.is_dir():
+        dir_d = dir_diagram(path)
         file_path = path.with_suffix(".yaml")
         if file_path.exists():
-            file_d = functools.reduce(compose_entry, file_diagrams(file_path), Id(Ty("")))
-            file_d = f(file_d)
-            diagram = compose_entry(file_d, diagram)
-        diagram = f(diagram)
-        Diagram.to_gif(diagram, path=str(path.with_suffix('.gif')))
-        yield diagram
+            file_d = file_diagram(file_path)
     elif path.suffix == ".yaml":
-        f = Functor(
-            ob=lambda x: replace_unnamed_wires(x, path.stem),
-            ar=lambda box: Box(box.name,
-                            replace_unnamed_wires(box.dom, path.stem),
-                            replace_unnamed_wires(box.cod, path.stem)))
-        diagram = functools.reduce(compose_entry, file_diagrams(path), Id(Ty("")))
-        diagram = f(diagram)
+        file_d = file_diagram(path)
         dir_path = path.with_suffix("")
         if dir_path.is_dir():
-            dir_d = Id().tensor(*dir_diagrams(dir_path))
-            diagram = compose_entry(diagram, dir_d)
+            dir_d = dir_diagram(dir_path)
+
+    if dir_d is not None and file_d is not None:
+        diagram = replace_box(dir_d, file_d)
         Diagram.to_gif(diagram, path=str(path.with_suffix('.gif')))
-        yield diagram
+        return diagram
+    elif dir_d is not None:
+        Diagram.to_gif(dir_d, path=str(path.with_suffix('.gif')))
+        return dir_d
+    elif file_d is not None:
+        Diagram.to_gif(file_d, path=str(path.with_suffix('.gif')))
+        return file_d
     else:
-        yield Id()
+        return Id()
 
-def dir_diagrams(dir_path):
-    for subpath in dir_path.iterdir():
-        yield from diagrams(subpath)
+def id_naming_functor(name):
+    # TODO same-name box
+    return Functor(
+        ob=lambda x: replace_id_objects(x, name),
+        ar=lambda box: Box(box.name,
+                        replace_id_objects(box.dom, name),
+                        replace_id_objects(box.cod, name)))
 
-def file_diagrams(file_path):
-    yield from yaml.compose_all(open(file_path), Loader=HypergraphLoader)
+def dir_diagram(path):
+    dir_diagrams = (path_diagram(subpath) for subpath in path.iterdir())
+    diagram = Id().tensor(*dir_diagrams)
+    # f = id_naming_functor(path.stem)
+    # diagram = f(diagram)
+    return diagram
 
-def replace_unnamed_wires(ty, name):
+def file_diagram(path):
+    f = id_naming_functor(path.stem)
+    file_diagrams = yaml.compose_all(open(path), Loader=HypergraphLoader)
+    diagram = functools.reduce(glue_diagrams, file_diagrams, Id(Ty("")))
+    diagram = f(diagram)
+    return diagram
+
+def replace_id_objects(ty, name):
     return Ty(*(name if x.name == "" else x.name for x in ty.inside))

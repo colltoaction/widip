@@ -9,7 +9,7 @@ from yaml.composer import ComposerError
 
 from discopy.frobenius import Hypergraph as H, Id, Ob, Ty, Box, Spider
 
-from composing import compose_entry
+from composing import glue_diagrams
 
 class HypergraphComposer:
 
@@ -58,11 +58,8 @@ class HypergraphComposer:
         tag = (self.peek_event().tag or "").lstrip("!")
         node = self.compose_node(tag, None)
         if tag:
-            b = Box(
-                tag,
-                node.dom,
-                node.cod)
-            node = compose_entry(b, node)
+            b = Box(tag, node.dom, node.cod)
+            node = glue_diagrams(b, node)
 
         # Drop the DOCUMENT-END event.
         self.get_event()
@@ -107,6 +104,7 @@ class HypergraphComposer:
         return node
 
     def compose_sequence_node(self, parent, anchor):
+        """becomes a set of equations l0->l1, l1->l2,... in a symmetric monoidal theory"""
         start_event = self.get_event()
         tag = (start_event.tag or "").lstrip("!")
         node = None
@@ -122,12 +120,9 @@ class HypergraphComposer:
                 node = value
             else:
                 if prev_value_tag:
-                    b = Box(
-                        prev_value_tag,
-                        node.cod,
-                        value.cod)
+                    b = Box(prev_value_tag, node.cod, value.cod)
                     node = node >> b
-                node = compose_entry(node, value)
+                node = glue_diagrams(node, value)
             index += 1
         end_event = self.get_event()
         node.end_mark = end_event.end_mark
@@ -142,45 +137,33 @@ class HypergraphComposer:
 
 
     def compose_mapping_node(self, parent, anchor):
+        """becomes a set of equations l->r in a symmetric monoidal theory"""
         start_event = self.get_event()
         tag = (start_event.tag or "").lstrip("!")
         node = Id()
         if anchor is not None:
             self.anchors[anchor] = node
         while not self.check_event(MappingEndEvent):
-            key_tag = (self.peek_event().tag or "").lstrip("!")
-            key = self.compose_node(tag, None)
-            value_tag = (self.peek_event().tag or "").lstrip("!")
-            value = self.compose_node(tag, key)
+            left_tag = (self.peek_event().tag or "").lstrip("!")
+            left = self.compose_node(tag, None)
+            right_tag = (self.peek_event().tag or "").lstrip("!")
+            right = self.compose_node(tag, left)
 
             kv = None
-            if key_tag and value_tag:
-                bk = Box(
-                    key_tag,
-                    key.cod,
-                    value.dom)
-                bv = Box(
-                    value_tag,
-                    value.cod,
-                    value.dom)
-                key = key >> bk
-                value = value >> bv
-                kv = compose_entry(key, value)
-            elif key_tag:
-                b = Box(
-                    key_tag,
-                    key.cod,
-                    value.dom)
-                kv = key >> b >> value
-            elif value_tag:
-                b = Box(
-                    value_tag,
-                    key.cod,
-                    value.dom)
-                value = b >> value
-                kv = compose_entry(key, value)
+            if left_tag and right_tag:
+                bk = Box(left_tag, left.cod, right.dom)
+                bv = Box(right_tag, right.cod, right.dom)
+                left = left >> bk
+                right = right >> bv
+                kv = glue_diagrams(left, right)
+            elif left_tag:
+                b = Box(left_tag, left.cod, right.dom)
+                kv = left >> b >> right
+            elif right_tag:
+                b = Box(right_tag, left.cod, right.dom)
+                kv = left >> b >> right
             else:
-                kv = compose_entry(key, value)
+                kv = glue_diagrams(left, right)
             node @= kv
         end_event = self.get_event()
         node.end_mark = end_event.end_mark

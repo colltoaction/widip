@@ -1,32 +1,31 @@
-from discopy.frobenius import Hypergraph as H, Id, Ob, Ty, Box, Spider, Functor
+from discopy.frobenius import Hypergraph as H, Id, Ty, Box, Functor, Spider
 
 
-def compose_entry(left, right):
-    """connects or closes two diagrams open wires"""
+def glue_diagrams(left, right):
+    """glues two diagrams sequentially with frobenius generators"""
     if left == Id(Ty("")) and right == Id(Ty("")):
         return Id(Ty(""))
     elif left == Id(Ty("")):
         return right
     elif right == Id(Ty("")):
         return left
-    mid = adapter_hypergraph(left, right)
+    mid = frobenius_cospan(left.cod, right.dom)
     return left >> mid >> right
 
-def adapt_to_interface(diagram, box):
-    """adapts a diagram open ports to fit in the box"""
-    left = Id(box.dom)
-    right = Id(box.cod)
-    return adapter_hypergraph(left, diagram) >> \
-            diagram >> \
-            adapter_hypergraph(diagram, right)
+def replace_box(mid, box):
+    """adapts the mid diagram open ports to the box dom/cod"""
+    return frobenius_cospan(box.dom, mid.dom) >> \
+            mid >> \
+            frobenius_cospan(mid.cod, box.cod)
 
-def adapter_hypergraph(left, right):
-    mid = Ty(*set(left.cod.inside + right.dom.inside))
+def frobenius_cospan(dom: Ty, cod: Ty):
+    """a diagram connecting equal objects within each type"""
+    mid = Ty(*set(dom.inside + cod.inside))
     mid_to_left_ports = {
-        t: tuple(i for i, lt in enumerate(left.cod) if lt == t)
+        t: tuple(i for i, lt in enumerate(dom) if lt == t)
         for t in mid}
     mid_to_right_ports = {
-        t: tuple(i + len(left.cod) for i, lt in enumerate(right.dom) if lt == t)
+        t: tuple(i + len(dom) for i, lt in enumerate(cod) if lt == t)
         for t in mid}
     boxes = tuple(
         Id(Ty(*tuple(t.name for _ in range(len(mid_to_left_ports[t])))))
@@ -37,14 +36,14 @@ def adapter_hypergraph(left, right):
             t)
         for t in mid)
     g = H(
-        dom=left.cod, cod=right.dom,
+        dom=dom, cod=cod,
         boxes=boxes,
         wires=(
-            tuple(i for i in range(len(left.cod))),
+            tuple(i for i in range(len(dom))),
             tuple(
                 (mid_to_left_ports[t], mid_to_right_ports[t])
                 for t in mid),
-            tuple(i + len(left.cod) for i in range(len(right.dom))),
+            tuple(i + len(dom) for i in range(len(cod))),
         ),
     )
     return g.to_diagram()

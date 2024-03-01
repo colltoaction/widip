@@ -3,7 +3,7 @@ import yaml
 from discopy.frobenius import Box, Ty, Spider, Diagram, Id, Functor, Category, Hypergraph as H
 from discopy import python
 
-from files import compose_graph_file, file_functor
+from files import path_diagram, file_functor
 
 b, t, f = Ty("bool"), Ty("true"), Ty("false")
 # not_bool = Box("not", b, b)
@@ -34,10 +34,13 @@ f_box = Box("bool", f, f)
 #         assert functor(Box("not", t, f)).draw() == Spider(0, 0, f) @ Id(t)
 
 def test_bool_full():
-    test_diagram = compose_graph_file("test/yaml/data/bool.yaml")
-    functor = file_functor() >> file_functor()
+    test_diagram = path_diagram("test/yaml/data/bool.yaml")
+    test_diagram.draw()
+    functor = file_functor()
+    test_result = functor(test_diagram)
+    test_result.draw()
     with Diagram.hypergraph_equality:
-        assert functor(test_diagram).draw() == Spider(0, 0, f) @ Id(t)
+        assert test_result == Spider(0, 0, f) @ Id(t)
 
 # def test_bool_and():
 #     bool_diagram = compose_graph_file("src/yaml/data/bool.yaml"))
