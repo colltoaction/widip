@@ -1,7 +1,7 @@
 ? !nand
-  "":
-  "":
-:
+  bool:
+  bool:
+: bool
 
 # ---
 

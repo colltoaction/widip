@@ -17,27 +17,34 @@ def file_functor_ar(box):
 
 def compose_graph_file(name):
     path = pathlib.Path(name)
-    f = Functor(
-        ob=lambda x: replace_unnamed_wires(x, path.stem),
-        ar=lambda box: Box(box.name,
-                        replace_unnamed_wires(box.dom, path.stem),
-                        replace_unnamed_wires(box.cod, path.stem)))
-    return f(Id().tensor(*diagrams(path)))
+    return Id().tensor(*diagrams(path))
 
 def diagrams(path):
     if not path.exists():
         yield Id(Ty(path.stem))
     elif path.is_dir():
-        file_path = path.with_suffix(".yaml")
+        f = Functor(
+            ob=lambda x: replace_unnamed_wires(x, path.stem),
+            ar=lambda box: Box(box.name,
+                            replace_unnamed_wires(box.dom, path.stem),
+                            replace_unnamed_wires(box.cod, path.stem)))
         diagram = Id().tensor(*dir_diagrams(path))
+        file_path = path.with_suffix(".yaml")
         if file_path.exists():
-            file_d = Id().tensor(*file_diagrams(file_path))
+            file_d = functools.reduce(compose_entry, file_diagrams(file_path), Id(Ty("")))
+            file_d = f(file_d)
             diagram = compose_entry(file_d, diagram)
+        diagram = f(diagram)
         Diagram.to_gif(diagram, path=str(path.with_suffix('.gif')))
         yield diagram
     elif path.suffix == ".yaml":
-        file_d = functools.reduce(compose_entry, file_diagrams(path), Id(Ty("")))
-        diagram = file_d
+        f = Functor(
+            ob=lambda x: replace_unnamed_wires(x, path.stem),
+            ar=lambda box: Box(box.name,
+                            replace_unnamed_wires(box.dom, path.stem),
+                            replace_unnamed_wires(box.cod, path.stem)))
+        diagram = functools.reduce(compose_entry, file_diagrams(path), Id(Ty("")))
+        diagram = f(diagram)
         dir_path = path.with_suffix("")
         if dir_path.is_dir():
             dir_d = Id().tensor(*dir_diagrams(dir_path))

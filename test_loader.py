@@ -46,15 +46,15 @@ def test_bool():
         assert t == d
 
 def test_maybe():
-    d = Box("just", Ty("a"), Ty("just")) @ \
-        Id(Ty("nothing"))
+    d = Box("just", Ty("a"), Ty("")) @ \
+        Box("nothing", Ty(), Ty(""))
     t = yaml.compose(open("src/yaml/data/maybe.yaml"), Loader=HypergraphLoader)
     with Diagram.hypergraph_equality:
         assert t == d
 
 def test_either():
-    d = Box("left", Ty("a"), Ty("left")) @ \
-        Box("right", Ty("b"), Ty("right"))
+    d = Box("left", Ty("a"), Ty("")) @ \
+        Box("right", Ty("b"), Ty(""))
     t = yaml.compose(open("src/yaml/data/either.yaml"), Loader=HypergraphLoader)
     with Diagram.hypergraph_equality:
         assert t == d
