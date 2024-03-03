@@ -1,0 +1,14 @@
+!repeat :
+  - !lisp/print "- "
+  - !lisp/read
+  - !lisp/eval :
+      environment:
+  - !lisp/print
+
+? !env
+  outer:
+  binds:
+  exprs:
+: !set data:
+  !get data:
+  !find data:

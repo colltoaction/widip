@@ -1,1 +1,2 @@
-!not bool: bool
+!not true: false
+!not false: true

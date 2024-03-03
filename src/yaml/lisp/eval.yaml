@@ -1,0 +1,13 @@
+!+ : !python "lambda a,b: a+b"
+!- : !python "lambda a,b: a-b"
+!* : !python "lambda a,b: a*b"
+!/ : !python "lambda a,b: a/b"
+!ast x:
+  symbol:
+  list:
+    each: !eval
+  otherwise: x
+!apply :
+  env:
+!def :
+!let :

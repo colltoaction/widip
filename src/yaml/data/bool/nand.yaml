@@ -1,18 +1,4 @@
-? !nand
-  bool:
-  bool:
-: bool
-
-# ---
-
-# ? !bool { true: , true: }
-# : false
-
-# ? !bool { false: , true: }
-# : true
-
-# ? !bool { true: , false: }
-# : true
-
-# ? !bool { false: , false: }
-# : true
+!nand { true: , true: }: false
+!nand { false: , true: }: true
+!nand { true: , false: }: true
+!nand { false: , false: }: true
