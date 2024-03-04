@@ -1,0 +1,14 @@
+? !equations
+  left:
+  right:
+: equations
+? !operations
+  arity:
+  coarity:
+: signature
+---
+!theory
+signature:
+equations:
+    # !left term:
+    # !right term:

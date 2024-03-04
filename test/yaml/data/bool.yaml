@@ -1,1 +1,3 @@
-- !src/yaml/data/bool/not.yaml
+- !src/yaml/data/bool.yaml : true
+  !src/yaml/data/bool.yaml : true
+- !src/yaml/data/bool/and.yaml true

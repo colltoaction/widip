@@ -1,2 +1,16 @@
-{}: !0
-!succ :
+? {}: !0
+  !succ :
+---
+? !x nat:
+  !y nat:
+: !plus nat
+# ---
+# ? {}: !0 nat
+# : !y nat: y
+# ? !succ k
+# : !y
+# ? ? !0 y: y
+#   ? k: !succ y
+#   : !plus nat:
+#       k:
+#       y:
