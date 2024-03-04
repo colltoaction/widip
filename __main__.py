@@ -22,8 +22,10 @@ def argv_diagrams():
 def main_functor():
     return Functor(
         ob=lambda x: x,
-        ar=lambda b: lambda *xs: eval(b.name)(*b.dom.inside),
+        ar=lambda b: lambda *xs: eval(b.name)(*(xs or b.dom.inside)),
         cod=Category(Ty, FrobeniusFunction),)
 
-diagram = Id().tensor(*argv_diagrams())
-diagram = main_functor()(diagram)()
+while True:
+    ast_diagram = Id().tensor(*argv_diagrams())
+    # TODO gifs are created but should choose
+    ast_diagram = main_functor()(ast_diagram)()
