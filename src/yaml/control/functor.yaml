@@ -1,0 +1,7 @@
+f:
+a: !pure
+  f:
+  a:
+---
+f:
+a: !map b

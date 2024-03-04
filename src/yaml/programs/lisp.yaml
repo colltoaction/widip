@@ -1,5 +1,3 @@
-!input "- ": str
----
-!eval str
----
-!print str
+- !read "- ": str
+- !eval
+- !print str: {}

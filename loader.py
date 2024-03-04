@@ -107,32 +107,29 @@ class HypergraphComposer:
         """becomes a set of equations l0->l1, l1->l2,... in a symmetric monoidal theory"""
         start_event = self.get_event()
         tag = (start_event.tag or "").lstrip("!")
-        node = None
         if anchor is not None:
             self.anchors[anchor] = node
         index = 0
-        prev_value_tag, value_tag = None, None
+        node = Id("")
+        prev_value_tag = None
         while not self.check_event(SequenceEndEvent):
-            prev_value_tag = value_tag
             value_tag = (self.peek_event().tag or "").lstrip("!")
             value = self.compose_node(parent, index)
-            if node is None:
-                node = value
-            else:
-                if prev_value_tag:
-                    b = Box(prev_value_tag, node.cod, value.cod)
-                    node = node >> b
-                node = glue_diagrams(node, value)
+            if prev_value_tag:
+                b = Box(prev_value_tag, node.cod, node.cod)
+                node = glue_diagrams(node, b)
+            node = glue_diagrams(node, value)
+            prev_value_tag = value_tag
             index += 1
         end_event = self.get_event()
         node.end_mark = end_event.end_mark
 
-        if value_tag and not prev_value_tag:
+        if prev_value_tag:
             b = Box(
-                value_tag,
+                prev_value_tag,
                 node.cod,
                 node.cod)
-            node = node >> b
+            node = glue_diagrams(node, b)
         return node
 
 
