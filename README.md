@@ -1,20 +1,27 @@
 # YAML Diagrams
 
-> For an academic introduction check this paper:
-> * https://github.com/colltoaction/qpl2024/blob/main/YAML%20Diagrams/YAML%20Diagrams.pdf
+## Quickstart
+
+```sh
+$ git clone https://github.com/yaml-programming/diagrams.git
+$ cd diagrams
+$ pip install yaml discopy
+$ python . examples/hello-world.yaml
+Hello world!
+$ open examples/hello-world.gif
+```
+
+![](examples/hello-world.gif)
+
+## Introduction
 
 Diagrams are [graphical programming](https://graphicallinearalgebra.net/2015/04/26/adding-part-1-and-mr-fibonacci/) tools that have two main operations: parallel and sequential composition. As a formal method they have excellent properties to connect open systems like programs.
 
 We implement a Diagram development environment with a [YAML](https://yaml.org) DSL and file and directory integration. At the same time we work on a functional programming language written with Diagrams, which feeds back into the DSL design. Core abstractions like `bool` or `maybe` can be found in the `src/yaml/data` directory.
 
-## Usage
+> For an academic introduction check this paper:
+> * https://github.com/colltoaction/qpl2024/blob/main/YAML%20Diagrams/YAML%20Diagrams.pdf
 
-```sh
-python . examples/hello-world.yaml
-```
-```yaml
-open examples/hello-world.gif
-```
 
 ## Why YAML
 
