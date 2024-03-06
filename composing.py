@@ -18,6 +18,11 @@ def replace_box(mid, box):
             mid >> \
             frobenius_cospan(mid.cod, box.cod)
 
+def box_expansion(box):
+    i = Id().tensor(*(Box(n.name, n, Ty(box.name)) for n in box.dom))
+    o = Id().tensor(*(Box(n.name, Ty(box.name), n) for n in box.cod))
+    return glue_diagrams(i, o)
+
 def frobenius_cospan(dom: Ty, cod: Ty):
     """a diagram connecting equal objects within each type"""
     mid = Ty(*set(dom.inside + cod.inside))

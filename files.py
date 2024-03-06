@@ -5,7 +5,7 @@ import yaml
 from discopy.frobenius import Ty, Diagram, Hypergraph as H, Box, Functor, Swap, Category, Id
 
 from loader import HypergraphLoader
-from composing import glue_diagrams, replace_box
+from composing import box_expansion, glue_diagrams, replace_box
 
 
 def path_diagram(path):
