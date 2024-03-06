@@ -5,18 +5,20 @@ import yaml
 from discopy.frobenius import Ty, Diagram, Hypergraph as H, Box, Functor, Swap, Category, Id
 
 from loader import HypergraphLoader
-from composing import box_expansion, glue_diagrams, replace_box
+from composing import box_expansion_functor, glue_diagrams, replace_box
 
 
 def path_diagram(path):
     # TODO during recursion some tags have relative references
     dir_d = None
     file_d = None
+    # f = box_expansion_functor()
     if path.is_dir():
         dir_d = dir_diagram(path)
         file_path = path.with_suffix(".yaml")
         if file_path.exists():
             file_d = file_diagram(file_path)
+            # file_d = f(file_d)
     elif path.suffix == ".yaml":
         file_d = file_diagram(path)
         dir_path = path.with_suffix("")
@@ -24,13 +26,15 @@ def path_diagram(path):
             dir_d = dir_diagram(dir_path)
 
     if dir_d is not None and file_d is not None:
-        diagram = replace_box(dir_d, file_d)
+        # dir_d = f(dir_d)
+        diagram = glue_diagrams(file_d, dir_d)
         Diagram.to_gif(diagram, path=str(path.with_suffix('.gif')))
         return diagram
     elif dir_d is not None:
         Diagram.to_gif(dir_d, path=str(path.with_suffix('.gif')))
         return dir_d
     elif file_d is not None:
+        # file_d = f(file_d)
         Diagram.to_gif(file_d, path=str(path.with_suffix('.gif')))
         return file_d
     else:
@@ -57,7 +61,7 @@ def file_diagram(path):
     f = id_naming_functor(path.stem)
     file_diagrams = yaml.compose_all(open(path), Loader=HypergraphLoader)
     diagram = functools.reduce(glue_diagrams, file_diagrams, Id(Ty("")))
-    diagram = f(diagram)
+    # diagram = f(diagram)
     return diagram
 
 def replace_id_objects(ty, name):

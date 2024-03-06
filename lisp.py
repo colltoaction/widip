@@ -6,12 +6,12 @@ class FrobeniusFunction(python.Function):
     def spiders(cls, n_legs_in: int, n_legs_out: int, typ: Ty):
         """"""
         return FrobeniusFunction(
-            inside=lambda *_: f"{typ}",
+            inside=lambda *xs: f"{typ}",
             dom=Ty(*(n_legs_in * typ.inside)),
             cod=Ty(*(n_legs_out * typ.inside)),)
 
 def try_read(b):
-    return lambda *xs: input(b.dom.inside[0])
+    return lambda *xs: input(*xs)
 
 def try_eval(b):
     try:
@@ -37,9 +37,13 @@ requirements = {
     'loop': try_loop,
 }
 
+def lisp_ar(b):
+    r = requirements.get(b.name, None)
+    return r(b) if r else lambda *xs: xs
+
 def lisp_functor():
     """minimum requirements to bootstrap LISP"""
     return Functor(
         ob=lambda x: x,
-        ar=lambda b: requirements.get(b.name, lambda *_: lambda: b.name)(b),
+        ar=lisp_ar,
         cod=Category(Ty, FrobeniusFunction),)

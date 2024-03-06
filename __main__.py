@@ -12,8 +12,11 @@ def argv_diagrams():
         yield path_diagram(path)
 
 ds = argv_diagrams()
-ast_diagram = Id().tensor(*ds)
-f = lisp_functor()(ast_diagram)
+d = Id().tensor(*ds)
+# f = box_expansion_functor()
+# d = f(d)
+f = lisp_functor()
+f(d)()
 # ast_diagram.draw()
 # while True:
 #     f()
