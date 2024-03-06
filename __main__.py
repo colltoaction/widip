@@ -2,6 +2,7 @@ import pathlib
 import sys
 from discopy.frobenius import Id
 
+from composing import box_expansion_functor
 from files import path_diagram
 from lisp import lisp_functor
 
@@ -13,5 +14,6 @@ def argv_diagrams():
 ds = argv_diagrams()
 ast_diagram = Id().tensor(*ds)
 f = lisp_functor()(ast_diagram)
-while True:
-    f()
+# ast_diagram.draw()
+# while True:
+#     f()

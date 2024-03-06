@@ -40,17 +40,11 @@ def id_naming_functor(name):
     # TODO same-name box
     return Functor(
         ob=lambda x: replace_id_objects(x, name),
-        ar=lambda box: Box(box.name,
+        ar=lambda box: Id(box.name)
+                        if box.name == box.dom.name == box.cod.name
+                        else Box(box.name,
                         replace_id_objects(box.dom, name),
                         replace_id_objects(box.cod, name)))
-
-def replace_box_functor(left, right):
-    """rewrites left boxes with a matching in the right"""
-    return Functor(
-        ob=lambda x: replace_id_objects(x, ''),
-        ar=lambda box: Box(box.name,
-                        replace_box(box.dom, box),
-                        replace_box(box.cod, box)))
 
 def dir_diagram(path):
     dir_diagrams = (path_diagram(subpath) for subpath in path.iterdir())

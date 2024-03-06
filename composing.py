@@ -18,6 +18,9 @@ def replace_box(mid, box):
             mid >> \
             frobenius_cospan(mid.cod, box.cod)
 
+def box_expansion_functor():
+    return Functor(lambda x: x, box_expansion)
+
 def box_expansion(box):
     i = Id().tensor(*(Box(n.name, n, Ty(box.name)) for n in box.dom))
     o = Id().tensor(*(Box(n.name, Ty(box.name), n) for n in box.cod))

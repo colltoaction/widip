@@ -1,10 +1,2 @@
 {}: !0 nat
 !succ : nat
----
-
-? !x nat:
-  !y nat:
-: !plus nat
-? !x nat:
-  !y nat:
-: !mul nat
