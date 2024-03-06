@@ -1,4 +1,6 @@
-!counit : {}
-!coproduct :
-  "":
-  "":
+? counit
+: {}
+
+? coproduct
+: ? coproduct
+  ? coproduct
