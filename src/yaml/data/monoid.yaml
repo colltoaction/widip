@@ -1,10 +1,5 @@
-? !unit {}
+!unit {}: monoid
 ? !product
-  ?
-  ?
-#   - [ μ, μ ]: μ
-#   - μ: [ μ , μ ]
-# ---
-# right identity:
-#   - μ: [ y, η ]
-#   - y
+  ? monoid
+  ? monoid
+: monoid

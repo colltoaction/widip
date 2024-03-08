@@ -60,8 +60,16 @@ def dir_diagram(path):
 def file_diagram(path):
     f = id_naming_functor(path.stem)
     file_diagrams = yaml.compose_all(open(path), Loader=HypergraphLoader)
-    diagram = functools.reduce(glue_diagrams, file_diagrams, Id(Ty("")))
-    # diagram = f(diagram)
+    i = 0
+    diagram = None
+    for d in file_diagrams:
+        if i == 0:
+            diagram = d
+        else:
+            diagram = glue_diagrams(diagram, d)
+        i += 1
+    if i == 0:
+        return Id()
     return diagram
 
 def replace_id_objects(ty, name):

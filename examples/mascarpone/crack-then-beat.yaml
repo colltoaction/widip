@@ -1,10 +1,12 @@
 egg: !crack
-  white:
-  yolk:
-sugar:
+  ? white
+  ? yolk
+? sugar
+
 ---
-white:
+
+? white
 ? !beat
-  yolk:
-  sugar:
+  ? yolk
+  ? sugar
 : yolky_paste

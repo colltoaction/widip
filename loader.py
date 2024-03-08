@@ -58,8 +58,9 @@ class HypergraphComposer:
         tag = (self.peek_event().tag or "").lstrip("!")
         node = self.compose_node(tag, None)
         if tag:
-            b = Box(tag, node.dom, node.cod)
-            node = glue_diagrams(b, node)
+            b = Id().tensor(*(Spider(0, 1, x) for x in node.dom))
+            b = b >> Box(tag, node.dom, node.dom)
+            node = b >> node
 
         # Drop the DOCUMENT-END event.
         self.get_event()
@@ -95,9 +96,9 @@ class HypergraphComposer:
     def compose_scalar_node(self, parent, anchor):
         event = self.get_event()
         if event.value:
-            node = Id(Ty(str(event.value)))
+            node = Id(str(event.value))
         else:
-            node = Id(Ty(""))
+            node = Id("")
 
         if anchor is not None:
             self.anchors[anchor] = node
@@ -117,7 +118,7 @@ class HypergraphComposer:
             value = self.compose_node(parent, index)
             if prev_value_tag:
                 b = Box(prev_value_tag, node.cod, node.cod)
-                node = glue_diagrams(node, b)
+                node = node >> b
             node = glue_diagrams(node, value)
             prev_value_tag = value_tag
             index += 1
@@ -125,11 +126,8 @@ class HypergraphComposer:
         node.end_mark = end_event.end_mark
 
         if prev_value_tag:
-            b = Box(
-                prev_value_tag,
-                node.cod,
-                node.cod)
-            node = glue_diagrams(node, b)
+            b = Box(prev_value_tag, node.cod, node.cod)
+            node = node >> b
         return node
 
 
@@ -153,12 +151,21 @@ class HypergraphComposer:
                 left = left >> bk
                 right = right >> bv
                 kv = glue_diagrams(left, right)
+            elif left_tag and right == Id(Ty("")):
+                # empty-valued entry case
+                left = Id().tensor(*(Spider(0, 1, x) for x in left.dom))
+                b = Box(left_tag, left.cod, right.dom)
+                kv = left >> b >> right
             elif left_tag:
                 b = Box(left_tag, left.cod, right.dom)
                 kv = left >> b >> right
             elif right_tag:
                 b = Box(right_tag, left.cod, right.dom)
                 kv = left >> b >> right
+            elif right == Id(Ty("")):
+                # empty-valued entry case
+                b = Id().tensor(*(Id(x) for x in left.cod))
+                kv = left >> b
             else:
                 kv = glue_diagrams(left, right)
             node @= kv

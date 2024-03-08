@@ -1,8 +1,8 @@
 egg: !crack
-  white:
-  yolk:
+  white: white
+  yolk: yolk
 ---
 ? !mix
-  white:
-  yolk:
+  white: white
+  yolk: yolk
 : egg

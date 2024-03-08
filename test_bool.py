@@ -3,7 +3,7 @@ import yaml
 from discopy.frobenius import Box, Ty, Spider, Diagram, Id, Functor, Category, Hypergraph as H
 from discopy import python
 
-from files import path_diagram, file_functor
+from files import path_diagram
 
 b, t, f = Ty("bool"), Ty("true"), Ty("false")
 # not_bool = Box("not", b, b)
