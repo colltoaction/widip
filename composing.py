@@ -1,6 +1,8 @@
 from discopy.frobenius import Hypergraph as H, Id, Ty, Box, Functor, Spider
 
 
+# TODO 
+
 def glue_diagrams(left, right):
     """glues two diagrams sequentially with frobenius generators"""
     if left == Id(Ty("")) and right == Id(Ty("")):

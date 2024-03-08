@@ -1,18 +1,13 @@
-? ? !plus
-    {}: !0 nat
-    !y nat: nat
-  : nat
-  ? !y nat: nat
+? {}: !0 nat
+  ? nat
 : nat
 
-? ? !plus
-    !succ nat: !k nat
-    !y nat: nat
-  : - nat: nat
+? ? nat: !succ nat
+    nat:
+  : nat
 
-  ? ? !plus
-      !k nat: nat
-      !y nat: nat
-    : nat: nat
-  : !succ nat: nat
+  ? ? nat:
+      nat:
+    : nat
+  : !succ nat
 : nat

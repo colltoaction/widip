@@ -1,2 +1,3 @@
-{}: !0 nat
-!succ : nat
+{}:
+  !nat 0: nat
+!succ nat: nat
