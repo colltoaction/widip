@@ -1,21 +1,25 @@
-- 0:
-  1:
-  nat:
-- !succ 0:
-    1: !fib 1
-  !fib 0: 0
-  nat:
-  1:
-- nat:
-    - !succ nat
-    - !succ nat
-    - !fib nat: nat
-  ? !plus
-    !succ nat: nat
-    nat:
-  : !fib nat
-  0:
-  1:
-- nat:
-  0:
-  1:
+- ? {}: 0
+  ? nat
+- ? !0 0: nat
+  : ? nat
+    ? nat
+    ? nat
+  ? nat
+- ? !fib nat: nat
+    ? nat
+  : {}
+
+  ? - !succ nat: nat
+      ? nat
+    - ? !fib nat: nat
+        ? nat
+      : {}
+      ? nat
+    - ? !plus
+        ? nat
+        !succ nat: nat
+      : !fib nat
+      ? - !succ nat
+        - !succ nat
+        - !fib nat
+    - nat

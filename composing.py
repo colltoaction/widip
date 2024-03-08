@@ -1,8 +1,6 @@
 from discopy.frobenius import Hypergraph as H, Id, Ty, Box, Functor, Spider
 
 
-# TODO 
-
 def glue_diagrams(left, right):
     """glues two diagrams sequentially with frobenius generators"""
     if left == Id(Ty("")) and right == Id(Ty("")):
@@ -14,11 +12,15 @@ def glue_diagrams(left, right):
     mid = frobenius_cospan(left.cod, right.dom)
     return left >> mid >> right
 
-def replace_box(mid, box):
-    """adapts the mid diagram open ports to the box dom/cod"""
-    return frobenius_cospan(box.dom, mid.dom) >> \
-            mid >> \
-            frobenius_cospan(mid.cod, box.cod)
+def eval_by_rewriting(d, p):
+    """closes the left diagram's open wires present in the right parameters"""
+    left = Id().tensor(*(
+        Spider(0, 1, x) if x in p.dom else Id(x)
+        for x in d.dom))
+    right = Id().tensor(*(
+        Spider(1, 0, x) if x not in p.cod else Id(x)
+        for x in d.cod))
+    return left >> d >> right
 
 def box_expansion_functor():
     return Functor(lambda x: x, box_expansion)

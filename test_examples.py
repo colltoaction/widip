@@ -1,7 +1,9 @@
 import pathlib
-from discopy.frobenius import Box, Ty, Diagram
+from discopy.frobenius import Box, Ty, Diagram, Id, Spider
+from composing import eval_by_rewriting
 
 from files import path_diagram
+from lisp import lisp_functor
 
 def test_crack_then_mix():
     white = Ty('white')
@@ -35,3 +37,17 @@ def test_merge():
     t = path_diagram(pathlib.Path("examples/mascarpone/merge.yaml"))
     with Diagram.hypergraph_equality:
         assert t == merge
+
+def test_fibonacci():
+    t = path_diagram(pathlib.Path("examples/rosetta/fibonacci.yaml"))
+    f = lisp_functor()
+    fib_0 = Box("nat", Ty("0"), Ty("nat"))
+    fib_1 = Box("nat", Ty("1"), Ty("nat"))
+    fib_2 = Box("succ", Ty("0"), Ty("nat"))
+    ev_0 = eval_by_rewriting(t, fib_0)
+    ev_0.draw()
+    assert f(ev_0)() == "0"
+    assert f(eval_by_rewriting(t, fib_1))() == "1"
+    assert f(eval_by_rewriting(t, fib_2))() == "nat"
+    # print(f(t)())
+    t.draw()
