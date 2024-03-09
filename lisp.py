@@ -7,7 +7,7 @@ class FrobeniusFunction(python.Function):
         """"""
         return FrobeniusFunction(
             # TODO handle xs
-            inside=lambda *xs: f"{typ}",
+            inside=lambda *xs: n_legs_out * xs,
             dom=Ty(*(n_legs_in * typ.inside)),
             cod=Ty(*(n_legs_out * typ.inside)),)
 
