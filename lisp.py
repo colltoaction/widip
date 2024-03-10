@@ -5,9 +5,13 @@ class FrobeniusFunction(python.Function):
     @classmethod
     def spiders(cls, n_legs_in: int, n_legs_out: int, typ: Ty):
         """"""
+        def inside(*xs):
+            assert len(xs) == n_legs_in
+            if n_legs_in == 0:
+                xs = tuple(x.name for x in typ)
+            return n_legs_out * xs
         return FrobeniusFunction(
-            # TODO handle xs
-            inside=lambda *xs: n_legs_out * xs,
+            inside=inside,
             dom=Ty(*(n_legs_in * typ.inside)),
             cod=Ty(*(n_legs_out * typ.inside)),)
 
@@ -32,17 +36,22 @@ def try_loop(b):
     return loop
 
 requirements = {
-    # TODO wow this works
-    # '0': lambda ar: lambda: 0,
-    # 'succ': lambda ar: lambda x: x+1,
     'read': try_read,
     'eval': try_eval,
     'print': try_print,
     'loop': try_loop,
+    # TODO use nat module
+    '0': lambda ar: lambda: 0,
+    'succ': lambda ar: lambda x: x+1,
+    'plus': lambda ar: lambda *xs: sum(xs),
 }
 
 def lisp_ar(b):
     r = requirements.get(b.name, None)
+    # TODO xs no es siempre, por ejemplo si
+    # viene de un closed cable.
+    # dependiendo del box cambia el lambda
+    # no es siempre id
     return r(b) if r else lambda *xs: xs
 
 def lisp_functor():

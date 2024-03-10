@@ -13,14 +13,20 @@ def glue_diagrams(left, right):
     return left >> mid >> right
 
 def eval_by_rewriting(d, p):
-    """closes the left diagram's open wires present in the right parameters"""
-    left = Id().tensor(*(
-        Spider(0, 1, x) if x in p.dom else Id(x)
-        for x in d.dom))
-    right = Id().tensor(*(
-        Spider(1, 0, x) if x not in p.cod else Id(x)
-        for x in d.cod))
-    return left >> d >> right
+    """picks an adequate box"""
+    b = {x:
+            # Id().tensor(*(Spider(1, 0, z) for z in p.dom)) >>
+            Id().tensor(*(Spider(0, 1, z) >> Box(z.name, z, z) for z in y.cod))
+         for x in p.boxes for y in d.boxes
+         if x.name == y.name and x.dom == y.dom}
+    f = Functor(lambda x: x, b)
+    # p = f(p)
+    return f(p)
+    # # """closes the left diagram's open wires present in the right parameters"""
+    # right = Id().tensor(*(
+    #     Spider(1, 0, x) if x not in p.cod else Id(x)
+    #     for x in d.cod))
+    # return left >> d >> right
 
 def box_expansion_functor():
     return Functor(lambda x: x, box_expansion)

@@ -1,25 +1,20 @@
-- ? {}: 0
-  ? nat
-- ? !0 0: nat
-  : ? nat
-    ? nat
-    ? nat
-  ? nat
-- ? !fib nat: nat
-    ? nat
-  : {}
+nat: nat
+{}: 0
+---
+nat: nat
+? 0: !succ 1
+  !fibonacci 0: 1
+: !fibonacci 1: 1
+---
 
-  ? - !succ nat: nat
-      ? nat
-    - ? !fib nat: nat
-        ? nat
-      : {}
-      ? nat
-    - ? !plus
-        ? nat
-        !succ nat: nat
-      : !fib nat
-      ? - !succ nat
-        - !succ nat
-        - !fib nat
-    - nat
+# recursive structure
+nat
+---
+!succ nat:
+  !succ nat: !fibonacci nat
+? !plus
+  !succ nat: !fibonacci nat
+  !fibonacci nat: nat
+: nat
+---
+nat
