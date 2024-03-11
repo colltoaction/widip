@@ -2,7 +2,7 @@ import functools
 import pathlib
 
 import yaml
-from discopy.frobenius import Ty, Diagram, Hypergraph as H, Box, Functor, Swap, Category, Id
+from discopy.frobenius import Ty, Diagram, Hypergraph as H, Box, Functor, Swap, Category, Id, Spider
 
 from loader import HypergraphLoader
 from composing import expand_name_functor, glue_diagrams, replace_id_ty
@@ -25,21 +25,34 @@ def path_diagram(path: pathlib.Path):
 
     diagram = Id()
     if dir_d is not None and file_d is not None:
-        diagram = glue_diagrams(file_d, dir_d)
+        # TODO introduce file_d
+        # diagram = glue_diagrams(file_d, dir_d)
+        diagram = dir_d
     elif dir_d is not None:
         diagram = dir_d
     elif file_d is not None:
         diagram = file_d
+    else:
+        return diagram
     Diagram.to_gif(diagram, path=str(path.with_suffix('.gif')))
     return diagram
 
 def dir_diagram(path: pathlib.Path):
-    f = expand_name_functor(path.stem)
-    dir_diagrams = (
-        f(path_diagram(subpath))
-        for subpath in path.iterdir())
-    diagram = Id().tensor(*dir_diagrams)
-    return diagram
+    """walks a directory to create a diagram"""
+    if path.is_file() and path.suffix == ".yaml":
+        return Box(path.stem, Ty(""), Ty(""))
+    elif path.is_dir():
+        # TODO if also has file
+        mid = Id().tensor(*(
+            d
+            # d.name
+            for d in map(dir_diagram, path.iterdir())
+            if d != Id()))
+        return Box(path.stem, Ty(""), mid.dom,) \
+            >> mid \
+            >> Spider(len(mid.cod), 1, Ty(""))
+    else:
+        return Id()
 
 def file_diagram(path: pathlib.Path):
     file_diagrams = yaml.compose_all(open(path), Loader=HypergraphLoader)
