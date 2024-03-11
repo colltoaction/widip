@@ -46,8 +46,7 @@ def test_the_empty_value():
         assert a5 == Spider(0, 1, Ty("")) >> Box("a", Ty(""), Ty(""))
 
 def test_bool():
-    d = (Spider(0, 1, Ty("true")) @ \
-        Spider(0, 1, Ty("false")))
+    d = Id("true") @ Id("false")
     t = yaml.compose(open("src/yaml/data/bool.yaml"), Loader=HypergraphLoader)
     with Diagram.hypergraph_equality:
         assert t == d

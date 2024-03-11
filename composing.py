@@ -12,29 +12,18 @@ def glue_diagrams(left, right):
     mid = frobenius_cospan(left.cod, right.dom)
     return left >> mid >> right
 
-def eval_by_rewriting(d, p):
-    """picks an adequate box"""
-    b = {x:
-            # Id().tensor(*(Spider(1, 0, z) for z in p.dom)) >>
-            Id().tensor(*(Spider(0, 1, z) >> Box(z.name, z, z) for z in y.cod))
-         for x in p.boxes for y in d.boxes
-         if x.name == y.name and x.dom == y.dom}
-    f = Functor(lambda x: x, b)
-    # p = f(p)
-    return f(p)
-    # # """closes the left diagram's open wires present in the right parameters"""
-    # right = Id().tensor(*(
-    #     Spider(1, 0, x) if x not in p.cod else Id(x)
-    #     for x in d.cod))
-    # return left >> d >> right
-
-def box_expansion_functor():
-    return Functor(lambda x: x, box_expansion)
+def expand_name_functor(name):
+    ob = lambda x: replace_id_ty(x, name)
+    ar = lambda ar: box_expansion(ar) if ar.name == name else replace_id_box(ar, name)
+    return Functor(ob, ar)
 
 def box_expansion(box):
-    i = Id().tensor(*(Box(n.name, n, Ty(box.name)) for n in box.dom))
-    o = Id().tensor(*(Box(n.name, Ty(box.name), n) for n in box.cod))
-    return glue_diagrams(i, o)
+    i_ty = replace_id_ty(box.dom, box.name)
+    o_ty = replace_id_ty(box.cod, box.name)
+    i = Id().tensor(*(Box(n.name, n, Ty(box.name)) for n in i_ty))
+    o = Id().tensor(*(Box(n.name, Ty(box.name), n) for n in o_ty))
+    io = glue_diagrams(i, o)
+    return io
 
 def frobenius_cospan(dom: Ty, cod: Ty):
     """a diagram connecting equal objects within each type"""
@@ -65,3 +54,14 @@ def frobenius_cospan(dom: Ty, cod: Ty):
         ),
     )
     return g.to_diagram()
+
+def replace_id_box(box, name):
+    if box.dom.name == name == box.cod.name:
+        return Id(name)
+    return Box(
+        box.name,
+        replace_id_ty(box.dom, name),
+        replace_id_ty(box.cod, name))
+
+def replace_id_ty(ty, name):
+    return Ty(*(name if x.name == "" else x.name for x in ty.inside))

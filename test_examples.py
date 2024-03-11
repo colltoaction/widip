@@ -1,9 +1,7 @@
 import pathlib
 from discopy.frobenius import Box, Ty, Diagram, Id, Spider
-from composing import eval_by_rewriting
 
 from files import path_diagram
-from lisp import lisp_functor
 
 def test_crack_then_mix():
     white = Ty('white')
