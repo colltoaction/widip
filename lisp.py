@@ -39,11 +39,6 @@ requirements = {
     'read': try_read,
     'eval': try_eval,
     'print': try_print,
-    'loop': try_loop,
-    # TODO use nat module
-    '0': lambda ar: lambda: 0,
-    'succ': lambda ar: lambda x: x+1,
-    'plus': lambda ar: lambda *xs: sum(xs),
 }
 
 def lisp_ar(b):

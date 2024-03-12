@@ -58,8 +58,8 @@ class HypergraphComposer:
         tag = (self.peek_event().tag or "").lstrip("!")
         node = self.compose_node(tag, None)
         if tag:
-            b = Id().tensor(*(Spider(0, 1, x) for x in node.dom))
-            b = b >> Box(tag, node.dom, node.dom)
+            # b = Id().tensor(*(Spider(0, 1, x) for x in node.dom))
+            b = Box(tag, node.dom, node.dom)
             node = b >> node
 
         # Drop the DOCUMENT-END event.
@@ -111,21 +111,26 @@ class HypergraphComposer:
         if anchor is not None:
             self.anchors[anchor] = node
         index = 0
-        node = Id("")
+        node = None
         prev_value_tag = None
         while not self.check_event(SequenceEndEvent):
             value_tag = (self.peek_event().tag or "").lstrip("!")
             value = self.compose_node(parent, index)
-            if prev_value_tag:
-                b = Box(prev_value_tag, node.cod, node.cod)
-                node = node >> b
-            node = glue_diagrams(node, value)
+            if index == 0:
+                node = value
+            else:
+                if prev_value_tag:
+                    b = Box(prev_value_tag, node.cod, node.cod)
+                    node = node >> b
+                node = glue_diagrams(node, value)
             prev_value_tag = value_tag
             index += 1
         end_event = self.get_event()
         node.end_mark = end_event.end_mark
 
-        if prev_value_tag:
+        if index == 0:
+            return Id()
+        elif prev_value_tag:
             b = Box(prev_value_tag, node.cod, node.cod)
             node = node >> b
         return node
@@ -135,7 +140,8 @@ class HypergraphComposer:
         """becomes a set of equations l->r in a symmetric monoidal theory"""
         start_event = self.get_event()
         tag = (start_event.tag or "").lstrip("!")
-        node = Id()
+        index = 0
+        node = None
         if anchor is not None:
             self.anchors[anchor] = node
         while not self.check_event(MappingEndEvent):
@@ -153,7 +159,7 @@ class HypergraphComposer:
                 kv = glue_diagrams(left, right)
             elif left_tag and right == Id(Ty("")):
                 # empty-valued entry case
-                left = Id().tensor(*(Spider(0, 1, x) for x in left.dom))
+                # left = Id().tensor(*(Spider(0, 1, x) for x in left.dom))
                 b = Box(left_tag, left.cod, right.dom)
                 kv = left >> b >> right
             elif left_tag:
@@ -164,13 +170,18 @@ class HypergraphComposer:
                 kv = left >> b >> right
             elif right == Id(Ty("")):
                 # empty-valued entry case
-                b = Id().tensor(*(Id(x) for x in left.cod))
-                kv = left >> b
+                kv = left
             else:
                 kv = glue_diagrams(left, right)
-            node @= kv
-        end_event = self.get_event()
-        node.end_mark = end_event.end_mark
+            
+            if index == 0:
+                node = kv
+            else:
+                node @= kv
+            index += 1
+        _ = self.get_event()
+        if index == 0:
+            return Id()
         return node
 
 

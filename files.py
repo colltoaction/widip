@@ -29,8 +29,10 @@ def path_diagram(path: pathlib.Path):
         # diagram = glue_diagrams(file_d, dir_d)
         diagram = dir_d
     elif dir_d is not None:
+        # TODO no file
         diagram = dir_d
     elif file_d is not None:
+        # TODO no dir
         diagram = file_d
     else:
         return diagram
@@ -42,7 +44,6 @@ def dir_diagram(path: pathlib.Path):
     if path.is_file() and path.suffix == ".yaml":
         return Box(path.stem, Ty(""), Ty(""))
     elif path.is_dir():
-        # TODO if also has file
         mid = Id().tensor(*(
             d
             # d.name
