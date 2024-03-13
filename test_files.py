@@ -7,7 +7,7 @@ from files import dir_diagram
 
 
 def test_dir():
-    diagram = dir_diagram(pathlib.Path("src/yaml/data/nat"))
+    diagram = dir_diagram(pathlib.Path("src/data/nat"))
     with Diagram.hypergraph_equality:
         assert diagram == \
             Box("nat", Ty(""), Ty("")) \

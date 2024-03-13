@@ -17,7 +17,7 @@ $ open examples/hello-world.gif
 
 Diagrams are [graphical programming](https://graphicallinearalgebra.net/2015/04/26/adding-part-1-and-mr-fibonacci/) tools that have two main operations: parallel and sequential composition. As a formal method they have excellent properties to connect open systems like programs.
 
-We implement a Diagram development environment with a [YAML](https://yaml.org) DSL and file and directory integration. At the same time we work on a functional programming language written with Diagrams, which feeds back into the DSL design. Core abstractions like `bool` or `maybe` can be found in the `src/yaml/data` directory.
+We implement a Diagram development environment with a [YAML](https://yaml.org) DSL and file and directory integration. At the same time we work on a functional programming language written with Diagrams, which feeds back into the DSL design. Core abstractions like `bool` or `maybe` can be found in the `src/data` directory.
 
 > For an academic introduction check this paper:
 > * https://github.com/colltoaction/qpl2024/blob/main/YAML%20Diagrams/YAML%20Diagrams.pdf
@@ -45,7 +45,7 @@ Just cloning the repository and running `make` will show there are no changes to
 Every commit is guaranteed to be idempotent on the `make` invocation to make things straightforward.
 
 ### Dev loop
-Whenever you change the `src/yaml` contents, running `make` will validate only the changed files. On success these are compiled and outputted as gifs next to the `.yaml` file.
+Whenever you change the `src` contents, running `make` will validate only the changed files. On success these are compiled and outputted as gifs next to the `.yaml` file.
 Every directory is also scanned and a string diagram gif describing its contents is automatically generated.
 
 ## Operating system

@@ -10,7 +10,8 @@ def glue_diagrams(left, right):
     elif right == Id(Ty("")):
         return left
     mid = frobenius_cospan(left.cod, right.dom)
-    return left >> mid >> right
+    glued = left >> mid >> right
+    return glued
 
 def expand_name_functor(name):
     ob = lambda x: replace_id_ty(x, name)

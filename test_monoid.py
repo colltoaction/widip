@@ -11,7 +11,7 @@ m = Ty("monoid")
 
 
 def test_monoid():
-    diagram = path_diagram(pathlib.Path("src/yaml/data/monoid.yaml"))
+    diagram = path_diagram(pathlib.Path("src/data/monoid.yaml"))
     # TODO (unit@unit);product
     with Diagram.hypergraph_equality:
         assert diagram == Box(u.name, Ty(), m) @ Box("product", m @ m, m)

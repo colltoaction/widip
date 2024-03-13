@@ -1,5 +1,5 @@
-YAML_FILES = $(shell find src/yaml/ -type f -name '*.yaml')
-GIF_FILES = $(patsubst src/yaml/%.yaml, src/yaml/%.gif, $(YAML_FILES))
+YAML_FILES = $(shell find src/ -type f -name '*.yaml')
+GIF_FILES = $(patsubst src/%.yaml, src/%.gif, $(YAML_FILES))
 
 .PHONY: all
 all: Pipfile.lock $(GIF_FILES)

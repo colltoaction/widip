@@ -4,9 +4,7 @@ import sys
 from discopy.frobenius import Id, Box, Ty
 
 from files import path_diagram
-from lisp import lisp_functor
-from src.yaml import frobenius_function_functor
-from src.yaml.data.nat import nat_f
+from src.data.nat import nat_f
 
 def argv_diagrams():
     paths = iter(sys.argv[1:])

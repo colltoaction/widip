@@ -49,6 +49,8 @@ def dir_diagram(path: pathlib.Path):
             # d.name
             for d in map(dir_diagram, path.iterdir())
             if d != Id()))
+        if mid == Id():
+            return Id()
         return Box(path.stem, Ty(""), mid.dom,) \
             >> mid \
             >> Spider(len(mid.cod), 1, Ty(""))

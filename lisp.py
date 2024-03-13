@@ -1,6 +1,8 @@
 from discopy.frobenius import Id, Functor, Ty, Box, Category, Spider
 from discopy import python
 
+from src import box_fun_functor
+
 class FrobeniusFunction(python.Function):
     @classmethod
     def spiders(cls, n_legs_in: int, n_legs_out: int, typ: Ty):
@@ -50,8 +52,4 @@ def lisp_ar(b):
     return r(b) if r else lambda *xs: xs
 
 def lisp_functor():
-    """minimum requirements to bootstrap LISP"""
-    return Functor(
-        ob=lambda x: x,
-        ar=lisp_ar,
-        cod=Category(Ty, FrobeniusFunction),)
+    return box_fun_functor(lisp_ar)

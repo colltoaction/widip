@@ -1,11 +1,10 @@
 from discopy.frobenius import Id, Functor, Ty, Box, Category, Spider
-from src.yaml import frobenius_function_functor
+from src import box_fun_functor
 
-def nat_ar(ar):
+def bool_ar(ar):
     requirements = {
-        '0': lambda ar: lambda: 0,
-        'succ': lambda ar: lambda x: int(x)+1,
-        'plus': lambda ar: lambda *xs: sum(xs),
+        'true': lambda ar: lambda: True,
+        'false': lambda ar: lambda: False,
     }
     r = requirements.get(ar.name, None)
     # TODO xs no es siempre, por ejemplo si
@@ -14,4 +13,4 @@ def nat_ar(ar):
     # no es siempre id
     return r(ar) if r else lambda *xs: xs
 
-nat_f = frobenius_function_functor(nat_ar)
+bool_f = box_fun_functor(bool_ar)
