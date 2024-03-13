@@ -16,6 +16,5 @@ def argv_diagrams():
 
 f = nat_f
 ds = argv_diagrams()
-ds = (Box("0", Ty(), Ty("")) >> Box("succ", Ty(""), Ty("")) >> Box("succ", Ty(""), Ty("")),)
 d = Id().tensor(*ds)
 print(f(d)())

@@ -4,7 +4,7 @@ from src.yaml import frobenius_function_functor
 def nat_ar(ar):
     requirements = {
         '0': lambda ar: lambda: 0,
-        'succ': lambda ar: lambda x: x+1,
+        'succ': lambda ar: lambda x: int(x)+1,
         'plus': lambda ar: lambda *xs: sum(xs),
     }
     r = requirements.get(ar.name, None)
