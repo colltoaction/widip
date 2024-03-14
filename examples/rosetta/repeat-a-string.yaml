@@ -1,0 +1,4 @@
+- !eval
+  ? {}: "lambda a: a * 5"
+  ? !read
+- !print

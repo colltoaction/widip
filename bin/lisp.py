@@ -1,3 +1,7 @@
+from discopy import python
+from discopy.frobenius import Functor, Box, Ty, factory, Category
+
+
 from discopy.frobenius import Id, Functor, Ty, Box, Category, Spider
 from discopy import python
 
@@ -21,11 +25,12 @@ def try_read(b):
     return lambda *xs: input(*xs)
 
 def try_eval(b):
-    try:
-        f = eval(b.name)
-        return lambda *xs: f(*xs)
-    except NameError:
-        return lambda *_: b
+    def try_e(ast, env):
+        try:
+            return eval(ast)(env)
+        except NameError:
+            return ast
+    return try_e
 
 def try_print(b):
     return lambda *xs: print(*xs)

@@ -1,8 +1,6 @@
-import pathlib
 from discopy.frobenius import Box, Ty, Diagram, Id, Spider
 
-from files import path_diagram
-from lisp import lisp_functor
+from bin.lisp import lisp_functor
 
 
 f = lisp_functor()

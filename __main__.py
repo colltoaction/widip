@@ -4,7 +4,7 @@ import sys
 from discopy.frobenius import Id, Box, Ty
 
 from files import path_diagram
-from src.data.nat import nat_f
+from bin.lisp import lisp_functor
 
 def argv_diagrams():
     paths = iter(sys.argv[1:])
@@ -12,7 +12,10 @@ def argv_diagrams():
         yield path_diagram(path)
 
 
-f = nat_f
-ds = argv_diagrams()
-d = Id().tensor(*ds)
-print(f(d)())
+f = lisp_functor()
+while True:
+    ds = Id()
+    for d in argv_diagrams():
+        # print(d)
+        ds = ds @ d
+        f(d)()
