@@ -29,8 +29,6 @@ def test_two_params():
     assert f(Spider(2, 2, Ty("x")))("y", "z") == ("y", "z", "y", "z")
 
 def test_eval():
-    assert f(Box('eval', Ty(), Ty()))("2+2") == 4
-    assert f(
-        Box('eval', Ty(""), Ty("")) >>
-        Box('eval', Ty(""), Ty())
-        )("'2+2'") == 4
+    assert f(Box('eval', Ty("") @ Ty(""), Ty("")))("lambda x: 2+2", "") == 4
+    assert f(Box('eval', Ty("") @ Ty(""), Ty("")))("eval", "2+2") == 4
+    assert f(Box('eval', Ty("") @ Ty(""), Ty("")))("lambda x: x", "2+2") == "2+2"

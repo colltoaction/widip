@@ -21,12 +21,11 @@ def box_fun_functor(box_fun):
         ob=lambda x: x,
         ar=box_fun,
         cod=Category(Ty, FrobeniusFunction),)
-from discopy.frobenius import Id, Functor, Ty, Box, Category, Spider
 
-def diagram_functor(diagram):
+def diagram_functor(diagram, name):
     boxes = {
-        Box("functor", box.dom, box.cod): box
+        Box(name, box.dom, box.cod): box
         for box in diagram.boxes}
     return Functor(
-        lambda ob: "functor" if ob.name == "" else ob,
+        lambda ob: "" if ob.name == name else ob,
         lambda ar: boxes.get(ar, ar))

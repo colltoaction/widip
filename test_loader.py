@@ -40,7 +40,7 @@ def test_the_empty_value():
     with Diagram.hypergraph_equality:
         assert a0 == None
         assert a1 == Id(Ty(""))
-        assert a2 == Id(Ty("a"))
+        assert a2 == Spider(1, 0, Ty("")) >> Spider(0, 1, Ty("a"))
         assert a3 == Id(Ty("a"))
         assert a4 == Box("a", Ty(""), Ty(""))
         assert a5 == a4

@@ -3,12 +3,12 @@ from discopy.frobenius import Hypergraph as H, Id, Ty, Box, Functor, Spider
 
 def glue_diagrams(left, right):
     """glues two diagrams sequentially with frobenius generators"""
-    if left == Id(Ty("")) and right == Id(Ty("")):
-        return Id(Ty(""))
-    elif left == Id(Ty("")):
-        return right
-    elif right == Id(Ty("")):
-        return left
+    # if left == Id(Ty("")) and right == Id(Ty("")):
+    #     return Id(Ty(""))
+    # elif left == Id(Ty("")):
+    #     return right
+    # elif right == Id(Ty("")):
+    #     return left
     mid = frobenius_cospan(left.cod, right.dom)
     glued = left >> mid >> right
     return glued

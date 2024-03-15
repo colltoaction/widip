@@ -9,5 +9,5 @@ do_control = lambda ar: lambda *xs: \
         xs[0](xs[1]) if ar.name == "contramap" else ()
 do_map_functor = box_fun_functor(do_control)
 functor_diagram = path_diagram(pathlib.Path("src/control/functor.yaml"))
-control_f = diagram_functor(functor_diagram) \
+control_f = diagram_functor(functor_diagram, "functor") \
     >> do_map_functor
