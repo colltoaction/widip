@@ -13,6 +13,9 @@ $ open examples/hello-world.gif
 
 ![](examples/hello-world.gif)
 
+* `python .` will start the YAML-based REPL (read-eval-print loop).
+* `python . [FILE].yaml` will read-eval-print `[FILE].yaml`.
+
 ## Introduction
 
 Diagrams are [graphical programming](https://graphicallinearalgebra.net/2015/04/26/adding-part-1-and-mr-fibonacci/) tools that have two main operations: parallel and sequential composition. As a formal method they have excellent properties to connect open systems like programs.

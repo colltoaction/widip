@@ -1,11 +1,10 @@
-import functools
 import pathlib
 
 import yaml
-from discopy.frobenius import Ty, Diagram, Hypergraph as H, Box, Functor, Swap, Category, Id, Spider
+from discopy.frobenius import Ty, Diagram, Box, Id, Spider
 
 from loader import HypergraphLoader
-from composing import expand_name_functor, glue_diagrams, replace_id_ty
+from composing import glue_all_diagrams
 
 
 def path_diagram(path: pathlib.Path):
@@ -56,26 +55,12 @@ def dir_diagram(path: pathlib.Path):
     else:
         return Id()
 
-def file_diagram(path: pathlib.Path):
-    file_diagrams = read_diagrams_st(open(path))
-    i = 0
-    diagram = None
-    for d in file_diagrams:
-        if i == 0:
-            diagram = d
-        else:
-            diagram = glue_diagrams(diagram, d)
-        i += 1
-    if i == 0:
-        return Id()
-    Diagram.to_gif(diagram, path=str(path.with_suffix('.gif')))
-    return diagram
+def file_diagram(stream):
+    file_diagrams = read_diagrams_st(stream)
+    return glue_all_diagrams(file_diagrams)
 
-def read_diagram_st(st) -> Diagram:
-    return yaml.compose(st, Loader=HypergraphLoader)
-
-def read_diagrams_st(st) -> Diagram:
-    return yaml.compose_all(st, Loader=HypergraphLoader)
+def read_diagrams_st(stream) -> Diagram:
+    return yaml.compose_all(stream, Loader=HypergraphLoader)
 
 def write_diagram(ast: Diagram) -> str:
     # TODO should be an eval'd result

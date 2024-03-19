@@ -1,17 +1,14 @@
 import pathlib
-import yaml
-from discopy.frobenius import Box, Ty, Spider, Diagram, Id, Functor, Category, Hypergraph as H
-from discopy import python
+from discopy.frobenius import Box, Ty, Diagram
 
-from files import path_diagram
-from composing import glue_diagrams
+from files import file_diagram
 
 u = Ty("unit")
 m = Ty("monoid")
 
 
 def test_monoid():
-    diagram = path_diagram(pathlib.Path("src/data/monoid.yaml"))
+    diagram = file_diagram(pathlib.Path("src/data/monoid.yaml").open())
     # TODO (unit@unit);product
     with Diagram.hypergraph_equality:
         assert diagram == Box(u.name, Ty(), m) @ Box("product", m @ m, m)

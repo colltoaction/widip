@@ -13,6 +13,19 @@ def glue_diagrams(left, right):
     glued = left >> mid >> right
     return glued
 
+def glue_all_diagrams(file_diagrams):
+    i = 0
+    diagram = None
+    for d in file_diagrams:
+        if i == 0:
+            diagram = d
+        else:
+            diagram = glue_diagrams(diagram, d)
+        i += 1
+    if i == 0:
+        return Id()
+    return diagram
+
 def expand_name_functor(name):
     ob = lambda x: replace_id_ty(x, name)
     ar = lambda ar: box_expansion(ar) if ar.name == name else replace_id_box(ar, name)

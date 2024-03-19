@@ -1,0 +1,9 @@
+- !!python/input io:
+    ? io
+    ? str
+- ? io
+  !!python/eval str: ""
+- ? !!python/print
+    ? io
+    ? ""
+  : io
