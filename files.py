@@ -36,7 +36,6 @@ def path_diagram(path: pathlib.Path):
         diagram = file_d
     else:
         return diagram
-    Diagram.to_gif(diagram, path=str(path.with_suffix('.gif')))
     return diagram
 
 def dir_diagram(path: pathlib.Path):
@@ -58,7 +57,7 @@ def dir_diagram(path: pathlib.Path):
         return Id()
 
 def file_diagram(path: pathlib.Path):
-    file_diagrams = yaml.compose_all(open(path), Loader=HypergraphLoader)
+    file_diagrams = read_diagrams_st(open(path))
     i = 0
     diagram = None
     for d in file_diagrams:
@@ -69,4 +68,15 @@ def file_diagram(path: pathlib.Path):
         i += 1
     if i == 0:
         return Id()
+    Diagram.to_gif(diagram, path=str(path.with_suffix('.gif')))
     return diagram
+
+def read_diagram_st(st) -> Diagram:
+    return yaml.compose(st, Loader=HypergraphLoader)
+
+def read_diagrams_st(st) -> Diagram:
+    return yaml.compose_all(st, Loader=HypergraphLoader)
+
+def write_diagram(ast: Diagram) -> str:
+    # TODO should be an eval'd result
+    return yaml.safe_dump(tuple(x.name for x in ast.cod))

@@ -1,60 +1,33 @@
-from discopy import python
-from discopy.frobenius import Functor, Box, Ty, factory, Category
+import pathlib
+from files import file_diagram, read_diagram_st, write_diagram
+from discopy.frobenius import Functor, Box, Ty, Category
+
+from .py_function import PyFunction
 
 
-from discopy.frobenius import Id, Functor, Ty, Box, Category, Spider
-from discopy import python
+def input_ar():
+    return input("- ")
 
-from src import box_fun_functor
+def eval_ar(xs):
+    # TODO try
+    return eval(xs)
 
-class FrobeniusFunction(python.Function):
-    @classmethod
-    def spiders(cls, n_legs_in: int, n_legs_out: int, typ: Ty):
-        """"""
-        def inside(*xs):
-            assert len(xs) == n_legs_in
-            if n_legs_in == 0:
-                xs = tuple(x.name for x in typ)
-            return n_legs_out * xs
-        return FrobeniusFunction(
-            inside=inside,
-            dom=Ty(*(n_legs_in * typ.inside)),
-            cod=Ty(*(n_legs_out * typ.inside)),)
+def print_ar(*xs):
+    print(*xs)
 
-def try_read(b):
-    return lambda *xs: input(*xs)
+def rep_ar(ar) -> PyFunction:
+    match ar.name:
+        case 'tag:yaml.org,2002:python/input': return input_ar
+        case 'tag:yaml.org,2002:python/eval': return eval_ar
+        case 'tag:yaml.org,2002:python/print': return print_ar
+        case _: return lambda ast: ast
 
-def try_eval(b):
-    def try_e(ast, env):
-        try:
-            return eval(ast)(env)
-        except NameError:
-            return ast
-    return try_e
+def rep():
+    """A Python-based LISP dialect"""
+    rep_d = file_diagram(pathlib.Path("bin/lisp.yaml"))
+    py_lisp_f(rep_d)()
 
-def try_print(b):
-    return lambda *xs: print(*xs)
-
-def try_loop(b):
-    """each is an execution cycle"""
-    print("loop")
-    def loop(*xs):
-        return b.name
-    return loop
-
-requirements = {
-    'read': try_read,
-    'eval': try_eval,
-    'print': try_print,
-}
-
-def lisp_ar(b):
-    r = requirements.get(b.name, None)
-    # TODO xs no es siempre, por ejemplo si
-    # viene de un closed cable.
-    # dependiendo del box cambia el lambda
-    # no es siempre id
-    return r(b) if r else lambda *xs: xs
-
-def lisp_functor():
-    return box_fun_functor(lisp_ar)
+py_lisp_f = Functor(
+    lambda ob: ob,
+    rep_ar,
+    cod=Category(Ty, PyFunction))

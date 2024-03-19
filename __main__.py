@@ -1,21 +1,13 @@
-import src
-import pathlib
 import sys
-from discopy.frobenius import Id, Box, Ty
+from bin.lisp import rep
+from files import file_diagram
 
-from files import path_diagram
-from bin.lisp import lisp_functor
-
-def argv_diagrams():
-    paths = iter(sys.argv[1:])
-    for path in map(pathlib.Path, paths):
-        yield path_diagram(path)
-
-
-f = lisp_functor()
-while True:
-    ds = Id()
-    for d in argv_diagrams():
-        # print(d)
-        ds = ds @ d
-        f(d)()
+if not sys.argv[1:]:
+    while True:
+        try:
+            rep()
+        except EOFError:
+            exit(0)
+else:
+    print("TODO argv")
+    exit(1)

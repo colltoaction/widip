@@ -1,12 +1,4 @@
-?
-? ? !read
-  ?
----
-? !eval
-  ?
-  ?
-?
----
-? ? !print
-  ?
-: {}
+# TODO loop
+- !!python/input {}: str
+- !!python/eval str: any
+- !!python/print any: {}
