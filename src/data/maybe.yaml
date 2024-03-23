@@ -1,2 +1,9 @@
-a: !just
-{}: !nothing
+f:
+a:
+  a:
+  a: !just
+  {}: !nothing
+---
+!functor
+f:
+a:
