@@ -7,7 +7,7 @@ u = Ty("unit")
 m = Ty("monoid")
 
 def test_single_wires():
-    a = Id(Ty("a"))
+    a = Id("a")
     a0 = yaml.compose("a", Loader=HypergraphLoader)
     a1 = yaml.compose("- a", Loader=HypergraphLoader)
     with Diagram.hypergraph_equality:
@@ -39,9 +39,9 @@ def test_the_empty_value():
     a5 = yaml.compose("!a :", Loader=HypergraphLoader)
     with Diagram.hypergraph_equality:
         assert a0 == None
-        assert a1 == Id(Ty(""))
-        assert a2 == Spider(1, 0, Ty("")) >> Spider(0, 1, Ty("a"))
-        assert a3 == Id(Ty("a"))
+        assert a1 == Id("")
+        assert a2 == Id("") @ Id("a")
+        assert a3 == Id("a")
         assert a4 == Box("a", Ty(""), Ty(""))
         assert a5 == a4
 

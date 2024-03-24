@@ -1,8 +1,2 @@
-egg: !crack
-  white: white
-  yolk: yolk
----
-? !mix
-  white: white
-  yolk: yolk
-: egg
+- !crack egg: { white, yolk }
+- !mix { white, yolk }: egg

@@ -25,6 +25,7 @@ def glue_diagrams(left, right):
         t.name
         for t in r_dom
         if t in l_cod}
+    # TODO convention for repeated in both sides
     mid_names = tuple({t.name for t in l_cod + r_dom})
     dom_wires = l_dom_wires = tuple(
         i

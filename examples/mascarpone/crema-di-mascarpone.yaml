@@ -1,49 +1,8 @@
 # https://graphicallinearalgebra.net/2015/05/06/crema-di-mascarpone-rules-of-the-game-part-2-and-diagrammatic-reasoning/
 # this is the formula (C ⊕ C ⊕ id2) ; (id ⊕ tw ⊕ id3) ; (W ⊕ B ⊕ id) ; (id ⊕ S) ; F
-
-# C ⊕ C ⊕ id2
-egg: !crack
-  white:
-  yolk:
-egg: !crack
-  white:
-  yolk:
-sugar:
-mascarpone:
----
-
-# id ⊕ tw ⊕ id3
-white:
-white:
-yolk:
-yolk:
-sugar:
-mascarpone:
----
-
-# W ⊕ B ⊕ id
-? !whisk
-  white:
-  white:
-: whisked whites
-? !beat
-  yolk:
-  yolk:
-  sugar:
-: yolky paste
-mascarpone:
----
-
-# id ⊕ S
-whisked whites:
-? !stir
-  yolky paste:
-  mascarpone:
-: thick paste
----
-
-# F
-- !fold
-  whisked whites:
-  thick paste:
-- crema di mascarpone
+- !crack egg: { white, yolk }
+  !crack egg: { white, yolk }
+- !whisk { white, white }: whisked whites
+  !beat { yolk, yolk, sugar }: yolky paste
+- !stir { yolky paste, mascarpone }: thick paste
+- !fold { whisked whites, thick paste }: crema di mascarpone

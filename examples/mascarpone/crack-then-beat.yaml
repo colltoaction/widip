@@ -1,12 +1,2 @@
-egg: !crack
-  ? white
-  ? yolk
-? sugar
-
----
-
-? white
-? !beat
-  ? yolk
-  ? sugar
-: yolky_paste
+- !crack egg: { white, yolk }
+- !beat { yolk, sugar }: yolky_paste
