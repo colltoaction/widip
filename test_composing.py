@@ -1,18 +1,18 @@
+import pathlib
 from discopy.frobenius import Box, Ty, Diagram, Id, Spider
 
-from composing import expand_name_functor
+from composing import glue_diagrams
+from files import file_diagram
 
 
-name = "expansion"
-name_ty = Ty(name)
-f = expand_name_functor(name)
+def test_glue_diagrams():
+    white = Ty('white')
+    yolk = Ty('yolk')
+    egg = Ty('egg')
+    crack = Box(name='crack', dom=egg, cod=white @ yolk)
+    sugar, yolky_paste = Ty('sugar'), Ty('yolky_paste')
+    beat = Box('beat', yolk @ sugar, yolky_paste)
 
-def test_expansion():
-    x, y = Ty("x"), Ty("y")
-    box = Box(name, x @ Ty("") @ y, y)
-    # TODO id should be Id(name)
-    id = Box(name, name_ty, name_ty)
-    assert f(box) == \
-            Box("x", x, name_ty) @ id @ Box("y", y, name_ty) \
-            >> Spider(3, 1, name_ty) \
-            >> Box("y", name_ty, y)
+    crack_then_beat = file_diagram(pathlib.Path("examples/mascarpone/crack-then-beat.yaml").open())
+    with Diagram.hypergraph_equality:
+        assert glue_diagrams(crack, beat) == crack_then_beat

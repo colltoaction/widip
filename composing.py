@@ -1,16 +1,74 @@
-from discopy.frobenius import Hypergraph as H, Id, Ty, Box, Functor, Spider
+from discopy.frobenius import Hypergraph as H, Id, Ty, Spider, Swap
 
 
 def glue_diagrams(left, right):
+    """a diagram connecting equal objects within each type"""
     """glues two diagrams sequentially with frobenius generators"""
-    # if left == Id(Ty("")) and right == Id(Ty("")):
-    #     return Id(Ty(""))
-    # elif left == Id(Ty("")):
-    #     return right
-    # elif right == Id(Ty("")):
-    #     return left
-    mid = frobenius_cospan(left.cod, right.dom)
-    glued = left >> mid >> right
+    l_dom, l_cod, r_dom, r_cod = left.dom, left.cod, right.dom, right.cod
+    dw_l = {
+        t.name
+        for t in l_cod
+        if t not in r_dom}
+    dw_r = {
+        t.name
+        for t in r_dom
+        if t not in l_cod}
+    print(l_dom)
+    print(r_cod)
+    print(dw_l)
+    print(dw_r)
+    cw_l = {
+        t.name
+        for t in l_cod
+        if t in r_dom}
+    cw_r = {
+        t.name
+        for t in r_dom
+        if t in l_cod}
+    mid_names = tuple({t.name for t in l_cod + r_dom})
+    dom_wires = l_dom_wires = tuple(
+        i
+        for i in range(len(l_dom) + len(dw_r))
+    )
+    l_cod_wires = tuple(
+        (mid_names.index(t.name)
+        + len(l_dom) + len(dw_r))
+        for t in l_cod) + \
+        tuple(
+            (mid_names.index(n) + len(l_dom) + len(dw_r))
+            for n in dw_r
+        )
+    r_dom_wires = tuple(
+            (mid_names.index(n) + len(l_dom) + len(dw_r))
+            for n in dw_l) + \
+        tuple(
+            (mid_names.index(t.name)
+            + len(l_dom) + len(dw_r))
+            for t in r_dom
+        )
+    cod_wires = r_cod_wires = tuple(
+        i
+        + len(l_dom) + len(dw_r)
+        + len(mid_names)
+        for i in range(len(dw_l) + len(r_cod))
+    )
+    print(mid_names)
+    glued = H(
+        dom=l_dom @ Ty(*dw_r),
+        cod=Ty(*dw_l) @ r_cod,
+        boxes=(
+            left @ Ty(*dw_r),
+            Ty(*dw_l) @ right,
+        ),
+        wires=(
+            dom_wires,
+            (
+                (l_dom_wires, l_cod_wires),
+                (r_dom_wires, r_cod_wires),
+            ),
+            cod_wires,
+        ),
+    ).to_diagram()
     return glued
 
 def glue_all_diagrams(file_diagrams):
@@ -25,57 +83,3 @@ def glue_all_diagrams(file_diagrams):
     if i == 0:
         return Id()
     return diagram
-
-def expand_name_functor(name):
-    ob = lambda x: replace_id_ty(x, name)
-    ar = lambda ar: box_expansion(ar) if ar.name == name else replace_id_box(ar, name)
-    return Functor(ob, ar)
-
-def box_expansion(box):
-    i_ty = replace_id_ty(box.dom, box.name)
-    o_ty = replace_id_ty(box.cod, box.name)
-    i = Id().tensor(*(Box(n.name, n, Ty(box.name)) for n in i_ty))
-    o = Id().tensor(*(Box(n.name, Ty(box.name), n) for n in o_ty))
-    io = glue_diagrams(i, o)
-    return io
-
-def frobenius_cospan(dom: Ty, cod: Ty):
-    """a diagram connecting equal objects within each type"""
-    mid = Ty(*set(dom.inside + cod.inside))
-    mid_to_left_ports = {
-        t: tuple(i for i, lt in enumerate(dom) if lt == t)
-        for t in mid}
-    mid_to_right_ports = {
-        t: tuple(i + len(dom) for i, lt in enumerate(cod) if lt == t)
-        for t in mid}
-    boxes = tuple(
-        Id(Ty(*tuple(t.name for _ in range(len(mid_to_left_ports[t])))))
-        if len(mid_to_left_ports[t]) == len(mid_to_right_ports[t]) else
-        Spider(
-            len(mid_to_left_ports[t]),
-            len(mid_to_right_ports[t]),
-            t)
-        for t in mid)
-    g = H(
-        dom=dom, cod=cod,
-        boxes=boxes,
-        wires=(
-            tuple(i for i in range(len(dom))),
-            tuple(
-                (mid_to_left_ports[t], mid_to_right_ports[t])
-                for t in mid),
-            tuple(i + len(dom) for i in range(len(cod))),
-        ),
-    )
-    return g.to_diagram()
-
-def replace_id_box(box, name):
-    if box.dom.name == name == box.cod.name:
-        return Id(name)
-    return Box(
-        box.name,
-        replace_id_ty(box.dom, name),
-        replace_id_ty(box.cod, name))
-
-def replace_id_ty(ty, name):
-    return Ty(*(name if x.name == "" else x.name for x in ty.inside))
