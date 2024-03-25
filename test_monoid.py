@@ -1,7 +1,7 @@
 import pathlib
 from discopy.frobenius import Box, Ty, Diagram
 
-from files import file_diagram
+from bin.py.files import file_diagram
 
 u = Ty("unit")
 m = Ty("monoid")

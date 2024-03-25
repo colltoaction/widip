@@ -3,7 +3,7 @@ import yaml
 from discopy.frobenius import Box, Ty, Spider, Diagram, Id, Functor, Category, Hypergraph as H
 from discopy import python
 
-from files import dir_diagram
+from bin.py.files import dir_diagram
 
 
 def test_dir():

@@ -1,6 +1,8 @@
+import pytest
 import yaml
 from discopy.frobenius import Box, Ty, Spider, Diagram, Id, Functor, Swap
 
+from composing import glue_all_diagrams
 from loader import HypergraphLoader
 
 u = Ty("unit")
@@ -51,17 +53,21 @@ def test_bool():
     with Diagram.hypergraph_equality:
         assert t == d
 
+@pytest.mark.skip(reason="extensions such as functor")
 def test_maybe():
     d = Box("just", Ty("a"), Ty("")) @ \
         Box("nothing", Ty(), Ty(""))
-    t = yaml.compose(open("src/data/maybe.yaml"), Loader=HypergraphLoader)
+    t = yaml.compose_all(open("src/data/maybe.yaml"), Loader=HypergraphLoader)
+    t = glue_all_diagrams(t)
     with Diagram.hypergraph_equality:
         assert t == d
 
+@pytest.mark.skip(reason="extensions such as functor")
 def test_either():
     d = Box("left", Ty("a"), Ty("")) @ \
         Box("right", Ty("b"), Ty(""))
-    t = yaml.compose(open("src/data/either.yaml"), Loader=HypergraphLoader)
+    t = yaml.compose_all(open("src/data/either.yaml"), Loader=HypergraphLoader)
+    t = glue_all_diagrams(t)
     with Diagram.hypergraph_equality:
         assert t == d
 

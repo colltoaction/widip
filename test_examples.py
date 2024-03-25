@@ -1,7 +1,7 @@
 import pathlib
 from discopy.frobenius import Box, Ty, Diagram, Id, Spider
 
-from files import file_diagram
+from bin.py.files import file_diagram
 
 def test_crack_then_mix():
     white = Ty('white')

@@ -1,9 +1,6 @@
-f:
-a:
-  a:
-  a: !just
-  {}: !nothing
+- !pure a: { f, a }
+- !bind { m, f, m, g}: a
+# !functor f: { f, a }
 ---
-!functor
-f:
-a:
+!just a:
+{}: !nothing

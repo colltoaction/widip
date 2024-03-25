@@ -24,7 +24,7 @@ class PyFunction(python.Function):
 
 
 def input_ar():
-    return input("- ")
+    return None, input("- ")
 
 def eval_ar(xs):
     # TODO try
@@ -37,8 +37,10 @@ def py_lisp_ar(ar):
     match ar.name:
         case 'tag:yaml.org,2002:python/input': return input_ar
         case 'tag:yaml.org,2002:python/eval': return eval_ar
-        case 'tag:yaml.org,2002:python/print': return print_ar
-        case _: return lambda *_: ()
+        # TODO handle !!python/print Hello world!
+        # where dom is turned into input and and cod is discarded.
+        case 'tag:yaml.org,2002:python/print': return lambda *_: print(ar.dom) or (None, )
+        case _: return lambda *x: x
 
 def py_functor(ar):
     return Functor(

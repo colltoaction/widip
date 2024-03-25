@@ -13,10 +13,6 @@ def glue_diagrams(left, right):
         t.name
         for t in r_dom
         if t not in l_cod}
-    print(l_dom)
-    print(r_cod)
-    print(dw_l)
-    print(dw_r)
     cw_l = {
         t.name
         for t in l_cod
@@ -53,7 +49,6 @@ def glue_diagrams(left, right):
         + len(mid_names)
         for i in range(len(dw_l) + len(r_cod))
     )
-    print(mid_names)
     glued = H(
         dom=l_dom @ Ty(*dw_r),
         cod=Ty(*dw_l) @ r_cod,

@@ -7,6 +7,10 @@ from loader import HypergraphLoader
 from composing import glue_all_diagrams
 
 
+# TODO implement as a functor.
+# expose within the language as !file and !dir or similar;
+# add conventions for plain names such as !map and !functor.
+
 def path_diagram(path: pathlib.Path):
     # TODO during recursion some tags have relative references
     dir_d = None

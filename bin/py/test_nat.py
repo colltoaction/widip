@@ -1,12 +1,8 @@
 from discopy.frobenius import Id, Box, Ty, Functor, Category
 
-from .nat import py_nat_f
+from .nat import py_nat_f, zero, succ, plus_box
 
-plus_box = Box("plus", Ty("nat") @ Ty("nat"), Ty("nat"))
-zero = Box("0", Ty(), Ty("nat"))
-two = zero \
-    >> Box("succ", Ty("nat"), Ty("nat")) \
-    >> Box("succ", Ty("nat"), Ty("nat"))
+two = zero >> succ >> succ
 
 def test_zero():
     assert py_nat_f(zero)() == 0

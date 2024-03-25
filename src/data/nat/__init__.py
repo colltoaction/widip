@@ -1,16 +1,16 @@
-import pathlib
 from discopy.frobenius import Id, Functor, Ty, Box, Category, Spider
 from discopy.cat import Arrow
 
-from files import path_diagram
 
+plus_box = Box("plus", Ty("nat") @ Ty("nat"), Ty("nat"))
+zero = Box("0", Ty(), Ty("nat"))
+succ = Box("succ", Ty("nat"), Ty("nat"))
+two = zero >> succ >> succ
 
-nat_d = path_diagram(pathlib.Path("src/data/nat"))
 
 def plus_ar(ar: Box) -> Arrow:
     l = Box('nat', Ty('nat'), Ty('nat'))
     r = Box('nat', Ty('nat'), Ty('nat'))
-    ar.draw()
     return ar >> Box('succ', Ty('nat'), Ty('nat'))
 
 def nat_ar(ar: Box) -> Arrow:

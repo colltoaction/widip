@@ -2,7 +2,7 @@ import pathlib
 from discopy.frobenius import Box, Ty, Diagram, Id, Spider
 
 from composing import glue_diagrams
-from files import file_diagram
+from bin.py.files import file_diagram
 
 
 def test_glue_diagrams():
