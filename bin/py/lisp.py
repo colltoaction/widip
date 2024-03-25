@@ -24,7 +24,7 @@ def eval_ar(ar: Box) -> Arrow:
 def print_ar(ar: Box) -> Arrow:
     print_box = Box(
         "tag:yaml.org,2002:python/print",
-        Ty("io") @ ar.dom,
+        Ty("io") @ Ty(""),
         Ty("io"),)
     return print_box
 

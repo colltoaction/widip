@@ -24,13 +24,14 @@ class PyFunction(python.Function):
 
 
 def input_ar():
-    return None, input("- ")
+    return input("- ")
 
-def eval_ar(xs):
-    # TODO try
-    return eval(xs)
+def eval_ar(src):
+    return eval(src)
 
 def print_ar(*xs):
+    # TODO handle !print Hello world!
+    # dom=cod="hw", so we need to use the
     print(*xs)
 
 def py_lisp_ar(ar):

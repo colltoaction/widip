@@ -1,5 +1,5 @@
-from . import py_functor
 from src.data.nat import zero, succ, plus_box
+from . import py_functor
 
 
 py_nat_f = py_functor(

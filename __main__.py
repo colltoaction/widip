@@ -7,7 +7,8 @@ from bin.yaml import shell_main
 
 file_names = sys.argv[1:]
 if not file_names:
-    file_names = [pathlib.Path("bin/yaml/shell.yaml")]
+    # TODO the shell is loaded and 
+    file_names = ["bin/yaml/shell.yaml"]
     while True:
         try:
             d = shell_main(file_names)

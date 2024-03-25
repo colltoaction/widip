@@ -1,5 +1,3 @@
-from discopy.frobenius import Id, Box, Ty, Functor, Category
-
 from .nat import py_nat_f, zero, succ, plus_box
 
 two = zero >> succ >> succ

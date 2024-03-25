@@ -70,9 +70,11 @@ def write_diagram(ast: Diagram) -> str:
 def files_ar(ar: Box) -> Diagram:
     path = pathlib.Path(ar.name)
     if path.is_file() and path.suffix == ".yaml":
-        return file_diagram(path.open())
+        ar = file_diagram(path.open())
+        Diagram.to_gif(ar, path=str(path.with_suffix('.gif')))
     elif path.is_dir():
-        return dir_diagram(path)
+        ar = dir_diagram(path)
+        Diagram.to_gif(ar, path=str(path.with_suffix('.gif')))
     return ar
 
 # TODO implement as monad over streams

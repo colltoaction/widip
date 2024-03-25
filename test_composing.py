@@ -2,7 +2,7 @@ import pathlib
 from discopy.frobenius import Box, Ty, Diagram, Id, Spider
 
 from composing import glue_diagrams
-from bin.py.files import file_diagram
+from bin.py.files import files_f
 
 
 def test_glue_diagrams():
@@ -13,6 +13,7 @@ def test_glue_diagrams():
     sugar, yolky_paste = Ty('sugar'), Ty('yolky_paste')
     beat = Box('beat', yolk @ sugar, yolky_paste)
 
-    crack_then_beat = file_diagram(pathlib.Path("examples/mascarpone/crack-then-beat.yaml").open())
+    file_box = Box("examples/mascarpone/crack-then-beat.yaml", Ty(), Ty())
+    crack_then_beat = files_f(file_box)
     with Diagram.hypergraph_equality:
         assert glue_diagrams(crack, beat) == crack_then_beat
