@@ -2,6 +2,8 @@
 from discopy.frobenius import Functor, Box, Ty, Category, Id, Spider
 from discopy.cat import Arrow
 
+from bin.py.files import files_ar
+
 
 input_box = Box(
     "tag:yaml.org,2002:python/input",
@@ -12,10 +14,6 @@ eval_box = Box(
     Ty("io") @ Ty("str"),
     Ty("io") @ Ty(""),)
 
-
-def read_ar(ast: Box) -> Arrow:
-    """takes a Diagram ast"""
-    return input_box
 
 def eval_ar(ar: Box) -> Arrow:
     s = Id().tensor(*(Spider(0, 1, x) for x in ar.dom))
@@ -35,7 +33,7 @@ def print_ar(ar: Box) -> Arrow:
 
 def lisp_ar(ar: Box) -> Arrow:
     match ar.name:
-        case 'read': return read_ar(ar)
+        case 'read': return files_ar(ar)
         case 'eval': return eval_ar(ar)
         case 'print': return print_ar(ar)
         case _: return ar
