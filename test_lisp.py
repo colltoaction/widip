@@ -1,10 +1,10 @@
 from discopy.frobenius import Box, Ty, Diagram, Id, Spider
 
-from bin.py.lisp import lisp_f, eval_box
+from bin.py.shell import shell_f, eval_box
 from bin.py import py_lisp_f
 
 
-f = lisp_f >> py_lisp_f
+f = shell_f >> py_lisp_f
 
 def test_empty_params():
     assert f(Id())() == ()

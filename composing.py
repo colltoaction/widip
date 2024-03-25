@@ -1,6 +1,14 @@
 from discopy.frobenius import Hypergraph as H, Id, Ty, Spider, Swap, Diagram
 
 
+def adapt_to_interface(diagram, box):
+    """adapts a diagram open ports to fit in the box"""
+    left = Id(box.dom)
+    right = Id(box.cod)
+    return glue_diagrams(left, diagram) >> \
+            diagram >> \
+            glue_diagrams(diagram, right)
+
 def glue_diagrams(left, right):
     """a diagram connecting equal objects within each type"""
     """glues two diagrams sequentially with frobenius generators"""

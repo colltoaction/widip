@@ -24,6 +24,9 @@ def eval_ar(ar: Box) -> Arrow:
 
 def print_ar(ar: Box) -> Arrow:
     """Plugs the box name constant into the native Python print"""
+    # TODO
+    # adapted = adapt_to_interface(path_d, ar)
+    # adapted.draw()
     s = Id("io") @ Id().tensor(*(Spider(0, 1, x) for x in ar.dom))
     print_box = s >> Box(
         "tag:yaml.org,2002:python/print",
@@ -31,13 +34,13 @@ def print_ar(ar: Box) -> Arrow:
         Ty("io"),)
     return print_box
 
-def lisp_ar(ar: Box) -> Arrow:
+def shell_ar(ar: Box) -> Arrow:
     match ar.name:
         case 'read': return files_ar(ar)
         case 'eval': return eval_ar(ar)
         case 'print': return print_ar(ar)
         case _: return ar
 
-lisp_f = Functor(
+shell_f = Functor(
     lambda x: Ty("io"),
-    lisp_ar)
+    shell_ar)
