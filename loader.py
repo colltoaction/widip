@@ -98,7 +98,7 @@ class HypergraphComposer:
         if event.value:
             node = Id(str(event.value))
         else:
-            node = Id("")
+            node = Id()
 
         if anchor is not None:
             self.anchors[anchor] = node

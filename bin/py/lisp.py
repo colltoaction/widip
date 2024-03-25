@@ -18,13 +18,18 @@ def read_ar(ast: Box) -> Arrow:
     return input_box
 
 def eval_ar(ar: Box) -> Arrow:
-    # TODO do eval?
-    return eval_box
+    s = Id().tensor(*(Spider(0, 1, x) for x in ar.dom))
+    return s >> Box(
+        "tag:yaml.org,2002:python/eval",
+        ar.dom,
+        Ty("io"),)
 
 def print_ar(ar: Box) -> Arrow:
-    print_box = Box(
+    """Plugs the box name constant into the native Python print"""
+    s = Id("io") @ Id().tensor(*(Spider(0, 1, x) for x in ar.dom))
+    print_box = s >> Box(
         "tag:yaml.org,2002:python/print",
-        Ty("io") @ Ty(""),
+        Ty("io") @ ar.dom,
         Ty("io"),)
     return print_box
 

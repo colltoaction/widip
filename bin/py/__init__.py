@@ -30,17 +30,13 @@ def eval_ar(src):
     return eval(src)
 
 def print_ar(*xs):
-    # TODO handle !print Hello world!
-    # dom=cod="hw", so we need to use the
     print(*xs)
 
 def py_lisp_ar(ar):
     match ar.name:
         case 'tag:yaml.org,2002:python/input': return input_ar
         case 'tag:yaml.org,2002:python/eval': return eval_ar
-        # TODO handle !!python/print Hello world!
-        # where dom is turned into input and and cod is discarded.
-        case 'tag:yaml.org,2002:python/print': return lambda *_: print(ar.dom) or (None, )
+        case 'tag:yaml.org,2002:python/print': return print_ar
         case _: return lambda *x: x
 
 def py_functor(ar):
