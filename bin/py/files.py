@@ -1,15 +1,11 @@
 import pathlib
 
 import yaml
-from discopy.frobenius import Ty, Diagram, Box, Id, Spider
+from discopy.frobenius import Ty, Diagram, Box, Id, Spider, Functor
 
 from loader import HypergraphLoader
 from composing import glue_all_diagrams
 
-
-# TODO implement as a functor.
-# expose within the language as !file and !dir or similar;
-# add conventions for plain names such as !map and !functor.
 
 def path_diagram(path: pathlib.Path):
     # TODO during recursion some tags have relative references
@@ -41,7 +37,7 @@ def path_diagram(path: pathlib.Path):
         return diagram
     return diagram
 
-def dir_diagram(path: pathlib.Path):
+def dir_diagram(path: pathlib.Path) -> Diagram:
     """walks a directory to create a diagram"""
     if path.is_file() and path.suffix == ".yaml":
         return Box(path.stem, Ty(""), Ty(""))
@@ -69,3 +65,16 @@ def read_diagrams_st(stream) -> Diagram:
 def write_diagram(ast: Diagram) -> str:
     # TODO should be an eval'd result
     return yaml.safe_dump(tuple(x.name for x in ast.cod))
+
+
+def files_ar(ar: Box) -> Diagram:
+    path = pathlib.Path(ar.name)
+    if path.is_file() and path.suffix == ".yaml":
+        return file_diagram(path.open())
+    elif path.is_dir():
+        return dir_diagram(path)
+    return ar
+
+# TODO implement as monad over streams
+files_f = Functor(lambda x: x, files_ar)
+

@@ -1,4 +1,4 @@
-from discopy.frobenius import Hypergraph as H, Id, Ty, Spider, Swap
+from discopy.frobenius import Hypergraph as H, Id, Ty, Spider, Swap, Diagram
 
 
 def glue_diagrams(left, right):
@@ -67,7 +67,7 @@ def glue_diagrams(left, right):
     ).to_diagram()
     return glued
 
-def glue_all_diagrams(file_diagrams):
+def glue_all_diagrams(file_diagrams) -> Diagram:
     i = 0
     diagram = None
     for d in file_diagrams:

@@ -2,10 +2,9 @@ import pathlib
 
 from discopy.frobenius import Diagram
 
-from bin.py import py_lisp_f
 from bin.py.lisp import lisp_f
+from bin.py.files import file_diagram, files_f
 from composing import glue_all_diagrams
-from bin.py.files import file_diagram
 
 
 def shell_main(file_names):
@@ -20,5 +19,6 @@ def shell_main(file_names):
         Diagram.to_gif(fd, path=str(path.with_suffix('.gif')))
         file_diagrams.append(fd)
     rep_d = glue_all_diagrams(file_diagrams)
-    d = lisp_f(rep_d)
-    py_lisp_f(d)()
+    rep_d = lisp_f(rep_d)
+    rep_d = files_f(rep_d)
+    return rep_d

@@ -1,6 +1,7 @@
 import pathlib
 import sys
 
+from bin.py import py_lisp_f
 from bin.yaml import shell_main
 
 
@@ -9,8 +10,10 @@ if not file_names:
     file_names = [pathlib.Path("bin/yaml/shell.yaml")]
     while True:
         try:
-            shell_main(file_names)
+            d = shell_main(file_names)
+            py_lisp_f(d)()
         except EOFError:
             exit(0)
 else:
-    shell_main(file_names)
+    d = shell_main(file_names)
+    py_lisp_f(d)()
