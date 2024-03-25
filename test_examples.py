@@ -1,6 +1,6 @@
 from discopy.frobenius import Box, Ty, Diagram, Id, Spider, Ty
 
-from bin.py.files import files_f
+from bin.py.shell import shell_f
 
 def test_crack_then_mix():
     white = Ty('white')
@@ -10,7 +10,7 @@ def test_crack_then_mix():
     mix = Box('mix', white @ yolk, egg)
     crack_then_mix = crack >> mix
 
-    t = files_f(Box("examples/mascarpone/crack-then-mix.yaml", Ty(), Ty()))
+    t = shell_f(Box("read", Ty("examples/mascarpone/crack-then-mix.yaml"), Ty()))
     with Diagram.hypergraph_equality:
         assert t == crack_then_mix
 
@@ -23,7 +23,7 @@ def test_crack_then_beat():
     beat = Box('beat', yolk @ sugar, yolky_paste)
     crack_then_beat = crack @ sugar >> white @ beat
 
-    t = files_f(Box("examples/mascarpone/crack-then-beat.yaml", Ty(), Ty()))
+    t = shell_f(Box("read", Ty("examples/mascarpone/crack-then-beat.yaml"), Ty()))
     with Diagram.hypergraph_equality:
         assert t == crack_then_beat
 
@@ -31,6 +31,6 @@ def test_merge():
     white = Ty('white')
     merge = Box(name='merge', dom=white @ white, cod=white)
 
-    t = files_f(Box("examples/mascarpone/merge.yaml", Ty(), Ty()))
+    t = shell_f(Box("read", Ty("examples/mascarpone/merge.yaml"), Ty()))
     with Diagram.hypergraph_equality:
         assert t == merge

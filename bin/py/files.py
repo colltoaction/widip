@@ -1,40 +1,38 @@
 import pathlib
+from typing import Iterator
 
 import yaml
 from discopy.frobenius import Ty, Diagram, Box, Id, Spider, Functor
 
 from loader import HypergraphLoader
-from composing import glue_all_diagrams
+from composing import glue_diagrams
 
 
 def dir_diagram(path: pathlib.Path) -> Diagram:
-    """walks a directory to create a diagram"""
-    if path.is_file() and path.suffix == ".yaml":
-        return Box(path.stem, Ty(""), Ty(""))
-    elif path.is_dir():
-        mid = Id().tensor(*(
-            d
-            # d.name
-            for d in map(dir_diagram, path.iterdir())
-            if d != Id()))
-        if mid == Id():
-            return Id()
-        return Box(path.stem, Ty(""), mid.dom,) \
-            >> mid \
-            >> Spider(len(mid.cod), 1, Ty(""))
-    else:
-        return Id()
+    """parallel composition of subfiles"""
+    return Id().tensor(*(
+        d
+        for d in map(path_diagram, path.iterdir())
+        if d))
 
 def file_diagram(stream):
     file_diagrams = read_diagrams_st(stream)
     return glue_all_diagrams(file_diagrams)
 
-def read_diagrams_st(stream) -> Diagram:
+def read_diagrams_st(stream) -> Iterator[Diagram]:
+    """consume the input stream producing one diagram at a time"""
     return yaml.compose_all(stream, Loader=HypergraphLoader)
 
 def files_ar(ar: Box) -> Diagram:
     """Uses IO to read a file or dir with the box name as path"""
-    path = pathlib.Path(str(ar.dom))
+    d = path_diagram(pathlib.Path(str(ar.dom)))
+    if d is None:
+        return Id()
+    return d
+
+def path_diagram(path: pathlib.Path) -> Diagram:
+    """Uses IO to read a file or dir with the box name as path"""
+    ar = None
     if path.is_file() and path.suffix == ".yaml":
         ar = file_diagram(path.open())
         Diagram.to_gif(ar, path=str(path.with_suffix('.gif')))
@@ -43,3 +41,15 @@ def files_ar(ar: Box) -> Diagram:
         Diagram.to_gif(ar, path=str(path.with_suffix('.gif')))
     return ar
 
+def glue_all_diagrams(file_diagrams) -> Diagram:
+    i = 0
+    diagram = None
+    for d in file_diagrams:
+        if i == 0:
+            diagram = d
+        else:
+            diagram = glue_diagrams(diagram, d)
+        i += 1
+    if i == 0:
+        return Id()
+    return diagram
