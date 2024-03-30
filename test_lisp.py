@@ -10,22 +10,22 @@ def test_empty_params():
     assert f(Id())() == ()
     assert f(Id("x"))() == ()
     assert f(Spider(0, 0, Ty("x")))() == ()
-    assert f(Spider(0, 1, Ty("x")))() == ("io",)
-    assert f(Spider(0, 1, Ty("x")) @ Spider(0, 1, Ty("x")))() == ("io", "io")
-    assert f(Spider(0, 2, Ty("x")))() == ("io", "io")
+    assert f(Spider(0, 1, Ty("x")))() == ("",)
+    assert f(Spider(0, 1, Ty("x")) @ Spider(0, 1, Ty("x")))() == ("", "")
+    assert f(Spider(0, 2, Ty("x")))() == ("", "")
 
 def test_one_param():
     assert f(Id())("y") == "y"
     assert f(Id("x"))("y") == "y"
     assert f(Spider(1, 0, Ty("x")))("y") == ()
-    assert f(Spider(0, 1, Ty("x")) @ Spider(0, 1, Ty("x")))("y") == ("io", "io", "y")
+    assert f(Spider(0, 1, Ty("x")) @ Spider(0, 1, Ty("x")))("y") == ("", "", "y")
 
 def test_two_params():
     assert f(Id())("y", "z") == ("y", "z")
     assert f(Id("x"))("y", "z") == ("y", "z")
     assert f(Id("x") @ Id("x"))("y", "z") == ("y", "z")
     assert f(Spider(1, 0, Ty("x")) @ Spider(1, 0, Ty("x")))("y", "z") == ()
-    assert f(Spider(0, 1, Ty("x")) @ Spider(0, 1, Ty("x")))("y", "z") == ("io", "io", "y", "z")
+    assert f(Spider(0, 1, Ty("x")) @ Spider(0, 1, Ty("x")))("y", "z") == ("", "", "y", "z")
     assert f(Spider(2, 0, Ty("x")))("y", "z") == ()
     assert f(Spider(2, 2, Ty("x")))("y", "z") == ("y", "z", "y", "z")
 
