@@ -1,9 +1,9 @@
-import pytest
 import yaml
-from discopy.frobenius import Box, Ty, Spider, Diagram, Id, Functor, Swap
 
-from bin.py.files import file_diagram
+from discopy.frobenius import Box, Ty, Diagram, Spider, Id, Spider
+
 from loader import HypergraphLoader
+
 
 u = Ty("unit")
 m = Ty("monoid")
@@ -17,7 +17,7 @@ def test_single_wires():
         assert a0 == a1
 
 def test_id_boxes():
-    a = Box("a", Ty(), Ty())
+    a = Box("a", Ty(""), Ty(""))
     a0 = yaml.compose("!a", Loader=HypergraphLoader)
     a1 = yaml.compose("!a :", Loader=HypergraphLoader)
     with Diagram.hypergraph_equality:
@@ -25,7 +25,7 @@ def test_id_boxes():
         assert a0 == a1
 
 def test_boxes_with_empty_domain_and_codomain():
-    a = Box("a", Ty(), Ty())
+    a = Box("a", Ty(""), Ty(""))
     a0 = yaml.compose("- !a", Loader=HypergraphLoader)
     a1 = yaml.compose("\"\": !a", Loader=HypergraphLoader)
     with Diagram.hypergraph_equality:
@@ -41,31 +41,15 @@ def test_the_empty_value():
     a5 = yaml.compose("!a :", Loader=HypergraphLoader)
     with Diagram.hypergraph_equality:
         assert a0 == None
-        assert a1 == Id()
-        assert a2 == Id("a")
+        assert a1 == Id("")
+        assert a2 == Id("") @ Id("a")
         assert a3 == Id("a")
-        assert a4 == Box("a", Ty(), Ty())
+        assert a4 == Box("a", Ty(""), Ty(""))
         assert a5 == a4
 
 def test_bool():
     d = Id("true") @ Id("false")
     t = yaml.compose(open("src/data/bool.yaml"), Loader=HypergraphLoader)
-    with Diagram.hypergraph_equality:
-        assert t == d
-
-@pytest.mark.skip(reason="extensions such as functor")
-def test_maybe():
-    d = Box("just", Ty("a"), Ty("")) @ \
-        Box("nothing", Ty(), Ty(""))
-    t = file_diagram(open("src/data/maybe.yaml"))
-    with Diagram.hypergraph_equality:
-        assert t == d
-
-@pytest.mark.skip(reason="extensions such as functor")
-def test_either():
-    d = Box("left", Ty("a"), Ty("")) @ \
-        Box("right", Ty("b"), Ty(""))
-    t = file_diagram(open("src/data/either.yaml"))
     with Diagram.hypergraph_equality:
         assert t == d
 

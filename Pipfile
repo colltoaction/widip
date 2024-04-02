@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 nx-yaml = "*"
 discopy = "*"
+watchdog = "*"
 
 [dev-packages]
 pytest = "*"

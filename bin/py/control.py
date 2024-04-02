@@ -1,4 +1,4 @@
-from . import py_functor
+from .rep import py_functor
 
 
 py_control_f = py_functor(

@@ -1,31 +1,25 @@
-from discopy.frobenius import Box, Ty, Diagram, Spider
 import pytest
+from discopy.frobenius import Box, Ty, Spider, Diagram, Id, Functor, Swap
 
-from .files import files_f
+from .files import file_diagram, files_f
 
-
-def test_file():
-    file_diagram = Box("file://./src/data/nat.yaml", Ty(""), Ty(""))
-    diagram = files_f(file_diagram)
+def test_monoid():
+    diagram = files_f(Box("file://./src/data/monoid.yaml", Ty(), Ty()))
     with Diagram.hypergraph_equality:
-        assert diagram == \
-            Box("0", Ty(), Ty("")) \
-            @ Box("succ", Ty(""), Ty(""))
+        assert diagram == Box("unit", Ty(), Ty("")) @ Box("product", Ty("") @ Ty(""), Ty(""))
 
-def test_hello_world():
-    file_diagram = Box("file://./examples/hello-world.yaml", Ty(""), Ty(""))
-    diagram = files_f(file_diagram)
+@pytest.mark.skip(reason="extensions such as functor")
+def test_maybe():
+    d = Box("just", Ty("a"), Ty("")) @ \
+        Box("nothing", Ty(), Ty(""))
+    t = file_diagram(open("src/data/maybe.yaml"))
     with Diagram.hypergraph_equality:
-        assert diagram == \
-            Box("print", Ty("Hello world!"), Ty("Hello world!"))
+        assert t == d
 
-@pytest.mark.skip(reason="too hard for now")
-def test_dir():
-    dir_diagram = Box("file://./src/data/nat", Ty(""), Ty(""))
-    diagram = files_f(dir_diagram)
+@pytest.mark.skip(reason="extensions such as functor")
+def test_either():
+    d = Box("left", Ty("a"), Ty("")) @ \
+        Box("right", Ty("b"), Ty(""))
+    t = file_diagram(open("src/data/either.yaml"))
     with Diagram.hypergraph_equality:
-        diagram.draw()
-        assert diagram == \
-            Box("0", Ty(), Ty("")) \
-            @ Box("succ", Ty(""), Ty("")) \
-            >> Spider(2, 1, Ty(""))
+        assert t == d

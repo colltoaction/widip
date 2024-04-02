@@ -1,3 +1,3 @@
-- !!python/input io: { io, str }
+- !!python/input { io, str }: { io, str }
 - !!python/eval { io, str }: { io, "" }
 - !!python/print { io, "" }: io

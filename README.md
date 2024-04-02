@@ -5,16 +5,13 @@
 ```sh
 $ git clone https://github.com/yaml-programming/diagrams.git
 $ cd diagrams
-$ pip install yaml discopy
+$ pip install yaml discopy watchdog
 $ python . examples/hello-world.yaml
 Hello world!
-$ open examples/hello-world.gif
+$ open examples/hello-world.jpg
 ```
 
-![](examples/hello-world.gif)
-
-* `python .` will start the YAML-based REPL (read-eval-print loop).
-* `python . [FILE].yaml` will read-eval-print `[FILE].yaml`.
+![](examples/hello-world.jpg)
 
 ## Introduction
 
@@ -41,15 +38,25 @@ These are inpiration:
 * UNIX: pipelining
 
 ## Development environment
-> Note: Expertise with `make`, `bash` or UNIX in general isn't required to write diagrams.
 
-### Setup
-Just cloning the repository and running `make` will show there are no changes to be made.
-Every commit is guaranteed to be idempotent on the `make` invocation to make things straightforward.
+The developer experience (DX) is designed with minimal dependencies in mind. A typical setup looks like this:
 
-### Dev loop
-Whenever you change the `src` contents, running `make` will validate only the changed files. On success these are compiled and outputted as gifs next to the `.yaml` file.
-Every directory is also scanned and a string diagram gif describing its contents is automatically generated.
+1. Open VS Code
+2. Open terminal and run `python .` to start an interactive session with the YAML Diagrams shell
+3. While running the shell will autoreload any changes in the directory
+4. Open `.yaml` and `.jpg` files side by side for a fast feedback loop
+5. Use the shell to interact with the system
+
+The shell prompt `--- !bin/yaml/shell.yaml` indicates it is ready to receive a YAML document and process it with the specified file. `↵ Enter` evaluates the line and `⌁ Ctrl+D` exits.
+
+```sh
+$ python .↵
+--- !bin/yaml/shell.yaml
+!!python/eval 40+2
+42
+--- !bin/yaml/shell.yaml
+⌁
+```
 
 ## Operating system
 
