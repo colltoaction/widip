@@ -1,10 +1,9 @@
 import sys
-from bin.py.watch import Main, watch_main
+from bin.py.watch import watch_main, shell_main, stream_main
 
 
-if sys.argv[1:]:
-    file_name = sys.argv[1]
-    main = Main(file_name)
-    main.rep()
-else:
-    watch_main()
+match sys.argv:
+    case [_]:
+        watch_main()
+        shell_main("bin/yaml/shell.yaml")
+    case [_, file_name]: stream_main(open(file_name))

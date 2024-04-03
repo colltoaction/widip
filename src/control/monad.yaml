@@ -1,0 +1,4 @@
+- !pure a: { monad, a }
+- !bind { monad, a }: { monad, b }
+- !join { monad, a, b }: { monad, a }
+- !lift { a, b }: { monad, a, b }

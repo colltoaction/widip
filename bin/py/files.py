@@ -8,7 +8,7 @@ from loader import HypergraphLoader
 from composing import glue_all_diagrams, replace_id_f
 
 
-def file_diagram(stream):
+def stream_diagram(stream):
     """a glued sequence of diagrams"""
     """consume the input stream producing one diagram at a time"""
     file_diagrams = yaml.compose_all(stream, Loader=HypergraphLoader)
@@ -22,7 +22,7 @@ def files_ar(ar: Box) -> Diagram:
 
     try:
         path = pathlib.Path(ar.name.lstrip("file://"))
-        fd = file_diagram(path.open())
+        fd = stream_diagram(path.open())
         fd = replace_id_f(path.stem)(fd)
         fd.draw(path=str(path.with_suffix(".jpg")))
         return fd

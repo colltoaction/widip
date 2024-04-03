@@ -1,7 +1,7 @@
 import pytest
 from discopy.frobenius import Box, Ty, Spider, Diagram, Id, Functor, Swap
 
-from .files import file_diagram, files_f
+from .files import stream_diagram, files_f
 
 def test_monoid():
     diagram = files_f(Box("file://./src/data/monoid.yaml", Ty(), Ty()))
@@ -12,7 +12,7 @@ def test_monoid():
 def test_maybe():
     d = Box("just", Ty("a"), Ty("")) @ \
         Box("nothing", Ty(), Ty(""))
-    t = file_diagram(open("src/data/maybe.yaml"))
+    t = stream_diagram(open("src/data/maybe.yaml"))
     with Diagram.hypergraph_equality:
         assert t == d
 
@@ -20,6 +20,6 @@ def test_maybe():
 def test_either():
     d = Box("left", Ty("a"), Ty("")) @ \
         Box("right", Ty("b"), Ty(""))
-    t = file_diagram(open("src/data/either.yaml"))
+    t = stream_diagram(open("src/data/either.yaml"))
     with Diagram.hypergraph_equality:
         assert t == d
