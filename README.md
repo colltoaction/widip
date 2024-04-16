@@ -14,19 +14,21 @@ $ open examples/hello-world.jpg
 
 ![](examples/hello-world.jpg)
 
+You will find the rest of the documentation in the `README.md` files in this repository. Readme files take advantage of generated `.jpg`s for an effective built-in documentation.
+
 ## Introduction
 
 ### Why Graphical Programming
 
-Programming is a hard reasoning task that we aid with Diagrams, a data structure in the sense of Abstract Syntax Trees or Graphs. Just like text flowing from top to bottom, Diagrams have the same orientation that is natural for programming languages.
+Programming is a hard reasoning task helped with Diagrams, a data structure in the sense of Abstract Syntax Trees or Graphs. Just like text flowing from top to bottom, Diagrams have the same orientation that is natural for programming languages.
 
 ### Why YAML
 
-YAML is a widely-adopted human-friendly language for describing object relations. We leverage several features to create an elegant textual representation of Diagrams.
+YAML is a widely-adopted human-friendly language for describing object relations. We leverage several features to create an elegant textual representation of Diagrams. This tradeoff gives users the chance to decouple syntax from semantics.
 
 ### Why UNIX
 
-Even more than YAML, UNIX is a key piece in the computing world. This environment is standard from the developer workstations to the production servers. We use it to create productive developer experiences and server workloads with minimal dependencies.
+UNIX is a key piece in the computing world. This environment is standard from developer workstations to production servers. We use it to create a productive developer experience and server workloads with minimal dependencies.
 
 ## Shell
 

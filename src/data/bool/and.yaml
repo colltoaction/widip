@@ -1,4 +1,4 @@
-!and { true: , true: }: true
-!and { false: , true: }: false
-!and { true: , false: }: false
-!and { false: , false: }: false
+!and { true, true }: true
+!and { false, true }: false
+!and { true, false }: false
+!and { false, false }: false
