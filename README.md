@@ -33,18 +33,19 @@ UNIX is a key piece in the computing world. This environment is standard from de
 
 ## Environment
 ### Setup
-A typical setup looks like:
+A typical VS Code setup looks like:
 
-1. Open VS Code
-2. Open terminal and run `python .` to start an interactive session
-3. While running, `.jpg`s will be synced on file changes
-4. Open `.yaml` and `.jpg` files side by side for a fast feedback loop
-5. Use the shell to interact with the system
+![](examples/typical-vscode-setup.png)
+
+1. Open terminal and run `python .` to start an interactive session
+2. While running, `.jpg`s will be reloaded on file changes
+3. Open `.yaml` and `.jpg` files side by side for a fast feedback loop
 
 In step 2 Python starts an interactive session with the program `bin/yaml/shell.yaml` and you see a prompt just like in Bash or Python. `↵ Enter` evaluates the line and `⌁ Ctrl+D` exits.
 
 ```
 $ python .
+watching for changes in current path
 --- !bin/yaml/shell.yaml
 !!python/eval 40+2
 42

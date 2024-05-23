@@ -1,7 +1,10 @@
 import sys
+import warnings
+
 from bin.py.watch import watch_main, shell_main, stream_main
 
 
+warnings.filterwarnings("ignore")
 match sys.argv:
     case [_]:
         watch_main()
