@@ -1,5 +1,7 @@
 # Wiring Diagram Processing
-Widip is a graphical shell for UNIX with an interactive prompt.
+Widip is an interactive program for building wiring diagram libraries. It seamlessly integrates with editors and CLIs for Linux and MacOS as a [UNIX shell].
+
+Using a command-line interface one interacts with a chatbot. The program also integrates with filesystem to read diagram documents and render image files.
 
 ## Quickstart
 
@@ -69,3 +71,5 @@ The shell processes wiring diagrams by replacing boxes until it is left just wit
 * LISP: code as data
 * Clojure: everything LISP + extended syntax
 * Idris: dependently-typed implementations
+
+[UNIX shell]: https://en.wikipedia.org/wiki/Unix_shell
