@@ -1,9 +1,9 @@
-# Wiring Diagram Processing
-Widip is an interactive program for building wiring diagram libraries. It seamlessly integrates with editors and CLIs for Linux and MacOS as a [UNIX shell].
+Widip: Wiring Diagram Processing
+-----
 
-Using a command-line interface one interacts with a chatbot. The program also integrates with filesystem to read diagram documents and render image files.
+Widip is a fast user interface that keeps pace with graphical reasoning.
 
-## Quickstart
+## `Hello world!`
 
 ```
 $ git clone https://github.com/colltoaction/widip.git
@@ -14,26 +14,27 @@ Hello world!
 $ open examples/hello-world.jpg
 ```
 
-![](examples/hello-world.jpg)
-
-## Documentation
-You will find the documentation alongside the wiring diagram text and visual representations. You are encouraged to explore and interact with the whole filesystem.
+<img src="examples/hello-world.jpg" width="350">
 
 ## Introduction
 
-### Why Graphical Programming
+Widip is an [interactive environment] for building wiring diagram catalogs.
 
-Programming is a hard reasoning task helped with widis. Just like text flowing from top to bottom, widis have the same orientation that is natural for programming languages.
+Users have two modes of interaction:
+* the [filesystem]
+* a [chatbot] or [command-line interface]
 
-### Why YAML
+### Filesystem
+Widip seamlessly integrates with editors and CLIs for Linux and MacOS as a [UNIX shell].
 
-YAML is a widely-adopted human-friendly language for describing object relations. We leverage several features to create an elegant textual representation of arbitrary widis.
+Diagrams are written as `.yaml` documents and are meant for human authors. Widip watches the filesystem for any changes to source and immediately renders updated images to keep pace with graphical reasoning.
 
-### Why UNIX
-
-UNIX is a key piece in the computing world. This environment is standard from developer workstations to production servers. We use it to create a productive developer experience and server workloads with minimal dependencies.
+In this lightweight environment users can use their own tools for editing text and viewing images. As an example, VS Code will automatically reload `README.md`s and `.jpg` tabs when files change.
 
 ## Environment
+### Built-in documentation
+You will find the documentation alongside the text and images in the filesystem.
+
 ### Setup
 A typical VS Code setup looks like:
 
@@ -43,7 +44,7 @@ A typical VS Code setup looks like:
 2. While running, `.jpg`s will be reloaded on file changes
 3. Open `.yaml` and `.jpg` files side by side for a fast feedback loop
 
-In step 2 Python starts an interactive session with the program `bin/yaml/shell.yaml` and you see a prompt just like in Bash or Python. `↵ Enter` evaluates the line and `⌁ Ctrl+D` exits.
+Python starts an interactive session with the program `bin/yaml/shell.yaml` and you see a prompt just like in Bash or Python. `↵ Enter` evaluates the line and `⌁ Ctrl+D` exits.
 
 ```
 $ python .
@@ -55,15 +56,13 @@ watching for changes in current path
 ⌁
 ```
 
-### Displaying widis
-As seen above, `.yaml` files are evaluated by the Widip shell and produce `.jpg`s. Each and every YAML document has an interpretation as a widi. The generated images are committed for an effective built-in documentation.
+## Widi programs
 
-### Widi programs
-Widis are [graphical programming](https://graphicallinearalgebra.net/2015/04/26/adding-part-1-and-mr-fibonacci/) tools that have two main operations: parallel and sequential composition. As a formal method they have excellent properties to connect open systems like programs.
+Programming is hard, but it shouldn't be _that_ hard.
 
-To program with widis we build a functional library written in Widip itself. As an example core abstractions like `bool` or `maybe` can be found in the [](src/data) directory.
+Widis are [graphical programming](https://graphicallinearalgebra.net/2015/04/26/adding-part-1-and-mr-fibonacci/) tools that have two main operations: parallel and sequential composition. As a formal method they have excellent properties to connect open systems like programs. High-level diagrams decouple program logic from the primitives implementation.
 
-The shell processes wiring diagrams by replacing boxes until it is left just with primitive operations. Building such a language leads to a self-contained fully-dynamic system.
+To program with widis we build a functional library in Widip itself. As an example core abstractions like `bool` or `maybe` can be found in the [src/data](src/data) directory. We grow a self-contained fully-dynamic system with the goal of bootstrapping.
 
 ## Inspiration
 
@@ -72,4 +71,20 @@ The shell processes wiring diagrams by replacing boxes until it is left just wit
 * Clojure: everything LISP + extended syntax
 * Idris: dependently-typed implementations
 
+## Developing the bootstrap code
+The Python codebase uses DisCoPy for processing the widi using the Cospans of Hypergraphs data structure and drawing with Matplotlib.
+
+### Why YAML
+
+YAML is a widely-adopted human-friendly language for describing object relations. We leverage several features to create an elegant textual representation of arbitrary widis.
+
+### Why UNIX
+
+UNIX is a key piece in the computing world. This environment is standard from developer workstations to production servers. We use it to create a productive developer experience and server workloads with minimal dependencies.
+
+
 [UNIX shell]: https://en.wikipedia.org/wiki/Unix_shell
+[chatbot]: https://en.wikipedia.org/wiki/chatbot
+[command-line interface]: https://en.wikipedia.org/wiki/Command-line_interface
+[filesystem]: https://en.wikipedia.org/wiki/File_manager
+[interactive environment]: https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop
