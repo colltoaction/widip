@@ -3,19 +3,6 @@ Widip: Wiring Diagram Processing
 
 Widip is a fast user interface that keeps pace with graphical reasoning.
 
-## `Hello world!`
-
-```
-$ git clone https://github.com/colltoaction/widip.git
-$ cd widip
-$ pip install yaml discopy watchdog
-$ python . examples/hello-world.yaml
-Hello world!
-$ open examples/hello-world.jpg
-```
-
-<img src="examples/hello-world.jpg" width="350">
-
 ## Introduction
 
 Widip is an [interactive environment] for building wiring diagram catalogs.
@@ -36,6 +23,7 @@ In this lightweight environment users can use their own tools for editing text a
 You will find the documentation alongside the text and images in the filesystem.
 
 ### Setup
+
 A typical VS Code setup looks like:
 
 ![](examples/typical-vscode-setup.png)
@@ -59,6 +47,20 @@ watching for changes in current path
 ## Widi programs
 
 Programming is hard, but it shouldn't be _that_ hard.
+
+
+### `Hello world!`
+
+```
+$ git clone https://github.com/colltoaction/widip.git
+$ cd widip
+$ pip install yaml discopy watchdog
+$ python . examples/hello-world.yaml
+Hello world!
+$ open examples/hello-world.jpg
+```
+
+<img src="examples/hello-world.jpg" width="400">
 
 Widis are [graphical programming](https://graphicallinearalgebra.net/2015/04/26/adding-part-1-and-mr-fibonacci/) tools that have two main operations: parallel and sequential composition. As a formal method they have excellent properties to connect open systems like programs. High-level diagrams decouple program logic from the primitives implementation.
 
