@@ -3,11 +3,10 @@ from watchdog.observers import Observer
 
 from discopy.frobenius import Diagram, Box, Ty, Id, Spider
 
-from composing import adapt_to_interface, close_ty_f, replace_id_f
+from bin.py.rep import py_rep_f
+from bin.py.shell import shell_f
 
-from .rep import py_rep_f
 from .files import stream_diagram, files_f
-from .shell import shell_f
 
 
 # TODO watch functor

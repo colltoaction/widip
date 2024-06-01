@@ -9,7 +9,7 @@ from yaml.composer import ComposerError
 
 from discopy.frobenius import Hypergraph as H, Id, Ob, Ty, Box, Spider
 
-from composing import glue_diagrams
+from .composing import glue_diagrams
 
 class HypergraphComposer:
 

@@ -4,8 +4,8 @@ from typing import Iterator
 import yaml
 from discopy.frobenius import Ty, Diagram, Box, Id, Spider, Functor
 
-from loader import HypergraphLoader
-from composing import glue_all_diagrams, replace_id_f
+from .loader import HypergraphLoader
+from .composing import glue_all_diagrams, replace_id_f
 
 
 def stream_diagram(stream):
