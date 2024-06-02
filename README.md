@@ -13,7 +13,7 @@ The widi data structure models the full range of YAML documents giving each docu
 
 ```bash
 pip install widip
-widip
+python -m widip
 ```
 
 This will automatically install dependencies: [discopy](https://pypi.org/project/discopy/) (computing, drawing), [pyyaml](https://pypi.org/project/pyyaml/) (parser library), and [watchdog](https://pypi.org/project/watchdog/) (filesystem watcher).
