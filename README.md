@@ -24,8 +24,8 @@ Users have two modes of interaction:
 * a [chatbot] or [command-line interface]
 
 ## Filesystem
-2. While running, `.jpg`s will be reloaded on file changes
-3. Open `.yaml` and `.jpg` files side by side for a fast feedback loop
+1. While running, `.jpg`s will be reloaded on file changes
+2. Open `.yaml` and `.jpg` files side by side for a fast feedback loop
 Widip seamlessly integrates with editors and CLIs for Linux and MacOS as a [UNIX shell].
 
 Diagrams are written as `.yaml` documents and are meant for human authors. Widip watches the filesystem for any changes to source and immediately renders updated images to keep pace with graphical reasoning.
