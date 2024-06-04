@@ -18,6 +18,10 @@ python -m widip
 
 This will automatically install dependencies: [discopy](https://pypi.org/project/discopy/) (computing, drawing), [pyyaml](https://pypi.org/project/pyyaml/) (parser library), and [watchdog](https://pypi.org/project/watchdog/) (filesystem watcher).
 
+## Local install
+
+If you're working with a local copy of this repository, run `pip install -e .`.
+
 # Using Widip
 Users have two modes of interaction:
 * the [filesystem]
