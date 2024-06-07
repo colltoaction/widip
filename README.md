@@ -48,11 +48,20 @@ Hello world!
 
 <!-- <img src="examples/hello-world.jpg" width="300"> -->
 
-# Widi programs
+# Computing
 
 Programming is hard, but it shouldn't be _that_ hard.
 
 Widis are [graphical programming](https://graphicallinearalgebra.net/2015/04/26/adding-part-1-and-mr-fibonacci/) tools that have two main operations: parallel and sequential composition. As a formal method they have excellent properties to connect open systems like programs. To work with this system it is necesary to extend its capabilities with programming libraries as widis. As an example core abstractions like `bool` or `maybe` can be found in the [src/data](src/data) directory. We grow a self-contained fully-dynamic system with the goal of bootstrapping.
+
+Many systems are designed around a single metaphor. Widip works as a UNIX Shell and makes everything is available as diagrams.
+
+System|Metaphor
+------|--------
+Widip|Wiring Diagram
+UNIX|File
+Lisp|List
+Smalltalk|Object
 
 
 [UNIX shell]: https://en.wikipedia.org/wiki/Unix_shell
