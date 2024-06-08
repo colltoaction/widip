@@ -30,11 +30,10 @@ Users have two modes of interaction:
 ## Filesystem
 1. While running, `.jpg`s will be reloaded on file changes
 2. Open `.yaml` and `.jpg` files side by side for a fast feedback loop
-Widip seamlessly integrates with editors and CLIs for Linux and MacOS as a [UNIX shell].
 
 Diagrams are written as `.yaml` documents and are meant for human authors. Widip watches the filesystem for any changes to source and immediately renders updated images to keep pace with graphical reasoning.
 
-In this lightweight environment users can use their own tools for editing text and viewing images. As an example, VS Code will automatically reload `README.md`s and `.jpg` tabs when files change.
+Using this lightweight [UNIX shell] users can use their own tools for editing text and viewing images. As an example, VS Code will automatically reload `README.md`s and `.jpg` tabs when files change.
 
 ## Command-line interface
 
