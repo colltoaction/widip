@@ -50,11 +50,7 @@ Hello world!
 
 # Computing
 
-Programming is hard, but it shouldn't be _that_ hard.
-
-Widis are [graphical programming](https://graphicallinearalgebra.net/2015/04/26/adding-part-1-and-mr-fibonacci/) tools that have two main operations: parallel and sequential composition. As a formal method they have excellent properties to connect open systems like programs. To work with this system it is necesary to extend its capabilities with programming libraries as widis. As an example core abstractions like `bool` or `maybe` can be found in the [src/data](src/data) directory. We grow a self-contained fully-dynamic system with the goal of bootstrapping.
-
-Many systems are designed around a single metaphor. Widip works as a UNIX Shell and makes everything is available as diagrams.
+Programming is hard, but it shouldn't be _that_ hard. Many long-standing systems have thrived thanks to a uniform metaphor, and in our case will be widis.
 
 System|Metaphor
 ------|--------
@@ -63,6 +59,9 @@ UNIX|File
 Lisp|List
 Smalltalk|Object
 
+So far widis have mainly shaped the user interface. Widis are also [graphical programming](https://graphicallinearalgebra.net/2015/04/26/adding-part-1-and-mr-fibonacci/) tools and one can work with them in purely mathematical terms, but one can also take a practical approach. All processes reading and writing YAML are effectively diagram rewriters, and the system doesn't mandate in any way how how that happens.
+
+This means that we are not limited but empowered by the formal transformations in the mathematician toolbox. It is natural to want to extend the system in terms of diagrams just like in the mentioned systems, and this leads to current work in a functional library at [src](src).
 
 [UNIX shell]: https://en.wikipedia.org/wiki/Unix_shell
 [chatbot]: https://en.wikipedia.org/wiki/chatbot
