@@ -1,7 +1,14 @@
 Widip
 -----
 
-Widip is an [interactive environment] for computing with wiring diagrams in modern systems.
+Widip is an [interactive environment] for computing in modern systems. Many long-standing systems have thrived thanks to a uniform metaphor, which in our case is wiring diagrams.
+
+System|Metaphor
+------|--------
+Widip|Wiring Diagram
+UNIX|File
+Lisp|List
+Smalltalk|Object
 
 ![](examples/typical-vscode-setup.png)
 
@@ -21,27 +28,25 @@ This will automatically install dependencies: [discopy](https://pypi.org/project
 
 If you're working with a local copy of this repository, run `pip install -e .`.
 
-# Using Widip
+# Using `widip`
+The `widip` program starts a [chatbot] or [command-line interface]. It integrates with the [filesystem] for rendering diagram files. We give more information for a few use cases below.
+
 ## For documentation
-The widi data structure models the full range of YAML documents giving each `.yaml` a simple `.jpg` view. Widis are great for communicating data flows and this is very convenient for git-based documentation. A text-based approach makes a productive environment with minimal dependencies.
+Widis are meant for humans before computers and we find it valuable to give immediate visual feedback. Changes in a `.yaml` file trigger rendering a `.jpg` file next to it. This guides the user exploration while they can bring their own tools. As an example, VS Code will automatically reload markdown previews when `.jpg` files change.
 
-## For UNIX integration
-This lightweight [UNIX shell] works everywhere from from developer workstations to cloud environments to production servers.
+Widis are great for communication and this is a very convenient workflow for git- and text-based documentation.
 
-Users have two modes of interaction:
-* the [filesystem]
-* a [chatbot] or [command-line interface]
+## For UNIX programming
+This lightweight [UNIX shell] works everywhere from developer workstations to cloud environments to production servers.
 
-## Filesystem
-1. While running, `.jpg`s will be reloaded on file changes
-2. Open `.yaml` and `.jpg` files side by side for a fast feedback loop
+Processes that read and write YAML document streams are first-class citizens in this environment. With this practical approach users can write programs in the same language of widis.
 
-Diagrams are written as `.yaml` documents and are meant for human authors. Widip watches the filesystem for any changes to source and immediately renders updated images to keep pace with graphical reasoning.
+## For graphical programming
+Programming is hard, but it shouldn't be _that_ hard.
 
-Users can use their own tools for editing text and viewing images. As an example, VS Code will automatically reload `README.md`s and `.jpg` tabs when files change.
+So far widis have mainly shaped the user interface. Widis are also [graphical programming](https://graphicallinearalgebra.net/2015/04/26/adding-part-1-and-mr-fibonacci/) tools and one can work with them in purely mathematical terms. Start with [examples/mascarpone](examples/mascarpone) then take a look at current work in a functional library at [src](src).
 
-## Command-line interface
-
+# Working with the CLI
 Open terminal and run `widip` to start an interactive session. The program `bin/yaml/shell.yaml` prompts for one command per line, so when we hit `↵ Enter` it is evaluated. When hitting `⌁ Ctrl+D` the environment exits.
 
 ```yaml
@@ -52,20 +57,6 @@ Hello world!
 
 <!-- <img src="examples/hello-world.jpg" width="300"> -->
 
-# Computing
-
-Programming is hard, but it shouldn't be _that_ hard. Many long-standing systems have thrived thanks to a uniform metaphor, which in our case is widis.
-
-System|Metaphor
-------|--------
-Widip|Wiring Diagram
-UNIX|File
-Lisp|List
-Smalltalk|Object
-
-So far widis have mainly shaped the user interface. Widis are also [graphical programming](https://graphicallinearalgebra.net/2015/04/26/adding-part-1-and-mr-fibonacci/) tools and one can work with them in purely mathematical terms, but one can also take a practical approach. All processes reading and writing YAML are effectively diagram rewriters, and the system doesn't mandate in any way how how that happens.
-
-This means that we are not limited but empowered by the formal transformations in the mathematician toolbox. It is natural to want to extend the system in terms of diagrams just like in the mentioned systems, and this leads to current work in a functional library at [src](src).
 
 [UNIX shell]: https://en.wikipedia.org/wiki/Unix_shell
 [chatbot]: https://en.wikipedia.org/wiki/chatbot
