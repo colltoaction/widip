@@ -5,7 +5,6 @@ Widip is an [interactive environment] for computing with wiring diagrams in mode
 
 ![](examples/typical-vscode-setup.png)
 
-The widi data structure models the full range of YAML documents giving each document a visual representation. The UNIX ecosystem provides immediate benefits being standard from developer workstations to production servers. A text-based approach makes a productive developer environment with minimal dependencies.
 
 # Installation
 
@@ -23,6 +22,12 @@ This will automatically install dependencies: [discopy](https://pypi.org/project
 If you're working with a local copy of this repository, run `pip install -e .`.
 
 # Using Widip
+## For documentation
+The widi data structure models the full range of YAML documents giving each `.yaml` a simple `.jpg` view. Widis are great for communicating data flows and this is very convenient for git-based documentation. A text-based approach makes a productive environment with minimal dependencies.
+
+## For UNIX integration
+This lightweight [UNIX shell] works everywhere from from developer workstations to cloud environments to production servers.
+
 Users have two modes of interaction:
 * the [filesystem]
 * a [chatbot] or [command-line interface]
@@ -33,7 +38,7 @@ Users have two modes of interaction:
 
 Diagrams are written as `.yaml` documents and are meant for human authors. Widip watches the filesystem for any changes to source and immediately renders updated images to keep pace with graphical reasoning.
 
-Using this lightweight [UNIX shell] users can use their own tools for editing text and viewing images. As an example, VS Code will automatically reload `README.md`s and `.jpg` tabs when files change.
+Users can use their own tools for editing text and viewing images. As an example, VS Code will automatically reload `README.md`s and `.jpg` tabs when files change.
 
 ## Command-line interface
 
@@ -49,7 +54,7 @@ Hello world!
 
 # Computing
 
-Programming is hard, but it shouldn't be _that_ hard. Many long-standing systems have thrived thanks to a uniform metaphor, and in our case will be widis.
+Programming is hard, but it shouldn't be _that_ hard. Many long-standing systems have thrived thanks to a uniform metaphor, which in our case is widis.
 
 System|Metaphor
 ------|--------
