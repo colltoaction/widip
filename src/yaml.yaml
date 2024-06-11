@@ -1,0 +1,9 @@
+- !scalar {}: node
+  !collection node: node
+- !mapping node:
+    !entry unordered content:
+      !node key: node
+      !node value: node
+  !sequence node:
+    !node ordered content: node
+- node
