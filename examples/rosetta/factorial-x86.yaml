@@ -1,0 +1,4 @@
+- !mov { eax, !1 {} }: eax
+- !label eax: { .factor, eax }
+- !mul { eax, ecx }: eax
+- !loop { .factor, eax }: !ret eax
