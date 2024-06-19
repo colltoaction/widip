@@ -6,7 +6,7 @@ from discopy.frobenius import Diagram, Box, Ty, Id, Spider
 from bin.py.rep import py_rep_f
 from bin.py.shell import shell_f
 
-from .files import stream_diagram, files_f
+from .files import stream_diagram, file_diagram
 
 
 # TODO watch functor
@@ -20,7 +20,7 @@ class ShellHandler(FileSystemEventHandler):
         super().on_modified(event)
         if ".yaml" in event.src_path:
             print(f"reloading {event.src_path}")
-            files_f(Box(f"file://./{event.src_path}", Ty("io"), Ty("io")))
+            file_diagram(str(event.src_path))
 
 def watch_main():
     """the process manager for the reader and """

@@ -2,6 +2,7 @@ import pathlib
 from typing import Iterator
 
 import yaml
+import discopy
 from discopy.frobenius import Ty, Diagram, Box, Id, Spider, Functor
 
 from .loader import HypergraphLoader
@@ -21,13 +22,19 @@ def files_ar(ar: Box) -> Diagram:
         return ar
 
     try:
-        path = pathlib.Path(ar.name.lstrip("file://"))
+        return file_diagram(ar.name.lstrip("file://"))
+    except IsADirectoryError:
+        print("is a dir")
+        return ar
+
+def file_diagram(file_name) -> Diagram:
+    try:
+        path = pathlib.Path(file_name)
         fd = stream_diagram(path.open())
         fd = replace_id_f(path.stem)(fd)
         fd.draw(path=str(path.with_suffix(".jpg")))
         return fd
-    except IsADirectoryError:
-        print("is a dir")
-        return ar
+    except discopy.utils.AxiomError:
+        print("diagram gluing failed -- https://github.com/colltoaction/widip/issues/2")
 
 files_f = Functor(lambda x: Ty(""), files_ar)
