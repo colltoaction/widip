@@ -1,0 +1,4 @@
+- !ls { io, . }: io
+- !grep { io, jpg }: io
+  !grep { io, yaml }: io
+- io
