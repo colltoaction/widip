@@ -1,0 +1,3 @@
+!ls widish/examples:
+  ? !grep yaml
+  ? !grep jpg

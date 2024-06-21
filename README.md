@@ -37,9 +37,9 @@ Widis are meant for humans before computers and we find it valuable to give imme
 Widis are great for communication and this is a very convenient workflow for git- and text-based documentation.
 
 ## For UNIX programming
-This lightweight [UNIX shell] works everywhere from developer workstations to cloud environments to production servers. Processes that read and write YAML document streams are first-class citizens. With this practical approach users can write programs in the same language of widis.
+The lightweight `widish` [UNIX shell] works everywhere from developer workstations to cloud environments to production servers. Processes that read and write YAML document streams are first-class citizens. With this practical approach users can write programs in the same language of widis.
 
-Start with [examples/shell](examples/shell).
+Start with [widish/examples](widish/examples).
 
 ## For graphical programming
 Programming is hard, but it shouldn't be _that_ hard.
