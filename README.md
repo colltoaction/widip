@@ -46,17 +46,6 @@ Programming is hard, but it shouldn't be _that_ hard.
 
 So far widis have mainly shaped the user interface. Widis are also [graphical programming](https://graphicallinearalgebra.net/2015/04/26/adding-part-1-and-mr-fibonacci/) tools and one can work with them in purely mathematical terms. Start with [examples/mascarpone](examples/mascarpone) then take a look at current work in a functional library at [src](src).
 
-# Working with the CLI
-Open terminal and run `widip` to start an interactive session. The program `bin/yaml/shell.yaml` prompts for one command per line, so when we hit `↵ Enter` it is evaluated. When hitting `⌁ Ctrl+D` the environment exits.
-
-```yaml
---- !bin/yaml/shell.yaml
-!print Hello world!
-Hello world!
-```
-
-<!-- <img src="examples/hello-world.jpg" width="300"> -->
-
 
 [UNIX shell]: https://en.wikipedia.org/wiki/Unix_shell
 [chatbot]: https://en.wikipedia.org/wiki/chatbot
