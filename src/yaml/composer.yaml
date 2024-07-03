@@ -1,0 +1,16 @@
+? !StreamStart
+  ? !DocumentStart
+    ? !Scalar value
+    ? !SequenceStart
+      ? !compose_node node
+      ?
+    : !SequenceEnd
+    ? !MappingStart
+      ? !compose_node key
+      ? !compose_node value
+      ?
+    : !MappingEnd
+    ?
+  : !DocumentEnd
+  ?
+: !StreamEnd

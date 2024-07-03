@@ -20,9 +20,9 @@ class IORun(python.Function):
             """
             assert typ == Ty("io")
             assert len(processes) == n_legs_in
-            return tuple(
-                IOSpiderProcess(*processes)
-                for _ in range(n_legs_out))
+            if not processes:
+                return ((), ) * n_legs_out
+            return (IOSpiderProcess(*(processes[0], )), ) * n_legs_out
         return IORun(
             inside=step,
             dom=Ty(*("io" for _ in range(n_legs_in))),
@@ -35,19 +35,19 @@ def command_io_f(diagram):
     drop outputs matching input parameters
     all boxes are io->[io]"""
     def command_io(b):
-        return Id().tensor(*(
-            Id("io") @ Spider(0, 1, t) >> 
+        return (
+            H.spiders(len(b.dom), 1, Ty("io")).to_diagram() @ H.spiders(0, 1, b.dom).to_diagram() >>
             Box(b.name,
-                Ty("io") @ t,
+                Ty("io") @ b.dom,
                 Ty("io")) >>
-            H.spiders(1, len(b.cod), Ty("io")).to_diagram()
-            for t in b.dom))
+            # TODO splitting into len(cod) copies more than needed
+            H.spiders(1, len(b.cod), Ty("io")).to_diagram())
     f = Functor(
         lambda x: Ty("io"),
         lambda b: command_io(b),)
     diagram = f(diagram)
     return (
-        # H.spiders(0, len(diagram.dom), Ty("io")).to_diagram() >>
+        H.spiders(0, 1, diagram.dom).to_diagram() >>
         diagram >>
         H.spiders(len(diagram.cod), 1, Ty("io")).to_diagram())
 

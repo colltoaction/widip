@@ -1,5 +1,5 @@
-!unit {}: monoid
+? !unit
+  {}: monoid
+
 ? !product
-  ? monoid
-  ? monoid
-: monoid
+  { monoid, monoid }: monoid

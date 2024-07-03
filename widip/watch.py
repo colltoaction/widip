@@ -58,10 +58,10 @@ def stream_main(stream):
 
 def stream_to_diagram(line):
     stream_d = stream_diagram(line)
-    stream_d = Id().tensor(*(
-                Spider(0, 1, x)
-                for x in stream_d.dom
-            )) >> stream_d
+    # stream_d = Id().tensor(*(
+    #             Spider(0, 1, x)
+    #             for x in stream_d.dom
+    #         )) >> stream_d
     # close_ty_f
     # line_d = replace_id_f("io")(line_d)
     # stream_d.draw()

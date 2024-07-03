@@ -104,19 +104,6 @@ def glue_diagrams(left, right):
     ).to_diagram()
     return glued
 
-def glue_all_diagrams(file_diagrams) -> Diagram:
-    i = 0
-    diagram = None
-    for d in file_diagrams:
-        if i == 0:
-            diagram = d
-        else:
-            diagram = glue_diagrams(diagram, d)
-        i += 1
-    if i == 0:
-        return Id()
-    return diagram
-
 def replace_id_f(name):
     return Functor(
         lambda ob: replace_id_ty(ob, name),

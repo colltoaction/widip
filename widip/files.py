@@ -1,19 +1,18 @@
 import pathlib
-from typing import Iterator
 
-import yaml
 import discopy
-from discopy.frobenius import Ty, Diagram, Box, Id, Spider, Functor
+from discopy.frobenius import Ty, Diagram, Box, Id, Functor
 
-from .loader import HypergraphLoader
-from .composing import glue_all_diagrams, replace_id_f
+from .composing import replace_id_f
+from .loader import compose_all
 
 
 def stream_diagram(stream):
     """a glued sequence of diagrams"""
     """consume the input stream producing one diagram at a time"""
-    file_diagrams = yaml.compose_all(stream, Loader=HypergraphLoader)
-    file_diagrams = glue_all_diagrams(file_diagrams)
+    file_diagrams = compose_all(stream)
+    file_diagrams = Functor(lambda x: x,
+                            lambda b: Id(b.dom) if b.name == "!" else b)(file_diagrams)
     return file_diagrams
 
 def files_ar(ar: Box) -> Diagram:

@@ -1,3 +1,4 @@
+from yaml import compose_all as yaml_compose_all
 from yaml.reader import *
 from yaml.scanner import *
 from yaml.parser import *
@@ -10,6 +11,15 @@ from yaml.composer import ComposerError
 from discopy.frobenius import Hypergraph as H, Id, Ob, Ty, Box, Spider
 
 from .composing import glue_diagrams
+
+
+def compose_all(stream):
+    diagrams = yaml_compose_all(stream, Loader=HypergraphLoader)
+    # glueing between diagrams
+    gbox = Box("glue_diagrams", Ty("left") @ Ty("right"), Ty(""))
+    diagrams = Id().tensor(*diagrams)
+    cbox = Box("compose_node", Ty("stream"), diagrams.dom)
+    return diagrams
 
 class HypergraphComposer:
 
@@ -54,13 +64,7 @@ class HypergraphComposer:
         # Drop the DOCUMENT-START event.
         self.get_event()
 
-        # Compose the root node.
-        tag = (self.peek_event().tag or "").lstrip("!")
-        node = self.compose_node(tag, None)
-        if tag:
-            # b = Id().tensor(*(Spider(0, 1, x) for x in node.dom))
-            b = Box(tag, node.dom, node.dom)
-            node = b >> node
+        node = self.compose_node(None, None)
 
         # Drop the DOCUMENT-END event.
         self.get_event()
@@ -95,8 +99,15 @@ class HypergraphComposer:
 
     def compose_scalar_node(self, parent, anchor):
         event = self.get_event()
-        if event.value:
+        tag = event_tag(event) or ""#"str"
+        if event.value and tag:
+            node = Box(tag, Ty(str(event.value)), Ty(str(event.value)))
+        elif event.value:
             node = Id(str(event.value))
+        elif event.tag:
+            node = Box(tag, Ty(""), Ty(""))
+        # elif not event.tag:
+        #     return Id("")
         else:
             node = Id("")
 
@@ -107,73 +118,59 @@ class HypergraphComposer:
     def compose_sequence_node(self, parent, anchor):
         """becomes a set of equations l0->l1, l1->l2,... in a symmetric monoidal theory"""
         start_event = self.get_event()
-        tag = (start_event.tag or "").lstrip("!")
+        tag = event_tag(start_event) or ""#"seq"
         if anchor is not None:
             self.anchors[anchor] = node
         index = 0
         node = None
-        prev_value_tag = None
+        # prev_value_tag = None
         while not self.check_event(SequenceEndEvent):
-            value_tag = (self.peek_event().tag or "").lstrip("!")
+            # value_tag = event_tag(self.peek_event())
             value = self.compose_node(parent, index)
             if index == 0:
                 node = value
             else:
-                if prev_value_tag:
-                    b = Box(prev_value_tag, node.cod, node.cod)
-                    node = node >> b
+                # if prev_value_tag:
+                #     b = Box(prev_value_tag, node.cod, node.cod)
+                #     node = node >> b
                 node = glue_diagrams(node, value)
-            prev_value_tag = value_tag
+            # prev_value_tag = value_tag
             index += 1
         end_event = self.get_event()
         node.end_mark = end_event.end_mark
 
         if index == 0:
             return Id()
-        elif prev_value_tag:
-            b = Box(prev_value_tag, node.cod, node.cod)
-            node = node >> b
+        # elif prev_value_tag:
+        #     b = Box(prev_value_tag, node.cod, node.cod)
+        # node = node >> b
         return node
 
 
     def compose_mapping_node(self, parent, anchor):
         """becomes a set of equations l->r in a symmetric monoidal theory"""
         start_event = self.get_event()
-        tag = (start_event.tag or "").lstrip("!")
+        tag = event_tag(start_event) or "map"
         index = 0
         node = None
+        lefts, rights = [], []
         if anchor is not None:
             self.anchors[anchor] = node
         while not self.check_event(MappingEndEvent):
-            left_tag = (self.peek_event().tag or "").lstrip("!")
+
+            # TODO mapping entries
+
+            # left_tag = event_tag(self.peek_event())
             left = self.compose_node(tag, None)
-            right_tag = (self.peek_event().tag or "").lstrip("!")
+            # right_tag = event_tag(self.peek_event())
             right = self.compose_node(tag, left)
 
-            kv = None
-            if left_tag and right_tag:
-                bk = Box(left_tag, left.cod, right.dom)
-                bv = Box(right_tag, right.cod, right.dom)
-                left = left >> bk
-                right = right >> bv
-                kv = glue_diagrams(left, right)
-            elif left_tag and right == Id(Ty("")):
-                # empty-valued entry case
-                # left = Id().tensor(*(Spider(0, 1, x) for x in left.dom))
-                b = Box(left_tag, left.cod, right.dom)
-                kv = left >> b >> right
-            elif left_tag:
-                b = Box(left_tag, left.cod, right.dom)
-                kv = left >> b >> right
-            elif right_tag:
-                b = Box(right_tag, left.cod, right.dom)
-                kv = left >> b >> right
-            elif right == Id(Ty("")):
-                # empty-valued entry case
+            # e.g a set
+            if right == Id(""):
                 kv = left
             else:
-                kv = glue_diagrams(left, right)
-            
+                kv = left >> Box(tag, left.cod, right.dom) >> right
+
             if index == 0:
                 node = kv
             else:
@@ -195,3 +192,7 @@ class HypergraphLoader(Reader, Scanner, Parser, HypergraphComposer, SafeConstruc
         SafeConstructor.__init__(self)
         Resolver.__init__(self)
 
+def event_tag(event):
+    match event.tag:
+        case None | "" | "!": return None
+        case t: return t.lstrip("!")
