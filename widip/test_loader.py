@@ -2,7 +2,7 @@ import yaml
 
 from discopy.frobenius import Box, Ty, Diagram, Spider, Id, Spider
 
-from loader import HypergraphLoader
+from .loader import HypergraphLoader
 
 
 u = Ty("unit")

@@ -37,6 +37,6 @@ def shell_ar(ar: Box) -> Arrow:
 # TODO IOs don't compose
 shell_f = Functor(
     # TODO sometimes return x sometimes io
-    lambda x: x if x.name != "" else Ty(),
+    lambda x: x if x != Ty("") else Ty(),
     # lambda x: x,
     shell_ar,)

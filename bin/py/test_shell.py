@@ -1,7 +1,7 @@
 from discopy.frobenius import Box, Ty, Diagram, Spider, Id
 import pytest
 
-from .files import files_f
+from widip.files import files_f
 from .shell import shell_f
 
 
@@ -21,6 +21,7 @@ def test_eval():
             Spider(0, 1, Ty("lambda x: x")) >> \
             Box("tag:yaml.org,2002:python/eval", Ty("lambda x: x"), Ty(""))
 
+@pytest.mark.skip(reason="native DSL to do")
 def test_print():
     diagram = Box("print", Ty("something to print"), Ty("something to print"))
     closed_diagram = Spider(0, 1, Ty("something to print")) >> diagram

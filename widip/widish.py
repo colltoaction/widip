@@ -58,7 +58,7 @@ class IOProcess:
         assert box.dom[0] == Ty("io")
         assert box.cod == Ty("io")
         self.spider_processes = spider_processes
-        self.popen_args = [box.name, *(t.name for t in box.dom[1:])]
+        self.popen_args = [box.name, *("" if t == Ty() else t.name for t in box.dom[1:])]
         self.pipe_in, self.pipe_out = Pipe(duplex=False)
 
     def communicate(self, input):

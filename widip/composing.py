@@ -10,7 +10,7 @@ def adapt_to_interface(diagram, box):
             adapter_hypergraph(diagram, right)
 
 def adapter_hypergraph(left, right):
-    mid = Ty(*set(left.cod.inside + right.dom.inside))
+    mid = Ty().tensor(*set(left.cod + right.dom))
     mid_to_left_ports = {
         t: tuple(i for i, lt in enumerate(left.cod) if lt == t)
         for t in mid}
@@ -18,7 +18,7 @@ def adapter_hypergraph(left, right):
         t: tuple(i + len(left.cod) for i, lt in enumerate(right.dom) if lt == t)
         for t in mid}
     boxes = tuple(
-        Id(Ty(*tuple(t.name for _ in range(len(mid_to_left_ports[t])))))
+        Id(Ty().tensor(*(t for _ in range(len(mid_to_left_ports[t])))))
         if len(mid_to_left_ports[t]) == len(mid_to_right_ports[t]) else
         Spider(
             len(mid_to_left_ports[t]),
@@ -43,40 +43,40 @@ def glue_diagrams(left, right):
     """glues two diagrams sequentially with frobenius generators"""
     l_dom, l_cod, r_dom, r_cod = left.dom, left.cod, right.dom, right.cod
     dw_l = {
-        t.name
+        t
         for t in l_cod
         if t not in r_dom}
     dw_r = {
-        t.name
+        t
         for t in r_dom
         if t not in l_cod}
     cw_l = {
-        t.name
+        t
         for t in l_cod
         if t in r_dom}
     cw_r = {
-        t.name
+        t
         for t in r_dom
         if t in l_cod}
     # TODO convention for repeated in both sides
-    mid_names = tuple({t.name for t in l_cod + r_dom})
+    mid_names = tuple({t for t in l_cod + r_dom})
     dom_wires = l_dom_wires = tuple(
         i
         for i in range(len(l_dom) + len(dw_r))
     )
     l_cod_wires = tuple(
-        (mid_names.index(t.name)
+        (mid_names.index(t)
         + len(l_dom) + len(dw_r))
         for t in l_cod) + \
         tuple(
-            (mid_names.index(n) + len(l_dom) + len(dw_r))
-            for n in dw_r
+            (mid_names.index(t) + len(l_dom) + len(dw_r))
+            for t in dw_r
         )
     r_dom_wires = tuple(
-            (mid_names.index(n) + len(l_dom) + len(dw_r))
-            for n in dw_l) + \
+            (mid_names.index(t) + len(l_dom) + len(dw_r))
+            for t in dw_l) + \
         tuple(
-            (mid_names.index(t.name)
+            (mid_names.index(t)
             + len(l_dom) + len(dw_r))
             for t in r_dom
         )
@@ -87,11 +87,11 @@ def glue_diagrams(left, right):
         for i in range(len(dw_l) + len(r_cod))
     )
     glued = H(
-        dom=l_dom @ Ty(*dw_r),
-        cod=Ty(*dw_l) @ r_cod,
+        dom=l_dom @ Ty().tensor(*dw_r),
+        cod=Ty().tensor(*dw_l) @ r_cod,
         boxes=(
-            left @ Ty(*dw_r),
-            Ty(*dw_l) @ right,
+            left @ Ty().tensor(*dw_r),
+            Ty().tensor(*dw_l) @ right,
         ),
         wires=(
             dom_wires,
@@ -129,7 +129,7 @@ def replace_id_box(box, name):
         replace_id_ty(box.cod, name))
 
 def replace_id_ty(ty, name):
-    return Ty(*("" if x.name == name else x.name for x in ty.inside))
+    return Ty().tensor(*(Ty("") if t == Ty(name) else t for t in ty))
 
 def close_ty_f(name):
     return Functor(
@@ -137,12 +137,12 @@ def close_ty_f(name):
         lambda ar: close_ty_box(ar, name),)
 
 def close_ty_box(box, name):
-    l = Ty(*(
-        x.name for x in box.dom
-        if x.name != name))
-    r = Ty(*(
-        x.name for x in box.cod
-        if x.name != name))
+    l = Ty().tensor(*(
+        t for t in box.dom
+        if t != Ty(name)))
+    r = Ty().tensor(*(
+        t for t in box.cod
+        if t != Ty(name)))
     # box.draw()
     box.draw()
     closed = adapt_to_interface(box, Box("", l, r))
@@ -150,4 +150,4 @@ def close_ty_box(box, name):
     return closed
 
 def close_ty(ty, name):
-    return Ty() if ty.name == name else ty
+    return Ty() if ty == Ty(name) else ty

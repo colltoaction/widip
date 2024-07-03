@@ -9,5 +9,5 @@ def replace_arrow(ar: Arrow, name) -> Functor:
         Box(name, box.dom, box.cod): box
         for box in ar.boxes}
     return Functor(
-        lambda ob: "" if ob.name == name else ob,
+        lambda ob: Ty("") if ob == Ty(name) else ob,
         lambda ar: boxes.get(ar, ar))

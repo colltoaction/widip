@@ -15,12 +15,12 @@ class PyFunction(python.Function):
         def inside(*xs):
             assert len(xs) == n_legs_in
             if n_legs_in == 0:
-                xs = tuple(x.name for x in typ)
+                xs = tuple("" if x == Ty() else x.name for x in typ)
             return n_legs_out * xs
         return PyFunction(
             inside=inside,
-            dom=Ty(*(n_legs_in * typ.inside)),
-            cod=Ty(*(n_legs_out * typ.inside)),)
+            dom=Ty().tensor(*(typ for _ in range(n_legs_in))),
+            cod=Ty().tensor(*(typ for _ in range(n_legs_out))),)
 
 
 def input_ar(prompt):
