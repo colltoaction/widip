@@ -68,9 +68,12 @@ class IOProcess:
         for p in self.spider_processes:
             o += p.communicate(input)
         # print(o, self.popen_args)
-        popen = Popen(self.popen_args, stdin=PIPE, stdout=PIPE, text=True)
-        (o, _) = popen.communicate(o)
-        # print(o, self.popen_args)
+        try:
+            popen = Popen(self.popen_args, stdin=PIPE, stdout=PIPE, text=True)
+            (o, _) = popen.communicate(o)
+        except PermissionError:
+            # read the file in case it's not an executable
+            o = "\n".join(open(self.popen_args[0]).readlines())
         return o
 
 
