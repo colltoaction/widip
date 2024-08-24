@@ -1,6 +1,8 @@
 Widip
 -----
 
+> _Types? Where we're going, we don't need types!_
+
 Widip is an [interactive environment] for computing in modern systems. Many long-standing systems have thrived thanks to a uniform metaphor, which in our case is wiring diagrams.
 
 System|Metaphor
