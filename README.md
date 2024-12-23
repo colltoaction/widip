@@ -5,11 +5,11 @@ Widip
 
 Widip is an [interactive environment] for computing in modern systems. Many long-standing systems have thrived thanks to a uniform metaphor, which in our case is wiring diagrams.
 
-System|Metaphor
-------|--------
-Widip|Wiring Diagram
-UNIX|File
-Lisp|List
+System   |Metaphor
+---------|--------------
+Widip    |Wiring Diagram
+UNIX     |File
+Lisp     |List
 Smalltalk|Object
 
 ![](examples/typical-vscode-setup.png)
@@ -40,8 +40,6 @@ Widis are great for communication and this is a very convenient workflow for git
 
 ## For UNIX programming
 The lightweight `widish` [UNIX shell] works everywhere from developer workstations to cloud environments to production servers. Processes that read and write YAML document streams are first-class citizens. With this practical approach users can write programs in the same language of widis.
-
-Start with [widish/examples](widish/examples).
 
 ## For graphical programming
 Programming is hard, but it shouldn't be _that_ hard.

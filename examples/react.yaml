@@ -1,9 +1,8 @@
 video:
   ? !div
     ? !Thumbnail video
-    ? !Video video
-    : ? !a
-        ? !href url
-        ? !h3 title
-        ? !p description
+    ? !a
+      !url video: href
+      !title video: !h1
+      !description video: !p
     ? !LikeButton video

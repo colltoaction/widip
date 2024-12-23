@@ -1,8 +1,7 @@
 import sys
 import warnings
 
-from .watch import watch_main, shell_main
-from .widish import widish_main
+from .watch import watch_main, shell_main, widish_main
 
 
 warnings.filterwarnings("ignore")

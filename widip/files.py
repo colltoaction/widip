@@ -4,13 +4,13 @@ import discopy
 from discopy.frobenius import Ty, Diagram, Box, Id, Functor
 
 from .composing import replace_id_f
-from .loader import compose_all
+from .loader import repl_read
 
 
 def stream_diagram(stream):
     """a glued sequence of diagrams"""
     """consume the input stream producing one diagram at a time"""
-    file_diagrams = compose_all(stream)
+    file_diagrams = repl_read(stream)
     file_diagrams = Functor(lambda x: x,
                             lambda b: Id(b.dom) if b.name == "!" else b)(file_diagrams)
     return file_diagrams

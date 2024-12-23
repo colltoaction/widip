@@ -1,4 +1,2 @@
 !counit comonoid: {}
-!coproduct comonoid:
-  ? comonoid
-  ? comonoid
+!coproduct comonoid: { comonoid, comonoid }

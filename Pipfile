@@ -4,8 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-networkx = "*"
-pyyaml = "*"
+nx-yaml = "*"
 
 [dev-packages]
 pytest = "*"
