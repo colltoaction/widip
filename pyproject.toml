@@ -7,10 +7,10 @@ packages = ["."]
 
 [project]
 name = "widip"
-version = "0.0.2"
+version = "0.0.3"
 description = "Widip is an interactive environment for computing with wiring diagrams in modern systems"
 dependencies = [
-  "discopy>=1.1.7", "pyyaml>=6.0.1", "watchdog>=4.0.1",
+  "discopy>=1.1.7", "pyyaml>=6.0.1", "watchdog>=4.0.1", "nx-yaml",
 ]
 
 [project.urls]

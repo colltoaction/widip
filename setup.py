@@ -5,7 +5,7 @@ data_files = []
 
 setuptools.setup(
     name="widip",
-    version="0.0.2",
+    version="0.0.3",
     author="Martin Coll",
     author_email="mcoll@dc.uba.ar",
     description="Widip is an interactive environment for computing with wiring diagrams in modern systems",
