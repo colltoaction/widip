@@ -11,8 +11,8 @@ def stream_diagram(stream):
     """a glued sequence of diagrams"""
     """consume the input stream producing one diagram at a time"""
     file_diagrams = repl_read(stream)
-    file_diagrams = Functor(lambda x: x,
-                            lambda b: Id(b.dom) if b.name == "!" else b)(file_diagrams)
+    # file_diagrams = Functor(lambda x: x,
+    #                         lambda b: Id(b.dom) if b.name == "!" else b)(file_diagrams)
     return file_diagrams
 
 def files_ar(ar: Box) -> Diagram:
@@ -29,8 +29,8 @@ def files_ar(ar: Box) -> Diagram:
 def file_diagram(file_name) -> Diagram:
     try:
         path = pathlib.Path(file_name)
-        fd = stream_diagram(path.open())
-        fd = replace_id_f(path.stem)(fd)
+        fd = stream_diagram(path.read_text())
+        # fd = replace_id_f(path.stem)(fd)
         fd.draw(path=str(path.with_suffix(".jpg")))
         return fd
     except discopy.utils.AxiomError:
