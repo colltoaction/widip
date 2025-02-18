@@ -27,15 +27,17 @@ def _incidences_to_diagram(node, index):
     tag = (node.nodes[index+1].get("tag") or "")[1:]
     if node.nodes[index+1]["kind"] == "scalar":
         v = node.nodes[index+1]["value"]
-        if not v:
-            return Id()
+        if not tag and not v:
+            return Id("")
+        if not tag:
+            return Id(v)
         # if not tag:
-        return Box(v, Ty(""), Ty(""))
+        return Box(tag, Ty(v), Ty(v))
         return Id(v)
         # return Bubble(Box(v, Ty(tag), Ty(tag)), drawing_name=tag)
     # TODO
     if node.nodes[index+1]["kind"] == "sequence":
-        ob = Id(tag)
+        ob = Id()
         # assert len(node.predecessors(edge)) == 1
         # index+1 = next(iter(node.predecessors(edge)))
         # assert len(node.out_edges(index+1)) == 1
@@ -50,12 +52,14 @@ def _incidences_to_diagram(node, index):
             # #     value = Box(ktag, value.dom, value.dom) >> value
             # elif not ktag and vtag:
             #     value = value >> Box(vtag, value.cod, value.cod)
-            value = Bubble(value, dom=ob.cod, drawing_name=vtag)
-            ob = ob >> value
+            if ob == Id():
+                ob = value
+            else:
+                ob = ob >> Box("", ob.cod, value.dom) >> value
             ktag = vtag
         # if tag:
         #     return Bubble(ob, drawing_name=tag)
-        return ob
+        return ob.bubble(drawing_name=tag)
     if node.nodes[index+1]["kind"] == "mapping":
         ob = Id()
         keys = Id()
@@ -83,13 +87,14 @@ def _incidences_to_diagram(node, index):
             #     key_cod = key.cod
             #     key = key >> Box(ktag, key_cod, Ty(""))
             #     value = Box(vtag, Ty(""), value.dom) >> value
-            if ktag:
-                key = Bubble(key, drawing_name=ktag)
-            if vtag:
-                value = Bubble(value, drawing_name=vtag)
+            # if ktag:
+            #     key = Bubble(key, drawing_name=ktag)
+            # if vtag:
+            #     value = Bubble(value, drawing_name=vtag)
                 # elif vtag and not value:
                 #     kv = kv >> Box(vtag, kv.cod, kv.cod) >> value
-            kv = glue_diagrams(key, value)
+            
+            kv = key >> Box("", key.cod, value.dom) >> value
             ob @= kv
             keys @= key
             values @= value
@@ -100,7 +105,9 @@ def _incidences_to_diagram(node, index):
         #     return keys >> Box(tag, keys.cod, values.dom) >> values
         # if tag:
         #     return Bubble(ob, drawing_name=tag)
-        return ob
+        if ob == Id():
+            return ob
+        return ob.bubble(drawing_name=tag)
         if values:
             if keys.cod == values.dom:
                 return keys >> values
