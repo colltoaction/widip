@@ -1,4 +1,0 @@
-!dom arrow: object
-!cod arrow: object
-!id object: arrow
-!compose { arrow, arrow }: arrow

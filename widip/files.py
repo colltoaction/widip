@@ -3,17 +3,8 @@ import pathlib
 import discopy
 from discopy.frobenius import Ty, Diagram, Box, Id, Functor
 
-from .composing import replace_id_f
 from .loader import repl_read
 
-
-def stream_diagram(stream):
-    """a glued sequence of diagrams"""
-    """consume the input stream producing one diagram at a time"""
-    file_diagrams = repl_read(stream)
-    # file_diagrams = Functor(lambda x: x,
-    #                         lambda b: Id(b.dom) if b.name == "!" else b)(file_diagrams)
-    return file_diagrams
 
 def files_ar(ar: Box) -> Diagram:
     """Uses IO to read a file or dir with the box name as path"""
@@ -29,7 +20,7 @@ def files_ar(ar: Box) -> Diagram:
 def file_diagram(file_name) -> Diagram:
     try:
         path = pathlib.Path(file_name)
-        fd = stream_diagram(path.read_text())
+        fd = repl_read(path.read_text())
         # fd = replace_id_f(path.stem)(fd)
         fd.draw(path=str(path.with_suffix(".jpg")))
         return fd
