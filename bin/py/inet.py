@@ -94,24 +94,24 @@ def annihilate_concon_or_dupdup(inet: nx.MultiGraph):
         wc2 = inet_find_wire(inet, c, 2)
         wd1 = inet_find_wire(inet, d, 1)
         wd2 = inet_find_wire(inet, d, 2)
-        # isolate old combinators
-        inet.remove_edges_from(list(inet.edges(u, keys=True)))
-        inet.remove_edges_from(list(inet.edges(c, keys=True)))
-        inet.remove_edges_from(list(inet.edges(d, keys=True)))
-        # isolate old combinators
         w1 = inet.number_of_nodes()
         w2 = w1 + 1
         inet.add_node(w1, bipartite=0)
         inet.add_node(w2, bipartite=0)
         inet.add_edges_from(list((w1, y, z) for _, y, z in inet.edges(wc1, keys=True)))
-        inet.add_edges_from(list((w1, y, z) for _, y, z in inet.edges(wd1, keys=True)))
-        inet.add_edges_from(list((w2, y, z) for _, y, z in inet.edges(wc2, keys=True)))
+        inet.add_edges_from(list((w2, y, z) for _, y, z in inet.edges(wd1, keys=True)))
+        inet.add_edges_from(list((w1, y, z) for _, y, z in inet.edges(wc2, keys=True)))
         inet.add_edges_from(list((w2, y, z) for _, y, z in inet.edges(wd2, keys=True)))
         # isolate old wires
         inet.remove_edges_from(list(inet.edges(wc1, keys=True)))
         inet.remove_edges_from(list(inet.edges(wc2, keys=True)))
         inet.remove_edges_from(list(inet.edges(wd1, keys=True)))
         inet.remove_edges_from(list(inet.edges(wd2, keys=True)))
+        # isolate old combinators
+        inet.remove_edges_from(list(inet.edges(u, keys=True)))
+        inet.remove_edges_from(list(inet.edges(c, keys=True)))
+        inet.remove_edges_from(list(inet.edges(d, keys=True)))
+        return
 
 def inet_add_erase(inet: nx.MultiGraph):
     n = inet.number_of_nodes()
