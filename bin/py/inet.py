@@ -17,38 +17,45 @@ def find_active_wires(inet: nx.MultiGraph):
     erase_erase = []
     concon_or_dupdup = []
     condup_erase = []
-    for u, d in inet.nodes(data=True):
+    for u in inet.nodes:
         # u is a wire
-        if d["bipartite"] == 0:
-            # u connects two combinators
-            if len(inet[u]) == 2:
-                c1, c2 = inet[u]
-                # u connects two principal ports at index 0
-                if c1 != c2 and \
-                    0 in inet[u][c1] and \
-                    0 in inet[u][c2]:
-                    c1tag = inet.nodes[c1]["tag"]
-                    c2tag = inet.nodes[c2]["tag"]
-                    if (c1tag, c2tag) == ("erase", "erase"):
-                        erase_erase.append([u, c1, 0])
-                        erase_erase.append([u, c2, 0])
-                    if (c1tag, c2tag) == ("construct", "duplicate"):
-                        construct_duplicate.append((u, c1, c2))
-                    if (c1tag, c2tag) == ("duplicate", "construct"):
-                        construct_duplicate.append((u, c2, c1))
-                    if (c1tag, c2tag) == ("duplicate", "duplicate"):
-                        concon_or_dupdup.append((u, c1, c2))
-                    if (c1tag, c2tag) == ("construct", "construct"):
-                        concon_or_dupdup.append((u, c1, c2))
-                    if (c1tag, c2tag) == ("construct", "erase"):
-                        condup_erase.append((u, c1, c2))
-                    if (c1tag, c2tag) == ("erase", "construct"):
-                        condup_erase.append((u, c2, c1))
-                    if (c1tag, c2tag) == ("duplicate", "erase"):
-                        condup_erase.append((u, c1, c2))
-                    if (c1tag, c2tag) == ("erase", "duplicate"):
-                        condup_erase.append((u, c2, c1))
+        if is_active_wire(inet, u):
+            c1, c2 = inet[u]
+            c1tag = inet.nodes[c1]["tag"]
+            c2tag = inet.nodes[c2]["tag"]
+            if (c1tag, c2tag) == ("erase", "erase"):
+                erase_erase.append([u, c1, 0])
+                erase_erase.append([u, c2, 0])
+            if (c1tag, c2tag) == ("construct", "duplicate"):
+                construct_duplicate.append((u, c1, c2))
+            if (c1tag, c2tag) == ("duplicate", "construct"):
+                construct_duplicate.append((u, c2, c1))
+            if (c1tag, c2tag) == ("duplicate", "duplicate"):
+                concon_or_dupdup.append((u, c1, c2))
+            if (c1tag, c2tag) == ("construct", "construct"):
+                concon_or_dupdup.append((u, c1, c2))
+            if (c1tag, c2tag) == ("construct", "erase"):
+                condup_erase.append((u, c1, c2))
+            if (c1tag, c2tag) == ("erase", "construct"):
+                condup_erase.append((u, c2, c1))
+            if (c1tag, c2tag) == ("duplicate", "erase"):
+                condup_erase.append((u, c1, c2))
+            if (c1tag, c2tag) == ("erase", "duplicate"):
+                condup_erase.append((u, c2, c1))
     return construct_duplicate, erase_erase, condup_erase, concon_or_dupdup
+
+def is_active_wire(inet: nx.MultiGraph, u):
+    d = inet.nodes[u]
+    if d["bipartite"] == 0:
+        # u connects two combinators
+        if len(inet[u]) == 2:
+            c1, c2 = inet[u]
+            # u connects two principal ports at index 0
+            if c1 != c2 and \
+                0 in inet[u][c1] and \
+                0 in inet[u][c2]:
+                return True
+    return False
 
 def annihilate_erase_erase(inet: nx.MultiGraph):
     _, active_wires, _, _ = find_active_wires(inet)
