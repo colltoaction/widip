@@ -88,7 +88,7 @@ def test_franchus_inet():
     annihilate_concon_or_dupdup(inet)
     assert len(inet.edges) == 4
     # self reference multiedge
-    assert len(inet[42][19]) == 2
+    assert len(inet[40][19]) == 2
     commute_condup_erase(inet)
     assert len(inet.edges) == 2
     annihilate_erase_erase(inet)

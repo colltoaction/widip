@@ -96,20 +96,23 @@ def commute_condup_erase(inet: nx.MultiDiGraph):
 def annihilate_concon_or_dupdup(inet: nx.MultiDiGraph):
     _, _, _, active_wires = find_active_wires(inet)
     for u, c, d in active_wires:
-        wc1 = inet_remove_wire_from_port(inet, c, 1)
-        wc2 = inet_remove_wire_from_port(inet, c, 2)
-        wd1 = inet_remove_wire_from_port(inet, d, 1)
-        wd2 = inet_remove_wire_from_port(inet, d, 2)
+        wc1 = inet_find_wire(inet, c, 1)
+        wc2 = inet_find_wire(inet, c, 2)
+        wd1 = inet_find_wire(inet, d, 1)
+        wd2 = inet_find_wire(inet, d, 2)
         w1 = inet.number_of_nodes()
         w2 = w1 + 1
+        # repeated wire
+        if len({wc1, wc2, wd1, wd2}) < 4:
+            w2 = w1
         inet.add_node(w1, bipartite=0)
         inet.add_node(w2, bipartite=0)
         inet.add_edges_from(list((y, w1, z) for y, _, z in inet.in_edges(wc1, keys=True)))
         inet.add_edges_from(list((w1, y, z) for _, y, z in inet.out_edges(wc1, keys=True)))
-        inet.add_edges_from(list((y, w2, z) for y, _, z in inet.in_edges(wd1, keys=True)))
-        inet.add_edges_from(list((w2, y, z) for _, y, z in inet.out_edges(wd1, keys=True)))
-        inet.add_edges_from(list((y, w1, z) for y, _, z in inet.in_edges(wc2, keys=True)))
-        inet.add_edges_from(list((w1, y, z) for _, y, z in inet.out_edges(wc2, keys=True)))
+        inet.add_edges_from(list((y, w1, z) for y, _, z in inet.in_edges(wd1, keys=True)))
+        inet.add_edges_from(list((w1, y, z) for _, y, z in inet.out_edges(wd1, keys=True)))
+        inet.add_edges_from(list((y, w2, z) for y, _, z in inet.in_edges(wc2, keys=True)))
+        inet.add_edges_from(list((w2, y, z) for _, y, z in inet.out_edges(wc2, keys=True)))
         inet.add_edges_from(list((y, w2, z) for y, _, z in inet.in_edges(wd2, keys=True)))
         inet.add_edges_from(list((w2, y, z) for _, y, z in inet.out_edges(wd2, keys=True)))
         # isolate old wires
