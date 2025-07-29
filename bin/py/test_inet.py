@@ -2,19 +2,8 @@ import networkx as nx
 from .inet import *
 
 
-
-def test_self_connect_secondary_ports():
-    inet = nx.MultiGraph()
-    c = inet_add_construct(inet)
-    inet_connect_ports(inet, (c, 1), (c, 2))
-    assert len(inet.nodes) == 5
-    assert len(inet.edges) == 3
-    # multiedge
-    assert len(inet[4][0]) == 2
-
-
 def test_connect_ports():
-    inet = nx.MultiGraph()
+    inet = nx.MultiDiGraph()
     c = inet_add_construct(inet)
     d = inet_add_duplicate(inet)
     assert len(inet.nodes) == 8
@@ -26,8 +15,18 @@ def test_connect_ports():
     assert len(inet.edges) == 7
 
 
+def test_self_connect_secondary_ports():
+    inet = nx.MultiDiGraph()
+    c = inet_add_construct(inet)
+    inet_connect_ports(inet, (c, 1), (c, 2))
+    assert len(inet.nodes) == 5
+    assert len(inet.edges) == 3
+    # multiedge
+    assert len(inet[4][0]) == 2
+
+
 def test_annihilate_erase_erase():
-    inet = nx.MultiGraph()
+    inet = nx.MultiDiGraph()
     u = inet_add_erase(inet)
     v = inet_add_erase(inet)
     inet_connect_ports(inet, (u, 0), (v, 0))
@@ -36,7 +35,7 @@ def test_annihilate_erase_erase():
 
 
 def test_commute_construct_duplicate():
-    inet = nx.MultiGraph()
+    inet = nx.MultiDiGraph()
     u = inet_add_construct(inet)
     v = inet_add_duplicate(inet)
     inet_connect_ports(inet, (u, 0), (v, 0))
@@ -44,19 +43,53 @@ def test_commute_construct_duplicate():
     assert len(inet.edges) == 12
 
 
+def test_annihilate_construct_construct():
+    inet = nx.MultiDiGraph()
+    u = inet_add_construct(inet)
+    v = inet_add_construct(inet)
+    inet_connect_ports(inet, (u, 0), (v, 0))
+    annihilate_concon_or_dupdup(inet)
+    assert len(inet.edges) == 0
+
+
+def test_annihilate_duplicate_duplicate():
+    inet = nx.MultiDiGraph()
+    u = inet_add_duplicate(inet)
+    v = inet_add_duplicate(inet)
+    inet_connect_ports(inet, (u, 0), (v, 0))
+    annihilate_concon_or_dupdup(inet)
+    assert len(inet.edges) == 0
+
+
+def test_annihilate_duplicate_duplicate_2():
+    inet = nx.MultiDiGraph()
+    u = inet_add_duplicate(inet)
+    v = inet_add_duplicate(inet)
+    e = inet_add_erase(inet)
+    inet_connect_ports(inet, (u, 0), (v, 0))
+    inet_connect_ports(inet, (u, 1), (e, 0))
+    annihilate_concon_or_dupdup(inet)
+    assert len(inet.edges) == 1
+
+
 def test_franchus_inet():
-    inet = nx.MultiGraph()
+    inet = nx.MultiDiGraph()
     u = inet_add_construct(inet)
     v = inet_add_duplicate(inet)
     w = inet_add_construct(inet)
+    e = inet_add_erase(inet)
     inet_connect_ports(inet, (u, 0), (v, 0))
     inet_connect_ports(inet, (u, 1), (u, 2))
     inet_connect_ports(inet, (v, 1), (w, 1))
     inet_connect_ports(inet, (v, 2), (w, 0))
+    inet_connect_ports(inet, (e, 0), (w, 2))
     commute_construct_duplicate(inet)
-    # TODO this applies both but we might want
-    # to do one reduction at a time
     annihilate_concon_or_dupdup(inet)
-    assert len(inet.edges) == 3
+    annihilate_concon_or_dupdup(inet)
+    assert len(inet.edges) == 4
     # self reference multiedge
-    assert len(inet[16][37]) == 2
+    assert len(inet[42][19]) == 2
+    commute_condup_erase(inet)
+    assert len(inet.edges) == 2
+    annihilate_erase_erase(inet)
+    assert len(inet.edges) == 0

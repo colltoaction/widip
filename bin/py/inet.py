@@ -1,17 +1,21 @@
 """
 A crude implementation of interaction nets
-using NetworkX's MultiGraph with bipartite node structure:
+using NetworkX's MultiDiGraph with bipartite node structure:
 * a node for each combinator
 * a node for each wire
 * each combinator is connected to one wire per port
 * each wire is connected to one or two combinators
 * a loop in a combinator require a multiedge
 * disconnected wires and combinators are garbage
+
+Directedness is added for rendering purposes:
+* the key 0 is the principal wire and is always combinator->wire
+* the keys 1 and 2 are the secondary wires and always wire->combinator
 """
 import networkx as nx
 
 
-def find_active_wires(inet: nx.MultiGraph):
+def find_active_wires(inet: nx.MultiDiGraph):
     """Find all wires where interaction rules can be applied"""
     construct_duplicate = []
     erase_erase = []
@@ -20,12 +24,12 @@ def find_active_wires(inet: nx.MultiGraph):
     for u in inet.nodes:
         # u is a wire
         if is_active_wire(inet, u):
-            c1, c2 = inet[u]
+            (c1, _), (c2, _) = inet.in_edges(u)
             c1tag = inet.nodes[c1]["tag"]
             c2tag = inet.nodes[c2]["tag"]
             if (c1tag, c2tag) == ("erase", "erase"):
-                erase_erase.append([u, c1, 0])
-                erase_erase.append([u, c2, 0])
+                erase_erase.append([c1, u, 0])
+                erase_erase.append([c2, u, 0])
             if (c1tag, c2tag) == ("construct", "duplicate"):
                 construct_duplicate.append((u, c1, c2))
             if (c1tag, c2tag) == ("duplicate", "construct"):
@@ -44,24 +48,19 @@ def find_active_wires(inet: nx.MultiGraph):
                 condup_erase.append((u, c2, c1))
     return construct_duplicate, erase_erase, condup_erase, concon_or_dupdup
 
-def is_active_wire(inet: nx.MultiGraph, u):
+def is_active_wire(inet: nx.MultiDiGraph, u):
     d = inet.nodes[u]
     if d["bipartite"] == 0:
         # u connects two combinators
-        if len(inet[u]) == 2:
-            c1, c2 = inet[u]
-            # u connects two principal ports at index 0
-            if c1 != c2 and \
-                0 in inet[u][c1] and \
-                0 in inet[u][c2]:
-                return True
+        if inet.in_degree[u] == 2:
+            return True
     return False
 
-def annihilate_erase_erase(inet: nx.MultiGraph):
+def annihilate_erase_erase(inet: nx.MultiDiGraph):
     _, active_wires, _, _ = find_active_wires(inet)
     inet.remove_edges_from(active_wires)
 
-def commute_construct_duplicate(inet: nx.MultiGraph):
+def commute_construct_duplicate(inet: nx.MultiDiGraph):
     active_wires, _, _, _ = find_active_wires(inet)
     for u, c, d in active_wires:
         c0 = inet_add_construct(inet)
@@ -83,7 +82,7 @@ def commute_construct_duplicate(inet: nx.MultiGraph):
         inet.remove_edges_from(list(inet.edges(c, keys=True)))
         inet.remove_edges_from(list(inet.edges(d, keys=True)))
 
-def commute_condup_erase(inet: nx.MultiGraph):
+def commute_condup_erase(inet: nx.MultiDiGraph):
     _, _, active_wires, _ = find_active_wires(inet)
     for u, c, e in active_wires:
         d0 = inet_add_erase(inet)
@@ -94,94 +93,117 @@ def commute_condup_erase(inet: nx.MultiGraph):
         inet.remove_edges_from(list(inet.edges(c, keys=True)))
         inet.remove_edges_from(list(inet.edges(e, keys=True)))
 
-def annihilate_concon_or_dupdup(inet: nx.MultiGraph):
+def annihilate_concon_or_dupdup(inet: nx.MultiDiGraph):
     _, _, _, active_wires = find_active_wires(inet)
     for u, c, d in active_wires:
-        wc1 = inet_find_wire(inet, c, 1)
-        wc2 = inet_find_wire(inet, c, 2)
-        wd1 = inet_find_wire(inet, d, 1)
-        wd2 = inet_find_wire(inet, d, 2)
+        wc1 = inet_remove_wire_from_port(inet, c, 1)
+        wc2 = inet_remove_wire_from_port(inet, c, 2)
+        wd1 = inet_remove_wire_from_port(inet, d, 1)
+        wd2 = inet_remove_wire_from_port(inet, d, 2)
         w1 = inet.number_of_nodes()
         w2 = w1 + 1
         inet.add_node(w1, bipartite=0)
         inet.add_node(w2, bipartite=0)
-        inet.add_edges_from(list((w1, y, z) for _, y, z in inet.edges(wc1, keys=True)))
-        inet.add_edges_from(list((w2, y, z) for _, y, z in inet.edges(wd1, keys=True)))
-        inet.add_edges_from(list((w1, y, z) for _, y, z in inet.edges(wc2, keys=True)))
-        inet.add_edges_from(list((w2, y, z) for _, y, z in inet.edges(wd2, keys=True)))
+        inet.add_edges_from(list((y, w1, z) for y, _, z in inet.in_edges(wc1, keys=True)))
+        inet.add_edges_from(list((w1, y, z) for _, y, z in inet.out_edges(wc1, keys=True)))
+        inet.add_edges_from(list((y, w2, z) for y, _, z in inet.in_edges(wd1, keys=True)))
+        inet.add_edges_from(list((w2, y, z) for _, y, z in inet.out_edges(wd1, keys=True)))
+        inet.add_edges_from(list((y, w1, z) for y, _, z in inet.in_edges(wc2, keys=True)))
+        inet.add_edges_from(list((w1, y, z) for _, y, z in inet.out_edges(wc2, keys=True)))
+        inet.add_edges_from(list((y, w2, z) for y, _, z in inet.in_edges(wd2, keys=True)))
+        inet.add_edges_from(list((w2, y, z) for _, y, z in inet.out_edges(wd2, keys=True)))
         # isolate old wires
-        inet.remove_edges_from(list(inet.edges(wc1, keys=True)))
-        inet.remove_edges_from(list(inet.edges(wc2, keys=True)))
-        inet.remove_edges_from(list(inet.edges(wd1, keys=True)))
-        inet.remove_edges_from(list(inet.edges(wd2, keys=True)))
+        inet.remove_edges_from(list(inet.in_edges(wc1, keys=True)))
+        inet.remove_edges_from(list(inet.out_edges(wc1, keys=True)))
+        inet.remove_edges_from(list(inet.in_edges(wc2, keys=True)))
+        inet.remove_edges_from(list(inet.out_edges(wc2, keys=True)))
+        inet.remove_edges_from(list(inet.in_edges(wd1, keys=True)))
+        inet.remove_edges_from(list(inet.out_edges(wd1, keys=True)))
+        inet.remove_edges_from(list(inet.in_edges(wd2, keys=True)))
+        inet.remove_edges_from(list(inet.out_edges(wd2, keys=True)))
         # isolate old combinators
-        inet.remove_edges_from(list(inet.edges(u, keys=True)))
-        inet.remove_edges_from(list(inet.edges(c, keys=True)))
-        inet.remove_edges_from(list(inet.edges(d, keys=True)))
+        inet.remove_edges_from(list(inet.in_edges(c, keys=True)))
+        inet.remove_edges_from(list(inet.out_edges(c, keys=True)))
+        inet.remove_edges_from(list(inet.in_edges(d, keys=True)))
+        inet.remove_edges_from(list(inet.out_edges(d, keys=True)))
         return
 
-def inet_add_erase(inet: nx.MultiGraph):
+def inet_add_erase(inet: nx.MultiDiGraph):
     n = inet.number_of_nodes()
     inet.add_node(n, bipartite=1, tag="erase")
     inet.add_node(n+1, bipartite=0)
     inet.add_edge(n, n+1, key=0)
     return n
 
-def inet_add_construct(inet: nx.MultiGraph):
+def inet_add_construct(inet: nx.MultiDiGraph):
     n = inet.number_of_nodes()
     inet.add_node(n, bipartite=1, tag="construct")
     inet.add_node(n+1, bipartite=0)
     inet.add_node(n+2, bipartite=0)
     inet.add_node(n+3, bipartite=0)
     inet.add_edge(n, n+1, key=0)
-    inet.add_edge(n, n+2, key=1)
-    inet.add_edge(n, n+3, key=2)
+    inet.add_edge(n+2, n, key=1)
+    inet.add_edge(n+3, n, key=2)
     return n
 
-def inet_add_duplicate(inet: nx.MultiGraph):
+def inet_add_duplicate(inet: nx.MultiDiGraph):
     n = inet.number_of_nodes()
     inet.add_node(n, bipartite=1, tag="duplicate")
     inet.add_node(n+1, bipartite=0)
     inet.add_node(n+2, bipartite=0)
     inet.add_node(n+3, bipartite=0)
     inet.add_edge(n, n+1, key=0)
-    inet.add_edge(n, n+2, key=1)
-    inet.add_edge(n, n+3, key=2)
+    inet.add_edge(n+2, n, key=1)
+    inet.add_edge(n+3, n, key=2)
     return n
 
-def inet_find_wire(inet: nx.MultiGraph, u, i):
-    for w0, w1, j in inet.edges(u, keys=True):
-        if i == j:
-            return w1 if u == w0 else w0
+def inet_find_wire(inet: nx.MultiDiGraph, comb, port):
+    assert inet.nodes[comb]["bipartite"] == 1
+    if port == 0:
+        for _, w1, _ in inet.out_edges(comb, keys=True):
+            return w1
+        assert False
+
+    for w1, _, j in inet.in_edges(comb, keys=True):
+        if port == j:
+            return w1
     assert False
 
-def inet_connect_ports(inet: nx.MultiGraph, p0, p1):
+def inet_remove_wire_from_port(inet: nx.MultiDiGraph, comb, port):
+    wire = inet_find_wire(inet, comb, port)
+    if port == 0:
+        inet.remove_edge(comb, wire, port)
+    else:
+        inet.remove_edge(wire, comb, port)
+    return wire
+
+def inet_add_wire_to_port(inet: nx.MultiDiGraph, comb, port, wire):
+    if port == 0:
+        inet.add_edge(comb, wire, port)
+    else:
+        inet.add_edge(wire, comb, port)
+
+def inet_connect_ports(inet: nx.MultiDiGraph, p0, p1):
     u0, i0 = p0
     u1, i1 = p1
-    w0 = inet_find_wire(inet, u0, i0)
-    w1 = inet_find_wire(inet, u1, i1)
-    inet.remove_edge(u0, w0)
-    inet.remove_edge(u1, w1)
+    w0 = inet_remove_wire_from_port(inet, u0, i0)
+    w1 = inet_remove_wire_from_port(inet, u1, i1)
     w = inet.number_of_nodes()
     inet.add_node(w, bipartite=0)
-    inet.add_edge(w, u0, key=i0)
-    inet.add_edge(w, u1, key=i1)
+    inet_add_wire_to_port(inet, u0, i0, w)
+    inet_add_wire_to_port(inet, u1, i1, w)
     return w
 
-def inet_replace_wire_end(inet: nx.MultiGraph, p0, p1):
+def inet_replace_wire_end(inet: nx.MultiDiGraph, p0, p1):
     u0, i0 = p0
     u1, i1 = p1
-    w0 = inet_find_wire(inet, u0, i0)
-    w1 = inet_find_wire(inet, u1, i1)
-    inet.remove_edge(u0, w0, key=i0)
-    inet.remove_edge(u1, w1, key=i1)
-    inet.add_edge(u1, w0, key=i1)
+    w0 = inet_remove_wire_from_port(inet, u0, i0)
+    w1 = inet_remove_wire_from_port(inet, u1, i1)
+    inet_add_wire_to_port(inet, u1, i1, w0)
 
-def inet_replace_port(inet: nx.MultiGraph, p0, p1):
+def inet_replace_port(inet: nx.MultiDiGraph, p0, p1):
     u0, i0 = p0
     u1, i1 = p1
-    w0 = inet_find_wire(inet, u0, i0)
-    w1 = inet_find_wire(inet, u1, i1)
-    inet.remove_edge(u0, w0, key=i0)
-    inet.remove_edge(u1, w1, key=i1)
-    inet.add_edge(u0, w1, key=i0)
+    w0 = inet_remove_wire_from_port(inet, u0, i0)
+    w1 = inet_remove_wire_from_port(inet, u1, i1)
+    inet_add_wire_to_port(inet, u0, i0, w1)
