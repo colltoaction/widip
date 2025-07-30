@@ -210,3 +210,76 @@ def inet_replace_port(inet: nx.MultiDiGraph, p0, p1):
     w0 = inet_remove_wire_from_port(inet, u0, i0)
     w1 = inet_remove_wire_from_port(inet, u1, i1)
     inet_add_wire_to_port(inet, u0, i0, w1)
+
+
+#### Lambda calculus as seen in
+# https://zicklag.katharos.group/blog/interaction-nets-combinators-calculus/
+
+def inet_lambda_id(inet: nx.MultiDiGraph):
+    c = inet_add_construct(inet)
+    inet_connect_ports(inet, (c, 1), (c, 2))
+    return c
+
+def inet_lambda(inet: nx.MultiDiGraph, arg, body):
+    c = inet_add_construct(inet)
+    inet_connect_ports(inet, (c, 1), arg)
+    inet_connect_ports(inet, (c, 2), body)
+    return c
+
+def inet_apply(inet: nx.MultiDiGraph, arg, f):
+    c = inet_add_construct(inet)
+    inet_connect_ports(inet, (c, 1), arg)
+    inet_connect_ports(inet, (c, 0), f)
+    return c
+
+#### Lambda calculus extended with nats as seen in
+# https://stevenhuyn.bearblog.dev/succ/
+
+def inet_zero(inet: nx.MultiDiGraph):
+    i = inet_lambda_id(inet)
+    c = inet_add_construct(inet)
+    inet_connect_ports(inet, (c, 2), (i, 0))
+    return c
+
+def inet_succ(inet: nx.MultiDiGraph):
+    ln = inet_add_construct(inet)
+    lf = inet_add_construct(inet)
+    lx = inet_add_construct(inet)
+    a0 = inet_add_construct(inet)
+    a1 = inet_add_construct(inet)
+    a2 = inet_add_construct(inet)
+    d = inet_add_duplicate(inet)
+    inet_connect_ports(inet, (ln, 1), (a0, 0))
+    inet_connect_ports(inet, (ln, 2), (lf, 0))
+    inet_connect_ports(inet, (lf, 1), (d, 0))
+    inet_connect_ports(inet, (lf, 2), (lx, 0))
+    inet_connect_ports(inet, (a0, 1), (d, 1))
+    inet_connect_ports(inet, (a0, 2), (a1, 0))
+    inet_connect_ports(inet, (d, 2), (a2, 0))
+    inet_connect_ports(inet, (lx, 1), (a1, 1))
+    inet_connect_ports(inet, (lx, 2), (a2, 2))
+    inet_connect_ports(inet, (a1, 2), (a2, 1))
+    return ln
+
+#### Drawing is still crude
+# https://networkx.org/documentation/stable/auto_examples/drawing/plot_multigraphs.html
+
+def inet_draw(inet):
+    inet = nx.MultiDiGraph(inet)
+    inet.remove_nodes_from(list(nx.isolates(inet)))
+    nx.draw_networkx(
+        inet,
+        labels={
+            n: ("" if inet.nodes[n]["bipartite"] == 0
+                else inet.nodes[n]["tag"]) for n in inet.nodes},
+        node_size=[
+            100 if is_active_wire(inet, n) else
+            10 if inet.nodes[n]["bipartite"] == 0
+            else 700 for n in inet.nodes],
+        node_color=[
+            "red" if is_active_wire(inet, n) else
+            "blue" if inet.nodes[n]["bipartite"] == 0
+            else "green" for n in inet.nodes],
+        connectionstyle=["arc3,rad=-0.00", "arc3,rad=0.3"],
+        )
+
