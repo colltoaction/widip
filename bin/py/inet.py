@@ -13,7 +13,12 @@ Directedness is added for rendering purposes:
 * the keys 1 and 2 are the secondary wires and always wire->combinator
 """
 import networkx as nx
+from nx_hif import read_hif
 
+
+# def find_open_principal_wires(inet: nx.MultiDiGraph):
+#     for u in inet.nodes:
+#         if is_open_wire(inet, u):
 
 def find_active_wires(inet: nx.MultiDiGraph):
     """Find all wires where interaction rules can be applied"""
@@ -22,7 +27,6 @@ def find_active_wires(inet: nx.MultiDiGraph):
     concon_or_dupdup = []
     condup_erase = []
     for u in inet.nodes:
-        # u is a wire
         if is_active_wire(inet, u):
             (c1, _), (c2, _) = inet.in_edges(u)
             c1tag = inet.nodes[c1]["tag"]
@@ -55,6 +59,27 @@ def is_active_wire(inet: nx.MultiDiGraph, u):
         if inet.in_degree[u] == 2:
             return True
     return False
+
+def find_open_wires(inet: nx.MultiDiGraph):
+    principal_wires = []
+    auxiliary_wires = []
+    for u, d in inet.nodes(data=True):
+        if d["bipartite"] == 0:
+            # u has exactly one edge
+            if inet.in_degree[u] + inet.out_degree[u] == 1:
+                if inet.in_degree[u] == 1:
+                    principal_wires.append(u)
+                else:
+                    auxiliary_wires.append(u)
+    return principal_wires, auxiliary_wires
+
+def inet_union(a: nx.MultiDiGraph, b: nx.MultiDiGraph):
+    """
+    A union cleans up garbage nodes, renames to avoid collisions
+    """
+    inet = nx.convert_node_labels_to_integers(b, a.number_of_nodes())
+    inet.update(a.edges(data=True, keys=True), a.nodes(data=True))
+    return inet
 
 def annihilate_erase_erase(inet: nx.MultiDiGraph):
     _, active_wires, _, _ = find_active_wires(inet)
@@ -107,14 +132,14 @@ def annihilate_concon_or_dupdup(inet: nx.MultiDiGraph):
             w2 = w1
         inet.add_node(w1, bipartite=0)
         inet.add_node(w2, bipartite=0)
-        inet.add_edges_from(list((y, w1, z) for y, _, z in inet.in_edges(wc1, keys=True)))
-        inet.add_edges_from(list((w1, y, z) for _, y, z in inet.out_edges(wc1, keys=True)))
-        inet.add_edges_from(list((y, w1, z) for y, _, z in inet.in_edges(wd1, keys=True)))
-        inet.add_edges_from(list((w1, y, z) for _, y, z in inet.out_edges(wd1, keys=True)))
-        inet.add_edges_from(list((y, w2, z) for y, _, z in inet.in_edges(wc2, keys=True)))
-        inet.add_edges_from(list((w2, y, z) for _, y, z in inet.out_edges(wc2, keys=True)))
-        inet.add_edges_from(list((y, w2, z) for y, _, z in inet.in_edges(wd2, keys=True)))
-        inet.add_edges_from(list((w2, y, z) for _, y, z in inet.out_edges(wd2, keys=True)))
+        inet.add_edges_from(list((y, w1, z, d) for y, _, z, d in inet.in_edges(wc1, keys=True, data=True)))
+        inet.add_edges_from(list((w1, y, z, d) for _, y, z, d in inet.out_edges(wc1, keys=True, data=True)))
+        inet.add_edges_from(list((y, w1, z, d) for y, _, z, d in inet.in_edges(wd1, keys=True, data=True)))
+        inet.add_edges_from(list((w1, y, z, d) for _, y, z, d in inet.out_edges(wd1, keys=True, data=True)))
+        inet.add_edges_from(list((y, w2, z, d) for y, _, z, d in inet.in_edges(wc2, keys=True, data=True)))
+        inet.add_edges_from(list((w2, y, z, d) for _, y, z, d in inet.out_edges(wc2, keys=True, data=True)))
+        inet.add_edges_from(list((y, w2, z, d) for y, _, z, d in inet.in_edges(wd2, keys=True, data=True)))
+        inet.add_edges_from(list((w2, y, z, d) for _, y, z, d in inet.out_edges(wd2, keys=True, data=True)))
         # isolate old wires
         inet.remove_edges_from(list(inet.in_edges(wc1, keys=True)))
         inet.remove_edges_from(list(inet.out_edges(wc1, keys=True)))
@@ -186,6 +211,19 @@ def inet_add_wire_to_port(inet: nx.MultiDiGraph, comb, port, wire):
     else:
         inet.add_edge(wire, comb, port)
 
+def inet_merge_wires(inet: nx.MultiDiGraph, w0, w1):
+    w = inet.number_of_nodes()
+    inet.add_node(w, bipartite=0)
+    inet.add_edges_from(list((y, w, z, d) for y, _, z, d in inet.in_edges(w0, data=True, keys=True)))
+    inet.add_edges_from(list((w, y, z, d) for _, y, z, d in inet.out_edges(w0, data=True, keys=True)))
+    inet.add_edges_from(list((y, w, z, d) for y, _, z, d in inet.in_edges(w1, data=True, keys=True)))
+    inet.add_edges_from(list((w, y, z, d) for _, y, z, d in inet.out_edges(w1, data=True, keys=True)))
+    inet.remove_edges_from(list(inet.in_edges(w0, keys=True)))
+    inet.remove_edges_from(list(inet.out_edges(w0, keys=True)))
+    inet.remove_edges_from(list(inet.in_edges(w1, keys=True)))
+    inet.remove_edges_from(list(inet.out_edges(w1, keys=True)))
+    return w
+
 def inet_connect_ports(inet: nx.MultiDiGraph, p0, p1):
     u0, i0 = p0
     u1, i1 = p1
@@ -210,6 +248,15 @@ def inet_replace_port(inet: nx.MultiDiGraph, p0, p1):
     w0 = inet_remove_wire_from_port(inet, u0, i0)
     w1 = inet_remove_wire_from_port(inet, u1, i1)
     inet_add_wire_to_port(inet, u0, i0, w1)
+
+
+#### IO using nx_hif
+
+def inet_read_hif(path):
+    inet = read_hif(path)
+    inet.remove_nodes_from(list(nx.isolates(inet)))
+    inet = nx.convert_node_labels_to_integers(inet, 0)
+    return inet
 
 
 #### Lambda calculus as seen in
@@ -267,19 +314,22 @@ def inet_succ(inet: nx.MultiDiGraph):
 def inet_draw(inet):
     inet = nx.MultiDiGraph(inet)
     inet.remove_nodes_from(list(nx.isolates(inet)))
+    # https://docs.rapids.ai/api/cugraph/stable/api_docs/api/cugraph/cugraph.force_atlas2/
+    # note that this layout can be run on the GPU with nx-cugraph
+    pos = nx.drawing.layout.forceatlas2_layout(inet)
     nx.draw_networkx(
         inet,
+        pos=pos,
         labels={
             n: ("" if inet.nodes[n]["bipartite"] == 0
-                else inet.nodes[n]["tag"]) for n in inet.nodes},
+                else inet.nodes[n].get("tag")) for n in inet.nodes},
         node_size=[
             100 if is_active_wire(inet, n) else
             10 if inet.nodes[n]["bipartite"] == 0
-            else 700 for n in inet.nodes],
+            else 300 for n in inet.nodes],
         node_color=[
             "red" if is_active_wire(inet, n) else
             "blue" if inet.nodes[n]["bipartite"] == 0
             else "green" for n in inet.nodes],
         connectionstyle=["arc3,rad=-0.00", "arc3,rad=0.3"],
         )
-
