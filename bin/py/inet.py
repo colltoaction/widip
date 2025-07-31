@@ -276,7 +276,6 @@ def inet_replace_port(inet: nx.MultiDiGraph, p0, p1):
 def inet_find_active_subgraph(inet, w):
     combs = list(inet.predecessors(w))
     wires = [p for w in combs for p in inet.successors(w)]
-    print(combs + wires)
     inet = inet.subgraph(combs + wires)
     return inet
 
@@ -287,15 +286,36 @@ def inet_eraera_rewrite_rule(inet, w):
     boundary = nx.MultiDiGraph()
     return match, replacement, boundary
 
+def inet_condup_erase_rewrite_rule(inet, w):
+    (u, _), (v, _) = inet.in_edges(w)
+    c, e = (v, u) if inet.nodes[u]["tag"] == "erase" else (u, v)
+    wc1 = inet_find_wire(inet, c, 1)
+    wc2 = inet_find_wire(inet, c, 2)
+    match = inet.subgraph([w, c, e, wc1, wc2])
+    replacement = nx.MultiDiGraph()
+    d0 = inet_add_erase(replacement)
+    d1 = inet_add_erase(replacement)
+    wd0 = inet_find_wire(replacement, d0, 0)
+    wd1 = inet_find_wire(replacement, d1, 0)
+    relabels = {r: r+match.number_of_nodes() if r in match else r for r in replacement}
+    nx.relabel_nodes(replacement, relabels, copy=False)
+    boundary = nx.MultiDiGraph()
+    boundary.add_edge(wc2, relabels[wd0])
+    boundary.add_edge(wc1, relabels[wd1])
+    return match, replacement, boundary
+
 def inet_rewrite(inet: nx.MultiDiGraph, rule):
     match, replacement, boundary = rule
+    relabels = {r: r+inet.number_of_nodes() for r in replacement if r in match}
+    nx.relabel_nodes(replacement, relabels, copy=False)
+    nx.relabel_nodes(boundary, relabels, copy=False)
     inet.add_edges_from(list(replacement.in_edges(data=True, keys=True)))
     inet.add_edges_from(list(replacement.out_edges(data=True, keys=True)))
     inet.add_nodes_from(list(replacement.nodes(data=True)))
     inet.remove_edges_from(list(match.in_edges(keys=True, data=True)))
     inet.remove_edges_from(list(match.out_edges(keys=True, data=True)))
-    for w0, w1 in boundary:
-        inet_merge_wires(inet, w0, w1)
+    for winet, wrep in boundary.out_edges():
+        inet_merge_wires(inet, winet, wrep)
     return inet
 
 
