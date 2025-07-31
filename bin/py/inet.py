@@ -211,18 +211,18 @@ def inet_add_wire_to_port(inet: nx.MultiDiGraph, comb, port, wire):
     else:
         inet.add_edge(wire, comb, port)
 
-def inet_merge_wires(inet: nx.MultiDiGraph, w0, w1):
+def inet_merge_many_wires(inet: nx.MultiDiGraph, ws):
     w = inet.number_of_nodes()
     inet.add_node(w, bipartite=0)
-    inet.add_edges_from(list((y, w, z, d) for y, _, z, d in inet.in_edges(w0, data=True, keys=True)))
-    inet.add_edges_from(list((w, y, z, d) for _, y, z, d in inet.out_edges(w0, data=True, keys=True)))
-    inet.add_edges_from(list((y, w, z, d) for y, _, z, d in inet.in_edges(w1, data=True, keys=True)))
-    inet.add_edges_from(list((w, y, z, d) for _, y, z, d in inet.out_edges(w1, data=True, keys=True)))
-    inet.remove_edges_from(list(inet.in_edges(w0, keys=True)))
-    inet.remove_edges_from(list(inet.out_edges(w0, keys=True)))
-    inet.remove_edges_from(list(inet.in_edges(w1, keys=True)))
-    inet.remove_edges_from(list(inet.out_edges(w1, keys=True)))
+    for w0 in ws:
+        inet.add_edges_from(list((y, w, z, d) for y, _, z, d in inet.in_edges(w0, data=True, keys=True)))
+        inet.add_edges_from(list((w, y, z, d) for _, y, z, d in inet.out_edges(w0, data=True, keys=True)))
+        inet.remove_edges_from(list(inet.in_edges(w0, keys=True)))
+        inet.remove_edges_from(list(inet.out_edges(w0, keys=True)))
     return w
+
+def inet_merge_wires(inet: nx.MultiDiGraph, w0, w1):
+    return inet_merge_many_wires(inet, [w0, w1])
 
 def inet_connect_ports(inet: nx.MultiDiGraph, p0, p1):
     u0, i0 = p0
@@ -286,6 +286,23 @@ def inet_eraera_rewrite_rule(inet, w):
     boundary = nx.MultiDiGraph()
     return match, replacement, boundary
 
+def inet_concon_or_dupdup_rewrite_rule(inet, w):
+    (u, _), (v, _) = inet.in_edges(w)
+    wu1 = inet_find_wire(inet, u, 1)
+    wu2 = inet_find_wire(inet, u, 2)
+    wv1 = inet_find_wire(inet, v, 1)
+    wv2 = inet_find_wire(inet, v, 2)
+    match = inet.subgraph([w, u, v, wu1, wu2, wv1, wv2])
+    w = inet.number_of_nodes()
+    replacement = nx.MultiDiGraph()
+    replacement.add_nodes_from([wu1, wu2, wv1, wv2, w, w+1], bipartite=0)
+    boundary = nx.MultiDiGraph()
+    boundary.add_edge(wu1, w)
+    boundary.add_edge(wu2, w+1)
+    boundary.add_edge(wv1, w)
+    boundary.add_edge(wv2, w+1)
+    return match, replacement, boundary
+
 def inet_condup_erase_rewrite_rule(inet, w):
     (u, _), (v, _) = inet.in_edges(w)
     c, e = (v, u) if inet.nodes[u]["tag"] == "erase" else (u, v)
@@ -306,16 +323,14 @@ def inet_condup_erase_rewrite_rule(inet, w):
 
 def inet_rewrite(inet: nx.MultiDiGraph, rule):
     match, replacement, boundary = rule
-    relabels = {r: r+inet.number_of_nodes() for r in replacement if r in match}
-    nx.relabel_nodes(replacement, relabels, copy=False)
-    nx.relabel_nodes(boundary, relabels, copy=False)
     inet.add_edges_from(list(replacement.in_edges(data=True, keys=True)))
     inet.add_edges_from(list(replacement.out_edges(data=True, keys=True)))
     inet.add_nodes_from(list(replacement.nodes(data=True)))
     inet.remove_edges_from(list(match.in_edges(keys=True, data=True)))
     inet.remove_edges_from(list(match.out_edges(keys=True, data=True)))
-    for winet, wrep in boundary.out_edges():
-        inet_merge_wires(inet, winet, wrep)
+    for w in boundary.nodes:
+        if boundary.in_degree[w] > 0:
+            inet_merge_many_wires(inet, [w]+list(boundary.predecessors(w)))
     return inet
 
 
@@ -324,7 +339,12 @@ def inet_rewrite(inet: nx.MultiDiGraph, rule):
 def inet_read_hif(path):
     # TODO add the ability to read references to other files
     inet = read_hif(path)
+    inet = inet_clean(inet)
+    return inet
+
+def inet_clean(inet):
     inet.remove_nodes_from(list(nx.isolates(inet)))
+    # TODO in-place
     inet = nx.convert_node_labels_to_integers(inet, 0)
     return inet
 

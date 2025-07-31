@@ -111,3 +111,20 @@ def test_condup_erase_dpo():
     rule = inet_condup_erase_rewrite_rule(inet, w)
     inet_rewrite(inet, rule)
     assert len(inet.edges) == 2
+
+def test_concon_or_dupdup_dpo():
+    inet = nx.MultiDiGraph()
+    u = inet_add_construct(inet)
+    v = inet_add_construct(inet)
+    a = inet_add_duplicate(inet)
+    b = inet_add_duplicate(inet)
+    w = inet_connect_ports(inet, (u, 0), (v, 0))
+    inet_connect_ports(inet, (u, 1), (a, 0))
+    inet_connect_ports(inet, (v, 1), (b, 0))
+    rule = inet_concon_or_dupdup_rewrite_rule(inet, w)
+    inet_rewrite(inet, rule)
+    assert len(inet.edges) == 6
+    [], [], [], [(w2, _, _)] = find_active_wires(inet)
+    rule = inet_concon_or_dupdup_rewrite_rule(inet, w2)
+    inet_rewrite(inet, rule)
+    assert len(inet.edges) == 0
