@@ -250,9 +250,59 @@ def inet_replace_port(inet: nx.MultiDiGraph, p0, p1):
     inet_add_wire_to_port(inet, u0, i0, w1)
 
 
+# TODO each active wire yields:
+# * a subgraph match with both combinators
+# * a replacement calculated based on the combinators interacting
+
+#### DPO Rewriting
+# https://en.wikipedia.org/wiki/Double_pushout_graph_rewriting
+# this respects an interface
+# 1. find a matching subgraph (e.g active wire + combinators)
+# 2. identify subgraph nodes with replacement nodes
+# 3. isolate subgraph nodes not in the replacement
+# 4. plug in replacement
+# def inet_rewrite(inet, left, right):
+
+# for each rewrite we need to specify
+# the two graphs but also which wires are mapped.
+# giving a well-known ordering of the boundary wires
+# e.g (wc1, wc2, wd1, wd2) in the case of con-dup,
+# for both the match and replacement.
+# this is the same as giving a graph
+# between nodes in both graphs.
+
+# TODO rules are static python code
+# but they could be loaded at runtime.
+def inet_find_active_subgraph(inet, w):
+    combs = list(inet.predecessors(w))
+    wires = [p for w in combs for p in inet.successors(w)]
+    print(combs + wires)
+    inet = inet.subgraph(combs + wires)
+    return inet
+
+def inet_eraera_rewrite_rule(inet, w):
+    (c0, _), (c1, _) = inet.in_edges(w)
+    match = inet.subgraph((w, c0, c1))
+    replacement = nx.MultiDiGraph()
+    boundary = nx.MultiDiGraph()
+    return match, replacement, boundary
+
+def inet_rewrite(inet: nx.MultiDiGraph, rule):
+    match, replacement, boundary = rule
+    inet.add_edges_from(list(replacement.in_edges(data=True, keys=True)))
+    inet.add_edges_from(list(replacement.out_edges(data=True, keys=True)))
+    inet.add_nodes_from(list(replacement.nodes(data=True)))
+    inet.remove_edges_from(list(match.in_edges(keys=True, data=True)))
+    inet.remove_edges_from(list(match.out_edges(keys=True, data=True)))
+    for w0, w1 in boundary:
+        inet_merge_wires(inet, w0, w1)
+    return inet
+
+
 #### IO using nx_hif
 
 def inet_read_hif(path):
+    # TODO add the ability to read references to other files
     inet = read_hif(path)
     inet.remove_nodes_from(list(nx.isolates(inet)))
     inet = nx.convert_node_labels_to_integers(inet, 0)

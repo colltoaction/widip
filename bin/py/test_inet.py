@@ -93,3 +93,12 @@ def test_franchus_inet():
     assert len(inet.edges) == 2
     annihilate_erase_erase(inet)
     assert len(inet.edges) == 0
+
+def test_annihilate_erase_erase():
+    inet = nx.MultiDiGraph()
+    u = inet_add_erase(inet)
+    v = inet_add_erase(inet)
+    w = inet_connect_ports(inet, (u, 0), (v, 0))
+    rule = inet_eraera_rewrite_rule(inet, w)
+    inet_rewrite(inet, rule)
+    assert len(inet.edges) == 0
