@@ -303,6 +303,37 @@ def inet_concon_or_dupdup_rewrite_rule(inet, w):
     boundary.add_edge(wv2, w+1)
     return match, replacement, boundary
 
+def inet_condup_rewrite_rule(inet, w):
+    (u, _), (v, _) = inet.in_edges(w)
+    wu1 = inet_find_wire(inet, u, 1)
+    wu2 = inet_find_wire(inet, u, 2)
+    wv1 = inet_find_wire(inet, v, 1)
+    wv2 = inet_find_wire(inet, v, 2)
+    match = inet.subgraph([w, u, v, wu1, wu2, wv1, wv2])
+    replacement = nx.MultiDiGraph()
+    c0 = inet_add_construct(replacement)
+    c1 = inet_add_construct(replacement)
+    d0 = inet_add_duplicate(replacement)
+    d1 = inet_add_duplicate(replacement)
+    # wire secondary ports
+    inet_connect_ports(replacement, (c0, 1), (d0, 2))
+    inet_connect_ports(replacement, (c0, 2), (d1, 2))
+    inet_connect_ports(replacement, (c1, 1), (d0, 1))
+    inet_connect_ports(replacement, (c1, 2), (d1, 1))
+    # # rewire 2x2 secondary ports to 4 principals
+    relabels = {r: r+inet.number_of_nodes() for r in replacement}
+    nx.relabel_nodes(replacement, relabels, copy=False)
+    wc0 = inet_find_wire(replacement, relabels[c0], 0)
+    wc1 = inet_find_wire(replacement, relabels[c1], 0)
+    wd0 = inet_find_wire(replacement, relabels[d0], 0)
+    wd1 = inet_find_wire(replacement, relabels[d1], 0)
+    boundary = nx.MultiDiGraph()
+    boundary.add_edge(wu1, wd0)
+    boundary.add_edge(wu2, wd1)
+    boundary.add_edge(wv1, wc0)
+    boundary.add_edge(wv2, wc1)
+    return match, replacement, boundary
+
 def inet_condup_erase_rewrite_rule(inet, w):
     (u, _), (v, _) = inet.in_edges(w)
     c, e = (v, u) if inet.nodes[u]["tag"] == "erase" else (u, v)

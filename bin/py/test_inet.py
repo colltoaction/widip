@@ -112,6 +112,15 @@ def test_condup_erase_dpo():
     inet_rewrite(inet, rule)
     assert len(inet.edges) == 2
 
+def test_condup_dpo():
+    inet = nx.MultiDiGraph()
+    u = inet_add_construct(inet)
+    v = inet_add_duplicate(inet)
+    w = inet_connect_ports(inet, (u, 0), (v, 0))
+    rule = inet_condup_rewrite_rule(inet, w)
+    inet_rewrite(inet, rule)
+    assert len(inet.edges) == 12
+
 def test_concon_or_dupdup_dpo():
     inet = nx.MultiDiGraph()
     u = inet_add_construct(inet)
