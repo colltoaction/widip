@@ -88,7 +88,7 @@ def test_franchus_inet():
     annihilate_concon_or_dupdup(inet)
     assert len(inet.edges) == 4
     # self reference multiedge
-    assert len(inet[40][19]) == 2
+    assert len(inet[45][19]) == 2
     commute_condup_erase(inet)
     assert len(inet.edges) == 2
     annihilate_erase_erase(inet)
@@ -133,7 +133,6 @@ def test_concon_or_dupdup_dpo():
     rule = inet_concon_or_dupdup_rewrite_rule(inet, w)
     inet_rewrite(inet, rule)
     assert len(inet.edges) == 6
-    [], [], [], [(w2, _, _)] = find_active_wires(inet)
-    rule = inet_concon_or_dupdup_rewrite_rule(inet, w2)
+    [], [], [], [rule] = find_active_wires(inet)
     inet_rewrite(inet, rule)
     assert len(inet.edges) == 0
