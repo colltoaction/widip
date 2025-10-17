@@ -37,31 +37,58 @@ def _incidences_to_diagram(node, index):
         return _incidences_to_diagram(node, root)
     if kind == "scalar":
         v = node.nodes[index+1]["value"]
-        if not tag and not v:
-            return Id("")
-        if not tag:
-            return Id(v)
-        return Box(tag, Ty(v), Ty(v))
+        if not v and tag:
+            ob = Id("")
+        elif not v:
+            ob = Id()
+        else:
+            ob = Id(v)
+        return ob
     if kind == "sequence":
         ob = Id()
         for v in node[index+1]:
+            vtag = (node.nodes[v+1].get("tag") or "")[1:]
             value = _incidences_to_diagram(node, v)
             if ob == Id():
-                ob = value
-            else:
-                ob = ob >> Box("", ob.cod, value.dom) >> value
-        return ob.bubble(dom="", cod="", drawing_name=tag)
+                ob = Id(value.dom)
+            if value == Id() and vtag:
+                ob = ob >> Box(vtag, ob.cod, Ty())
+            elif value != Id() and vtag:
+                ob = glue_diagrams(ob, Box(vtag, value.dom, value.cod))
+            elif value != Id():
+                vbub = Bubble(value, value.dom, value.cod)
+                ob = glue_diagrams(ob, vbub)
+        return ob
     if kind == "mapping":
         ob = Id()
         keys = Id()
         values = Id()
         for k, v in batched(node[index+1], 2):
+            ktag = (node.nodes[k+1].get("tag") or "")[1:]
+            vtag = (node.nodes[v+1].get("tag") or "")[1:]
             key = _incidences_to_diagram(node, k)
             value = _incidences_to_diagram(node, v)
-            kv = key >> Box("", key.cod, value.dom) >> value
+            if key != Id() and ktag:
+                kv = Box(ktag, key.dom, value.dom)
+            elif key != Id():
+                kbub = Bubble(key, key.dom, key.cod, drawing_name=tag)
+                if kbub.is_id_on_objects:
+                    kv = kbub.arg
+                else:
+                    kv = kbub
+            elif ktag:
+                kv = Box(ktag, Ty(), value.dom)
+            else:
+                kv = key
+            if value != Id() and vtag:
+                kv = kv >> Box(vtag, kv.cod, value.cod)
+            elif value != Id():
+                vbub = Bubble(value, kv.cod, value.cod)
+                if vbub.is_id_on_objects:
+                    kv = kv >> vbub.arg
+                else:
+                    kv = kv >> vbub
             ob @= kv
             keys @= key
             values @= value
-        if ob == Id():
-            return ob
-        return ob.bubble(dom="", cod="", drawing_name=tag)
+        return ob

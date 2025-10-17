@@ -1,6 +1,6 @@
 import pathlib
 
-import discopy
+from discopy.utils import AxiomError
 from discopy.frobenius import Ty, Diagram, Box, Id, Functor
 
 from .loader import repl_read
@@ -21,10 +21,11 @@ def file_diagram(file_name) -> Diagram:
     try:
         path = pathlib.Path(file_name)
         fd = repl_read(path.read_text())
+        # TODO TypeError: Expected frobenius.Diagram, got monoidal.Diagram instead
         # fd = replace_id_f(path.stem)(fd)
         fd.draw(path=str(path.with_suffix(".jpg")))
         return fd
-    except discopy.utils.AxiomError:
+    except AxiomError:
         print("diagram gluing failed -- https://github.com/colltoaction/widip/issues/2")
 
 files_f = Functor(lambda x: Ty(""), files_ar)
