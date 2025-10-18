@@ -56,13 +56,17 @@ def _incidences_to_diagram(node, index):
             elif value != Id() and vtag:
                 ob = glue_diagrams(ob, Box(vtag, value.dom, value.cod))
             elif value != Id():
-                vbub = Bubble(value, value.dom, value.cod)
-                ob = glue_diagrams(ob, vbub)
-        return ob
+                ob = glue_diagrams(ob, value)
+        if ob != Id(ob.dom):
+            obub = Bubble(ob, ob.dom, ob.cod, drawing_name=kind)
+        else:
+            obub = ob
+        return obub
     if kind == "mapping":
         ob = Id()
         keys = Id()
         values = Id()
+        i = 0
         for k, v in batched(node[index+1], 2):
             ktag = (node.nodes[k+1].get("tag") or "")[1:]
             vtag = (node.nodes[v+1].get("tag") or "")[1:]
@@ -71,7 +75,7 @@ def _incidences_to_diagram(node, index):
             if key != Id() and ktag:
                 kv = Box(ktag, key.dom, value.dom)
             elif key != Id():
-                kbub = Bubble(key, key.dom, key.cod, drawing_name=tag)
+                kbub = Bubble(key, key.dom, key.cod, drawing_name=kind)
                 if kbub.is_id_on_objects:
                     kv = kbub.arg
                 else:
@@ -83,7 +87,7 @@ def _incidences_to_diagram(node, index):
             if value != Id() and vtag:
                 kv = kv >> Box(vtag, kv.cod, value.cod)
             elif value != Id():
-                vbub = Bubble(value, kv.cod, value.cod)
+                vbub = Bubble(value, kv.cod, value.cod, drawing_name=kind)
                 if vbub.is_id_on_objects:
                     kv = kv >> vbub.arg
                 else:
@@ -91,4 +95,9 @@ def _incidences_to_diagram(node, index):
             ob @= kv
             keys @= key
             values @= value
-        return ob
+            i += 1
+        if i > 1 and ob != Id(ob.dom):
+            obub = Bubble(ob, ob.dom, ob.cod, drawing_name=kind)
+        else:
+            obub = ob
+        return obub

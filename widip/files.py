@@ -23,7 +23,10 @@ def file_diagram(file_name) -> Diagram:
         fd = repl_read(path.read_text())
         # TODO TypeError: Expected frobenius.Diagram, got monoidal.Diagram instead
         # fd = replace_id_f(path.stem)(fd)
-        fd.draw(path=str(path.with_suffix(".jpg")))
+        fd.draw(path=str(path.with_suffix(".jpg")),
+                textpad=(0.3, 0.1),
+                fontsize=12,
+                fontsize_types=8)
         return fd
     except AxiomError:
         print("diagram gluing failed -- https://github.com/colltoaction/widip/issues/2")
