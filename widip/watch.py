@@ -14,14 +14,13 @@ from .widish import SHELL_RUNNER, compile_shell_program
 
 class ShellHandler(FileSystemEventHandler):
     """Reload the shell on change."""
-    def __init__(self):
-        super().__init__()
-
     def on_modified(self, event):
-        super().on_modified(event)
         if ".yaml" in event.src_path:
             print(f"reloading {event.src_path}")
-            file_diagram(str(event.src_path))
+            try:
+                file_diagram(str(event.src_path))
+            except YAMLError as e:
+                print(e)
 
 def watch_main():
     """the process manager for the reader and """
@@ -32,11 +31,13 @@ def watch_main():
     shell_handler = ShellHandler()
     observer.schedule(shell_handler, ".", recursive=True)
     observer.start()
+    return observer
 
 def shell_main(file_name):
     try:
         repl_env = compile_shell_program
         while True:
+            observer = watch_main()
             try:
                 prompt = f"--- !{file_name}\n"
                 source = input(prompt)
@@ -48,6 +49,8 @@ def shell_main(file_name):
                 print()
             except YAMLError as e:
                 print(e)
+            finally:
+                observer.stop()
     except EOFError:
         print("⌁")
         exit(0)
