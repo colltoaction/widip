@@ -1,10 +1,12 @@
 import sys
-import warnings
+
+# Stop starting a Matplotlib GUI
+import matplotlib
+matplotlib.use('agg')
 
 from .watch import watch_main, shell_main, widish_main
 
 
-warnings.filterwarnings("ignore")
 match sys.argv:
     case [_]:
         watch_main()

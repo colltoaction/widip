@@ -44,8 +44,8 @@ def shell_main(file_name):
                 result_d = repl_eval(source_d, repl_env)
                 result_str = repl_print(result_d)
                 print(result_str)
-            # except KeyboardInterrupt:
-            #     print()
+            except KeyboardInterrupt:
+                print()
             except YAMLError as e:
                 print(e)
     except EOFError:
