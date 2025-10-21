@@ -41,6 +41,8 @@ def adapter_hypergraph(left, right):
 def glue_diagrams(left, right):
     """a diagram connecting equal objects within each type"""
     """glues two diagrams sequentially with frobenius generators"""
+    if left.cod == right.dom:
+        return left >> right
     l_dom, l_cod, r_dom, r_cod = left.dom, left.cod, right.dom, right.cod
     dw_l = {
         t

@@ -1,7 +1,7 @@
 from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
 
-from discopy.frobenius import Hypergraph as H, Id, Ob, Ty, Box, Spider, Bubble
+from discopy.frobenius import Hypergraph as H, Id, Ob, Ty, Box, Spider, Bubble, Diagram
 
 from .composing import glue_diagrams
 
@@ -24,6 +24,7 @@ def _incidences_to_diagram(node, index):
     Takes an nx_yaml rooted bipartite graph
     and returns an equivalent string diagram
     """
+    # TODO bubbles always have "Bubble" box name
     tag = (node.nodes[index+1].get("tag") or "")[1:]
     kind = node.nodes[index+1]["kind"]
     if kind == "stream":
@@ -44,9 +45,7 @@ def _incidences_to_diagram(node, index):
         return obub
     if kind == "scalar":
         v = node.nodes[index+1]["value"]
-        if not v and tag:
-            ob = Box(tag, Ty(""), Ty(""))
-        elif not v:
+        if not v:
             ob = Id("")
         else:
             ob = Id(v)
@@ -68,8 +67,7 @@ def _incidences_to_diagram(node, index):
         return ob
     if kind == "mapping":
         ob = Id()
-        keys = Id()
-        values = Id()
+        i = 0
         for k, v in batched(node[index+1], 2):
             kkind = node.nodes[k+1]["kind"]
             vkind = node.nodes[v+1]["kind"]
@@ -77,26 +75,22 @@ def _incidences_to_diagram(node, index):
             vtag = (node.nodes[v+1].get("tag") or "")[1:]
             key = _incidences_to_diagram(node, k)
             value = _incidences_to_diagram(node, v)
-            if kkind == "scalar" and vkind == "scalar" and tag and not ktag and not vtag and key != Id(key.dom):
-                kv = Box(tag, key.dom, value.dom)
-            elif kkind != "scalar" and key != Id(key.dom):
-                kbub = Bubble(key, key.dom, key.cod, drawing_name=ktag or kkind)
-                kv = kbub
-            elif ktag:
-                kv = Box(ktag, key.dom, value.dom)
+            if kkind == "scalar" and vkind == "scalar" and ktag and vtag:
+                kv = key >> Box(ktag, key.cod, Ty("")) >> \
+                    Box(vtag, Ty(""), value.dom) >> value
+            elif kkind == "scalar" and ktag and value == Id(""):
+                kv = key >> Box(ktag, key.cod, Ty(""))
+            elif kkind == "scalar" and ktag:
+                kv = key >> Box(ktag, key.cod, value.dom) >> value
+            elif vkind == "scalar" and vtag:
+                kv = key >> Box(vtag, key.cod, value.dom) >> value
             else:
-                kv = key
-            if value == Id(value.dom) and vtag:
-                kv = glue_diagrams(kv, Box(vtag, value.dom, value.dom))
-            elif value != Id(value.dom) or vtag:
-                kv = kv >> Box(vtag, kv.cod, value.cod)
-            elif value != Id(""):
-                vbub = Bubble(value, kv.cod, value.cod, drawing_name=vtag)
-                if vbub.is_id_on_objects:
-                    kv = kv >> vbub.arg
-                else:
-                    kv = kv >> vbub
+                kv = glue_diagrams(key, value)
+
             ob @= kv
-            keys @= key
-            values @= value
+            i += 1
+        if tag:
+            ob = ob >> Box(tag, ob.cod, Ty(""))
+        if i > 1:
+            ob = Bubble(ob, ob.dom, ob.cod, drawing_name=kind)
         return ob
