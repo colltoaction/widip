@@ -20,7 +20,7 @@ def files_ar(ar: Box) -> Diagram:
 def file_diagram(file_name) -> Diagram:
     try:
         path = pathlib.Path(file_name)
-        fd = repl_read(path.read_text())
+        fd = repl_read(path.open())
         # TODO TypeError: Expected frobenius.Diagram, got monoidal.Diagram instead
         # fd = replace_id_f(path.stem)(fd)
         fd.draw(path=str(path.with_suffix(".jpg")),
