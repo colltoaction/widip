@@ -34,14 +34,14 @@ def _incidences_to_diagram(node, index):
             # TODO documents are sequential
             ob @= doc
         if ob != Id(ob.dom):
-            obub = Bubble(ob, ob.dom, ob.cod, drawing_name=tag or kind)
+            obub = ob.bubble(dom=ob.dom, cod=ob.cod, drawing_name=tag or kind)
         else:
             obub = ob
         return obub
     if kind == "document":
         (root, ) = node[index+1]
         ob = _incidences_to_diagram(node, root)
-        obub = Bubble(ob, ob.dom, ob.cod, drawing_name=tag or kind)
+        obub = ob.bubble(dom=ob.dom, cod=ob.cod, drawing_name=tag or kind)
         return obub
     if kind == "scalar":
         v = node.nodes[index+1]["value"]
@@ -52,18 +52,29 @@ def _incidences_to_diagram(node, index):
         return ob
     if kind == "sequence":
         ob = Id()
+        i = 0
         for v in node[index+1]:
             vtag = (node.nodes[v+1].get("tag") or "")[1:]
             value = _incidences_to_diagram(node, v)
-            if ob == Id():
-                ob = Id(value.dom)
-            if vtag:
-                if value == Id():
-                    ob = ob >> Box(vtag, ob.cod, Ty())
+            if i < 1:
+                if vtag:
+                    ob = Box(vtag, Ty(""), value.dom) >> value
                 else:
-                    ob = glue_diagrams(ob, Box(vtag, value.dom, value.cod))
-            elif value != Id():
-                ob = glue_diagrams(ob, value)
+                    ob = value
+            else:
+                if vtag:
+                    if value == Id(""):
+                        ob = ob >> Box(vtag, ob.cod, Ty(""))
+                    else:
+                        value = Box(vtag, Ty(""), value.dom) >> value
+                        ob = glue_diagrams(ob, value)
+                elif value != Id():
+                    ob = glue_diagrams(ob, value)
+            i += 1
+        if tag:
+            ob = ob >> Box(tag, ob.cod, Ty(""))
+        if i > 1:
+            ob = ob.bubble(dom=ob.dom, cod=ob.cod, drawing_name=kind)
         return ob
     if kind == "mapping":
         ob = Id()
@@ -92,5 +103,5 @@ def _incidences_to_diagram(node, index):
         if tag:
             ob = ob >> Box(tag, ob.cod, Ty(""))
         if i > 1:
-            ob = Bubble(ob, ob.dom, ob.cod, drawing_name=kind)
+            ob = ob.bubble(dom=ob.dom, cod=ob.cod, drawing_name=kind)
         return ob
