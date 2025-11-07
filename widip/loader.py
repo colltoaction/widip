@@ -12,9 +12,6 @@ def repl_read(stream):
     diagrams = incidences_to_diagram(incidences)
     return diagrams
 
-def repl_print(diagram):
-    return nx_serialize_all(diagram)
-
 def incidences_to_diagram(node: HyperGraph):
     # TODO properly skip stream and document start
     diagram = _incidences_to_diagram(node, 0)
@@ -107,8 +104,8 @@ def _incidences_to_diagram(node: HyperGraph, index):
             key = _incidences_to_diagram(node, k)
             value = _incidences_to_diagram(node, v)
             if kkind == "scalar" and vkind == "scalar" and ktag and vtag:
-                kv = key >> Box(ktag, key.cod, Ty("")) >> \
-                    Box(vtag, Ty(""), value.dom) >> value
+                kv = key >> Box(ktag, key.cod, value.dom) >> \
+                    value >> Box(vtag, value.cod, Ty(""))
             elif kkind == "scalar" and ktag and value == Id(""):
                 kv = key >> Box(ktag, key.cod, Ty(""))
             elif ktag:

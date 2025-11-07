@@ -4,10 +4,10 @@ import sys
 import matplotlib
 matplotlib.use('agg')
 
-from .watch import watch_main, shell_main, widish_main
+from .watch import shell_main, widish_main
 
 
 match sys.argv:
     case [_]:
         shell_main("bin/yaml/shell.yaml")
-    case [_, file_name]: widish_main(file_name)
+    case [_, file_name, *args]: widish_main(file_name, *args)
