@@ -20,7 +20,8 @@ class ShellHandler(FileSystemEventHandler):
             print(f"reloading {event.src_path}")
             try:
                 fd = file_diagram(str(event.src_path))
-                diagram_draw(event.src_path, fd)
+                diagram_draw(Path(event.src_path), fd)
+                diagram_draw(Path(event.src_path+".2"), fd)
             except YAMLError as e:
                 print(e)
 
@@ -43,10 +44,18 @@ def shell_main(file_name):
                 prompt = f"--- !{file_name}\n"
                 source = input(prompt)
                 source_d = repl_read(source)
-                source_d.draw(
-                        textpad=(0.3, 0.1),
-                        fontsize=12,
-                        fontsize_types=8)
+                # source_d.draw(
+                #         textpad=(0.3, 0.1),
+                #         fontsize=12,
+                #         fontsize_types=8)
+                path = Path(file_name)
+                diagram_draw(path, source_d)
+                source_d = compile_shell_program(source_d)
+                diagram_draw(Path(file_name+".2"), source_d)
+                source_d = Spider(0, len(source_d.dom), Ty("io")) \
+                    >> source_d \
+                    >> Spider(len(source_d.cod), 1, Ty("io"))
+                # diagram_draw(path, source_d)
                 result_ev = SHELL_RUNNER(source_d)()
                 print(result_ev)
             except KeyboardInterrupt:
@@ -61,11 +70,12 @@ def shell_main(file_name):
 
 def widish_main(file_name, *shell_program_args: str):
     fd = file_diagram(file_name)
+    path = Path(file_name)
+    diagram_draw(path, fd)
     fd = compile_shell_program(fd)
+    diagram_draw(Path(file_name+".2"), fd)
     fd = Spider(0, 1, Ty("io")) \
         >> fd \
         >> Spider(len(fd.cod), 1, Ty("io"))
-    path = Path(file_name)
-    diagram_draw(path, fd)
     result_ev = SHELL_RUNNER(fd)()
     print(result_ev)

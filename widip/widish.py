@@ -9,12 +9,9 @@ io_ty = Ty("io")
 
 def run_native_subprocess(ar, *a):
     # TODO unnamed cables/empty strings are dropped
-    # if not x == Ty("")
-    if type(ar) == Bubble:
-        return run_native_subprocess(ar.arg, *a)
     try:
         io_result = run(
-            tuple(str(x) for x in ar.dom[1:]),
+            tuple(x.name for x in ar.dom[1:] if x != Ty("")),
             check=True, input=a[0], text=True, capture_output=True)
         return io_result.stdout
     except CalledProcessError as e:

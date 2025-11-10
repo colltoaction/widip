@@ -2,7 +2,7 @@ from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
 from nx_hif.hif import *
 
-from discopy.frobenius import Id, Ty, Box
+from discopy.frobenius import Id, Ty, Box, Spider
 
 from .composing import glue_diagrams
 
@@ -54,15 +54,17 @@ def _incidences_to_diagram(node: HyperGraph, index):
         if nxt:
             ((root_e, _, _, _), ) = nxt
             ((_, root, _, _), ) = hif_edge_incidences(node, root_e, key="start")
-            ob = _incidences_to_diagram(node, root)
+            rkind = hif_node(node, root)["kind"]
+            rtag = (hif_node(node, root).get("tag") or "")[1:]
+            if rkind == "scalar" and rtag:
+                rval = hif_node(node, root)["value"]
+                ob = Box(rtag, Ty(rval), Ty(""))
+            else:
+                ob = _incidences_to_diagram(node, root)
         return ob
     if kind == "scalar":
         v = hif_node(node, index)["value"]
-        if not v:
-            ob = Id("")
-        else:
-            ob = Id(v)
-        return ob
+        return Id(v)
     if kind == "sequence":
         ob = Id()
         i = 0
@@ -103,9 +105,24 @@ def _incidences_to_diagram(node: HyperGraph, index):
             vtag = (hif_node(node, v).get("tag") or "")[1:]
             key = _incidences_to_diagram(node, k)
             value = _incidences_to_diagram(node, v)
-            if kkind == "scalar" and vkind == "scalar" and ktag and vtag:
-                kv = key >> Box(ktag, key.cod, value.dom) >> \
-                    value >> Box(vtag, value.cod, Ty(""))
+            if kkind == "scalar" and vkind == "scalar" and not ktag and not vtag:
+                kval = hif_node(node, k)["value"]
+                vval = hif_node(node, v)["value"]
+                kv = Box(kval, Ty(""), Ty("")) >> \
+                     (Box(vval, Ty(""), Ty("")) if vval else Id(""))
+            elif kkind == "scalar" and vkind == "scalar" and ktag and vtag:
+                kbox = Box(ktag, key.dom, value.dom)
+                vbox = Box(vtag, value.dom, Ty(""))
+                kv = kbox >> vbox
+            elif kkind == "scalar" and vkind == "scalar" and ktag and not vtag:
+                kval = hif_node(node, k)["value"]
+                vval = hif_node(node, v)["value"]
+                kv = (key >> Box(ktag, key.cod, Ty(""))) >> \
+                     (Box(vval, Ty(""), Ty("")) if vval else Id(""))
+            elif vkind == "scalar" and not ktag and vtag:
+                vval = hif_node(node, v)["value"]
+                kv = (key @ Spider(0, 1, Ty(vval))) >> \
+                      Box(vtag, key.cod @ Ty(vval), Ty(""))
             elif kkind == "scalar" and ktag and value == Id(""):
                 kv = key >> Box(ktag, key.cod, Ty(""))
             elif ktag:
