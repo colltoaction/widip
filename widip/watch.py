@@ -4,7 +4,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from yaml import YAMLError
 
-from discopy.frobenius import Id, Hypergraph as H, Ty, Box, Spider
+from discopy.closed import Id, Ty, Box
 
 from .loader import repl_read
 from .files import diagram_draw, file_diagram
@@ -16,7 +16,7 @@ from .widish import SHELL_RUNNER, compile_shell_program
 class ShellHandler(FileSystemEventHandler):
     """Reload the shell on change."""
     def on_modified(self, event):
-        if ".yaml" in event.src_path:
+        if event.src_path.endswith(".yaml"):
             print(f"reloading {event.src_path}")
             try:
                 fd = file_diagram(str(event.src_path))
@@ -50,11 +50,11 @@ def shell_main(file_name):
                 #         fontsize_types=8)
                 path = Path(file_name)
                 diagram_draw(path, source_d)
-                source_d = compile_shell_program(source_d)
-                diagram_draw(Path(file_name+".2"), source_d)
-                source_d = Spider(0, len(source_d.dom), Ty("io")) \
-                    >> source_d \
-                    >> Spider(len(source_d.cod), 1, Ty("io"))
+                # source_d = compile_shell_program(source_d)
+                # diagram_draw(Path(file_name+".2"), source_d)
+                # source_d = Spider(0, len(source_d.dom), Ty("io")) \
+                #     >> source_d \
+                #     >> Spider(len(source_d.cod), 1, Ty("io"))
                 # diagram_draw(path, source_d)
                 result_ev = SHELL_RUNNER(source_d)()
                 print(result_ev)
@@ -74,8 +74,8 @@ def widish_main(file_name, *shell_program_args: str):
     diagram_draw(path, fd)
     fd = compile_shell_program(fd)
     diagram_draw(Path(file_name+".2"), fd)
-    fd = Spider(0, 1, Ty("io")) \
-        >> fd \
-        >> Spider(len(fd.cod), 1, Ty("io"))
+    # fd = Spider(0, 1, Ty("io")) \
+    #     >> fd \
+    #     >> Spider(len(fd.cod), 1, Ty("io"))
     result_ev = SHELL_RUNNER(fd)()
     print(result_ev)

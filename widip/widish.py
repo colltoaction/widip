@@ -1,7 +1,6 @@
 from subprocess import CalledProcessError, run
 
-from discopy.frobenius import Category, Functor, Ty, Box, Bubble
-from discopy.frobenius import Hypergraph as H
+from discopy.closed import Category, Functor, Ty, Box
 from discopy import python
 
 

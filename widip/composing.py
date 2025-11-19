@@ -1,7 +1,8 @@
-from discopy.frobenius import Hypergraph as H, Id, Ty, Spider, Swap, Diagram, Functor, Box
+from discopy.closed import Id, Ty, Diagram, Functor, Box
 
 
 def adapt_to_interface(diagram, box):
+    return
     """adapts a diagram open ports to fit in the box"""
     left = Id(box.dom)
     right = Id(box.cod)
@@ -10,6 +11,7 @@ def adapt_to_interface(diagram, box):
             adapter_hypergraph(diagram, right)
 
 def adapter_hypergraph(left, right):
+    return
     mid = Ty().tensor(*set(left.cod + right.dom))
     mid_to_left_ports = {
         t: tuple(i for i, lt in enumerate(left.cod) if lt == t)
@@ -39,8 +41,9 @@ def adapter_hypergraph(left, right):
     return g.to_diagram()
 
 def glue_diagrams(left, right):
+    return
     """a diagram connecting equal objects within each type"""
-    """glues two diagrams sequentially with frobenius generators"""
+    """glues two diagrams sequentially with closed generators"""
     if left.cod == right.dom:
         return left >> right
     l_dom, l_cod, r_dom, r_cod = left.dom, left.cod, right.dom, right.cod

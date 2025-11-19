@@ -1,6 +1,6 @@
 import pathlib
 
-from discopy.frobenius import Ty, Diagram, Box, Id, Functor
+from discopy.closed import Ty, Diagram, Box, Id, Functor
 
 from .loader import repl_read
 
@@ -19,7 +19,7 @@ def files_ar(ar: Box) -> Diagram:
 def file_diagram(file_name) -> Diagram:
     path = pathlib.Path(file_name)
     fd = repl_read(path.open())
-    # TODO TypeError: Expected frobenius.Diagram, got monoidal.Diagram instead
+    # TODO TypeError: Expected closed.Diagram, got monoidal.Diagram instead
     # fd = replace_id_f(path.stem)(fd)
     return fd
 

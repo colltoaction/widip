@@ -2,7 +2,7 @@ from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
 from nx_hif.hif import *
 
-from discopy.frobenius import Id, Ty, Box, Spider
+from discopy.closed import Id, Ty, Box, Eval
 
 from .composing import glue_diagrams
 
@@ -40,8 +40,6 @@ def _incidences_to_diagram(node: HyperGraph, index):
             doc = _incidences_to_diagram(node, nxt_node)
             if ob == Id():
                 ob = doc
-            elif dkind == "scalar" and dtag:
-                ob = ob >> Box(dtag, ob.cod, doc.dom) >> doc
             else:
                 ob = glue_diagrams(ob, doc)
 
@@ -54,17 +52,12 @@ def _incidences_to_diagram(node: HyperGraph, index):
         if nxt:
             ((root_e, _, _, _), ) = nxt
             ((_, root, _, _), ) = hif_edge_incidences(node, root_e, key="start")
-            rkind = hif_node(node, root)["kind"]
-            rtag = (hif_node(node, root).get("tag") or "")[1:]
-            if rkind == "scalar" and rtag:
-                rval = hif_node(node, root)["value"]
-                ob = Box(rtag, Ty(rval), Ty(""))
-            else:
-                ob = _incidences_to_diagram(node, root)
+            
+            ob = _incidences_to_diagram(node, root)
         return ob
     if kind == "scalar":
         v = hif_node(node, index)["value"]
-        return Id(v)
+        return Id(Ty(tag) >> Ty(v))
     if kind == "sequence":
         ob = Id()
         i = 0
@@ -85,8 +78,8 @@ def _incidences_to_diagram(node: HyperGraph, index):
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
         if tag:
             ob = ob >> Box(tag, ob.cod, Ty(""))
-        if i > 1 and ob != Id(ob.dom):
-            ob = ob.bubble(dom=ob.dom, cod=ob.cod, drawing_name=kind)
+        # if i > 1 and ob != Id(ob.dom):
+        #     ob = ob.bubble(dom=ob.dom, cod=ob.cod, drawing_name=kind)
         return ob
     if kind == "mapping":
         ob = Id()
@@ -105,40 +98,15 @@ def _incidences_to_diagram(node: HyperGraph, index):
             vtag = (hif_node(node, v).get("tag") or "")[1:]
             key = _incidences_to_diagram(node, k)
             value = _incidences_to_diagram(node, v)
-            if kkind == "scalar" and vkind == "scalar" and not ktag and not vtag:
-                kval = hif_node(node, k)["value"]
-                vval = hif_node(node, v)["value"]
-                kv = Box(kval, Ty(""), Ty("")) >> \
-                     (Box(vval, Ty(""), Ty("")) if vval else Id(""))
-            elif kkind == "scalar" and vkind == "scalar" and ktag and vtag:
-                kbox = Box(ktag, key.dom, value.dom)
-                vbox = Box(vtag, value.dom, Ty(""))
-                kv = kbox >> vbox
-            elif kkind == "scalar" and vkind == "scalar" and ktag and not vtag:
-                kval = hif_node(node, k)["value"]
-                vval = hif_node(node, v)["value"]
-                kv = (key >> Box(ktag, key.cod, Ty(""))) >> \
-                     (Box(vval, Ty(""), Ty("")) if vval else Id(""))
-            elif vkind == "scalar" and not ktag and vtag:
-                vval = hif_node(node, v)["value"]
-                kv = (key @ Spider(0, 1, Ty(vval))) >> \
-                      Box(vtag, key.cod @ Ty(vval), Ty(""))
-            elif kkind == "scalar" and ktag and value == Id(""):
-                kv = key >> Box(ktag, key.cod, Ty(""))
-            elif ktag:
-                kv = key >> Box(ktag, key.cod, value.dom) >> value
-            elif vkind == "scalar" and vtag:
-                kv = key >> Box(vtag, key.cod, value.dom) >> value
-            elif value == Id(""):
-                kv = key
-            else:
-                kv = glue_diagrams(key, value)
-
+            
+            kv = (key @ value) >> Box(";", key.cod @ value.cod, (key.cod.base @ value.cod.base) >> (key.cod.exponent >> value.cod.exponent))
+            kv = ((key.cod.base @ value.cod.base) @ kv) >> Eval(kv.cod)
+            
             ob @= kv
             i += 1
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
-        # if tag:
-        #     ob = ob >> Box(tag, ob.cod, Ty(""))
-        if i > 1 and ob != Id(ob.dom):
-            ob = ob.bubble(dom=ob.dom, cod=ob.cod, drawing_name=kind)
+        if tag:
+            ob = ob >> Box(tag, ob.cod, Ty(""))
+        # if i > 1 and ob != Id(ob.dom):
+        #     ob = ob.bubble(dom=ob.dom, cod=ob.cod, drawing_name=kind)
         return ob
