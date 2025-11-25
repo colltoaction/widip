@@ -58,7 +58,7 @@ def _incidences_to_diagram(node: HyperGraph, index):
     if kind == "scalar":
         v = hif_node(node, index)["value"]
         if tag and v:
-            return Id(Ty(tag) >> Ty(v))
+            return Box(tag, Ty(), Ty(tag) << Ty(v))
         elif tag:
             return Id(Ty(tag) >> Ty())
         elif v:
@@ -106,18 +106,20 @@ def _incidences_to_diagram(node: HyperGraph, index):
             key = _incidences_to_diagram(node, k)
             value = _incidences_to_diagram(node, v)
 
-            A_input = key.cod.base @ value.cod.base
-            C_output = key.cod.exponent >> value.cod.exponent
-            comp_box = Box("(;)", (key.cod @ value.cod), A_input >> C_output) 
+            if value == Id(Ty() >> Ty()):
+                kv = key
+            else:
+                kv = (key @ value) >> Box("(;)", key.cod @ value.cod, value.cod.base << (key.cod.exponent @ value.cod.exponent)) 
+                kv = (kv @ kv.cod.exponent) >> Eval(kv.cod)
            
-            kv = (A_input @ comp_box) >> Eval(A_input >> C_output)
             #kv = (key @ value) >> Box("(;)", key.cod @ value.cod, (key.cod.base @ value.cod.base) >> (key.cod.exponent >> value.cod.exponent))
             # kv = ((key.cod.base @ value.cod.base) @ kv) >> Eval(kv.cod)
 
             if i==0:
                 ob = kv
             else:
-                ob = (kv @ ob) @ Box("(||)", (ob.cod @ kv.cod), ob.cod) @ Eval(ob.cod.exponent >> kv.cod.exponent)
+                ob = (kv @ kv.cod @ ob) >> (kv.cod @ Box("(||)", (kv.cod @ ob.cod), ob.cod)) 
+                ob = kv.cod.base @ ob
 
             i += 1
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
@@ -125,5 +127,4 @@ def _incidences_to_diagram(node: HyperGraph, index):
             ob = tag @ (ob >> Box(tag, ob.cod, Ty("")))
         # if i > 1 and ob != Id(ob.dom):
         #     ob = ob.bubble(dom=ob.dom, cod=ob.cod, drawing_name=kind)
-        ob.draw()
         return ob

@@ -73,9 +73,7 @@ def widish_main(file_name, *shell_program_args: str):
     path = Path(file_name)
     diagram_draw(path, fd)
     fd = compile_shell_program(fd)
-    diagram_draw(Path(file_name+".2"), fd)
-    # fd = Spider(0, 1, Ty("io")) \
-    #     >> fd \
-    #     >> Spider(len(fd.cod), 1, Ty("io"))
-    result_ev = SHELL_RUNNER(fd)()
-    print(result_ev)
+    diagram_draw(path.with_suffix(".shell.yaml"), fd)
+    constants = tuple(x.name for x in fd.dom)
+    result_ev = SHELL_RUNNER(fd)(*constants)
+    print(result_ev.rstrip("\n"))
