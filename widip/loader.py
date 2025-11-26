@@ -58,13 +58,18 @@ def _incidences_to_diagram(node: HyperGraph, index):
     if kind == "scalar":
         v = hif_node(node, index)["value"]
         if tag and v:
-            return Box(tag, Ty(), Ty(tag) << Ty(v))
+            return Eval(Ty(tag) << Ty(v))
+            return Box(tag, (Ty(tag) << Ty(v)) @ Ty(v), Ty(tag))
         elif tag:
-            return Id(Ty(tag) >> Ty())
+            return Eval(Ty(tag) << Ty())
+            return Box(tag, (Ty(tag) << Ty()), Ty(tag))
         elif v:
-            return Id(Ty() >> Ty(v))
+            return Id(v)
+            return Eval(Ty("str") << Ty(v))
+            return Box(v, Ty(v) << Ty(), Ty(v))
+            return Id(Ty() << Ty(v))
         else:
-            return Id(Ty() >> Ty())
+            return Id()
     if kind == "sequence":
         ob = Id()
         i = 0
@@ -106,25 +111,24 @@ def _incidences_to_diagram(node: HyperGraph, index):
             key = _incidences_to_diagram(node, k)
             value = _incidences_to_diagram(node, v)
 
-            if value == Id(Ty() >> Ty()):
+            if value == Id():
                 kv = key
             else:
-                kv = (key @ value) >> Box("(;)", key.cod @ value.cod, value.cod.base << (key.cod.exponent @ value.cod.exponent)) 
-                kv = (kv @ kv.cod.exponent) >> Eval(kv.cod)
-           
-            #kv = (key @ value) >> Box("(;)", key.cod @ value.cod, (key.cod.base @ value.cod.base) >> (key.cod.exponent >> value.cod.exponent))
-            # kv = ((key.cod.base @ value.cod.base) @ kv) >> Eval(kv.cod)
+                kv = (key @ value) >> Box("(;)", key.cod @ value.cod, value.cod << (key.cod @ value.cod)) 
+                kv = (kv @ kv.cod) >> Eval(kv.cod)
 
             if i==0:
                 ob = kv
+            # elif ob == Id(ob.cod):
+            #     ob = ob @ kv
             else:
-                ob = (kv @ kv.cod @ ob) >> (kv.cod @ Box("(||)", (kv.cod @ ob.cod), ob.cod)) 
-                ob = kv.cod.base @ ob
+                ob = (ob @ kv) >> Box("(||)", ob.cod @ kv.cod, (ob.cod @ kv.cod) << (ob.dom[1:] @ kv.dom[1:])) 
 
             i += 1
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
-        if tag:
-            ob = tag @ (ob >> Box(tag, ob.cod, Ty("")))
         # if i > 1 and ob != Id(ob.dom):
         #     ob = ob.bubble(dom=ob.dom, cod=ob.cod, drawing_name=kind)
+        # ob = (ob @ ob.cod.exponent) >> Eval(ob.cod)
+        # if tag:
+        #     ob = ob >> Box(tag, ob.cod, Ty(tag))
         return ob
