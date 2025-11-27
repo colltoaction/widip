@@ -8,20 +8,17 @@ io_ty = Ty("io")
 
 def run_native_subprocess(ar, *b):
     def run_native_subprocess_seq(inp=None, *subprocess_args):
-        print("seq", subprocess_args, b)
         b0out = b[0](inp, subprocess_args[0])
         b1out = b[1](b0out, subprocess_args[1])
         return b1out
     def run_native_subprocess_map(inp=None, *subprocess_args):
-        print("map", subprocess_args, b)
         b0out = b[0](inp, *subprocess_args[:-1])
         b1out = b[1](inp, *subprocess_args[-1:])
         return lambda u, v: b0out + b1out
     def run_native_subprocess_inside(inp=None, *subprocess_args):
-        print("run", ar.name, inp, subprocess_args)
         try:
             io_result = run(
-                (ar.name, *subprocess_args),
+                b,
                 check=True, text=True, capture_output=True,
                 input=inp)
             return io_result.stdout
@@ -46,7 +43,7 @@ SHELL_RUNNER = Functor(
 SHELL_COMPILER = Functor(
     lambda ob: ob,
     lambda ar: {
-        "ls": ar.curry().uncurry()
+        # "ls": ar.curry().uncurry()
     }.get(ar.name, ar),)
         # print(ar) or ar.curry().uncurry() if ar.name not in ("(;)", "(||)") else ar)
     # TODO remove .inside[0] workaround
@@ -60,6 +57,6 @@ def compile_shell_program(diagram):
     all boxes are io->[io]"""
     # TODO compile sequences and parallels to evals
     diagram = SHELL_COMPILER(diagram)
-    return diagram >> Eval(diagram.cod.inside[0])
+    return diagram
     return diagram
     diagram = (diagram @ diagram.cod.exponent) >> Eval(diagram.cod)

@@ -59,12 +59,12 @@ def _incidences_to_diagram(node: HyperGraph, index):
     if kind == "scalar":
         v = hif_node(node, index)["value"]
         if tag and v:
-            return Id(Ty(tag) @ Ty(v))
             return Box(tag, Ty(tag), Ty(tag) << Ty(v))
+            return Id(Ty(tag) @ Ty(v))
             return Eval(Ty(tag) << Ty(v))
         elif tag:
-            return Id(Ty(tag))
             return Box(tag, Ty(tag), Ty(tag) << Ty())
+            return Id(Ty(tag))
             return Eval(Ty(tag) << P)
             return Box(tag, (Ty(tag) << P), Ty(tag))
         elif v:
@@ -136,6 +136,6 @@ def _incidences_to_diagram(node: HyperGraph, index):
         #     ob = ob >> Box(tag, ob.cod, Ty(tag))
         ins = Ty().tensor(*map(lambda x: getattr(x, "base", Ty(x)), ob.cod.inside))
         ps = Ty().tensor(*map(lambda x: getattr(x, "exponent", Ty()), ob.cod.inside)) or P
-        ob = Ty(tag) @ ob
+        ob = Box("G", Ty(tag) @ ob.dom, Ty("io") >> Ty("io"))
         # ob = ob @ Ty().tensor(*map(lambda x: x.inside[0].exponent, ins))
         return ob
