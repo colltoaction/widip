@@ -59,7 +59,8 @@ def _incidences_to_diagram(node: HyperGraph, index):
     if kind == "scalar":
         v = hif_node(node, index)["value"]
         if tag and v:
-            return Box(tag, Ty(tag), Ty(tag) << Ty(v))
+            return (Ty("io") @ Box("G", Ty(tag) @ Ty(v), Ty("io") >> Ty("io")) >> Eval(Ty("io") >> Ty("io")))
+            # return Ty("io") @ Box("G", Ty(tag) @ Ty(v), Ty("io") >> Ty("io")) >> Eval(Ty("io") >> Ty("io"))
             return Id(Ty(tag) @ Ty(v))
             return Eval(Ty(tag) << Ty(v))
         elif tag:
@@ -68,11 +69,12 @@ def _incidences_to_diagram(node: HyperGraph, index):
             return Eval(Ty(tag) << P)
             return Box(tag, (Ty(tag) << P), Ty(tag))
         elif v:
+            return Id(Ty("io") >> Ty("io"))
             return Id(v)
             return Box("⌜−⌝", Ty(v), Ty(v) << Ty())
             return Id(P << Ty(v))
         else:
-            return Id()
+            return Id(Ty("io") >> Ty("io"))
     if kind == "sequence":
         ob = Id()
         i = 0
@@ -117,8 +119,12 @@ def _incidences_to_diagram(node: HyperGraph, index):
             if value == Id():
                 kv = key
             else:
-                kv = (key @ value) >> Box("(;)", key.cod @ value.cod, value.cod << (key.cod @ value.cod)) 
-                kv = (kv @ kv.cod) >> Eval(kv.cod)
+                # vdom = value.dom
+                kv = key @ value.dom[1:] >> value
+                # key = Ty("io") @ key >> Eval(Ty("io") >> Ty("io"))
+                # value = Ty("io") @ value >> Eval(Ty("io") >> Ty("io"))
+                # kv = (key @ vdom >> value)# >> Box("(;)", key.cod @ value.cod, value.cod << (key.cod @ value.cod)) 
+                # kv = (kv @ kv.cod) >> Eval(kv.cod)
 
             if i==0:
                 ob = kv
@@ -136,6 +142,10 @@ def _incidences_to_diagram(node: HyperGraph, index):
         #     ob = ob >> Box(tag, ob.cod, Ty(tag))
         ins = Ty().tensor(*map(lambda x: getattr(x, "base", Ty(x)), ob.cod.inside))
         ps = Ty().tensor(*map(lambda x: getattr(x, "exponent", Ty()), ob.cod.inside)) or P
-        ob = Box("G", Ty(tag) @ ob.dom, Ty("io") >> Ty("io"))
-        # ob = ob @ Ty().tensor(*map(lambda x: x.inside[0].exponent, ins))
+        # if tag:
+        #     ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty("io") >> Ty("io"))
+        # else:
+        if i > 1:
+            # ob = ob @ kv.dom[1:] >> kv
+            ob = ob >> Box("(||)", ob.cod, Ty("io") >> Ty("io"))
         return ob
