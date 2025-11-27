@@ -3,6 +3,7 @@ from nx_yaml import nx_compose_all, nx_serialize_all
 from nx_hif.hif import *
 
 from discopy.closed import Id, Ty, Box, Eval
+P = Ty("ℙ")
 
 from .composing import glue_diagrams
 
@@ -58,16 +59,18 @@ def _incidences_to_diagram(node: HyperGraph, index):
     if kind == "scalar":
         v = hif_node(node, index)["value"]
         if tag and v:
+            return Id(Ty(tag) @ Ty(v))
+            return Box(tag, Ty(tag), Ty(tag) << Ty(v))
             return Eval(Ty(tag) << Ty(v))
-            return Box(tag, (Ty(tag) << Ty(v)) @ Ty(v), Ty(tag))
         elif tag:
-            return Eval(Ty(tag) << Ty())
-            return Box(tag, (Ty(tag) << Ty()), Ty(tag))
+            return Id(Ty(tag))
+            return Box(tag, Ty(tag), Ty(tag) << Ty())
+            return Eval(Ty(tag) << P)
+            return Box(tag, (Ty(tag) << P), Ty(tag))
         elif v:
             return Id(v)
-            return Eval(Ty("str") << Ty(v))
-            return Box(v, Ty(v) << Ty(), Ty(v))
-            return Id(Ty() << Ty(v))
+            return Box("⌜−⌝", Ty(v), Ty(v) << Ty())
+            return Id(P << Ty(v))
         else:
             return Id()
     if kind == "sequence":
@@ -122,7 +125,7 @@ def _incidences_to_diagram(node: HyperGraph, index):
             # elif ob == Id(ob.cod):
             #     ob = ob @ kv
             else:
-                ob = (ob @ kv) >> Box("(||)", ob.cod @ kv.cod, (ob.cod @ kv.cod) << (ob.dom[1:] @ kv.dom[1:])) 
+                ob = ob @ kv
 
             i += 1
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
@@ -131,4 +134,8 @@ def _incidences_to_diagram(node: HyperGraph, index):
         # ob = (ob @ ob.cod.exponent) >> Eval(ob.cod)
         # if tag:
         #     ob = ob >> Box(tag, ob.cod, Ty(tag))
+        ins = Ty().tensor(*map(lambda x: getattr(x, "base", Ty(x)), ob.cod.inside))
+        ps = Ty().tensor(*map(lambda x: getattr(x, "exponent", Ty()), ob.cod.inside)) or P
+        ob = Ty(tag) @ ob
+        # ob = ob @ Ty().tensor(*map(lambda x: x.inside[0].exponent, ins))
         return ob

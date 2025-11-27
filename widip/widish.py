@@ -45,9 +45,12 @@ SHELL_RUNNER = Functor(
 
 SHELL_COMPILER = Functor(
     lambda ob: ob,
-    # lambda ar: print(ar) or ar.curry().uncurry() if ar.name not in ("(;)", "(||)") else ar)
+    lambda ar: {
+        "ls": ar.curry().uncurry()
+    }.get(ar.name, ar),)
+        # print(ar) or ar.curry().uncurry() if ar.name not in ("(;)", "(||)") else ar)
     # TODO remove .inside[0] workaround
-    lambda ar: print(ar.dom) or Eval(ar.dom[0].inside[0]) if ar.name not in ("(;)", "(||)") else ar)
+    # lambda ar: ar)
 
 
 def compile_shell_program(diagram):
@@ -57,6 +60,6 @@ def compile_shell_program(diagram):
     all boxes are io->[io]"""
     # TODO compile sequences and parallels to evals
     diagram = SHELL_COMPILER(diagram)
+    return diagram >> Eval(diagram.cod.inside[0])
     return diagram
     diagram = (diagram @ diagram.cod.exponent) >> Eval(diagram.cod)
-    return (diagram @ diagram.cod.exponent) >> Eval(diagram.cod)
