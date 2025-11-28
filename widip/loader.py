@@ -55,15 +55,16 @@ def _incidences_to_diagram(node: HyperGraph, index):
             ((_, root, _, _), ) = hif_edge_incidences(node, root_e, key="start")
             
             ob = _incidences_to_diagram(node, root)
-        return ob
+        return ob.curry(len(ob.cod), left=False)
     if kind == "scalar":
         v = hif_node(node, index)["value"]
         if tag and v:
-            return (Ty("io") @ Box("G", Ty(tag) @ Ty(v), Ty("io") >> Ty("io")) >> Eval(Ty("io") >> Ty("io")))
-            # return Ty("io") @ Box("G", Ty(tag) @ Ty(v), Ty("io") >> Ty("io")) >> Eval(Ty("io") >> Ty("io"))
+            return (Box("g", Ty("io") @ Ty(tag) @ Ty(v), Ty("io")))
+            # return Ty("io") @ Box("g", Ty(tag) @ Ty(v), Ty("io") >> Ty("io")) >> Eval(Ty("io") >> Ty("io"))
             return Id(Ty(tag) @ Ty(v))
             return Eval(Ty(tag) << Ty(v))
         elif tag:
+            return Box("g", Ty("io") @ Ty(tag), Ty("io"))
             return Box(tag, Ty(tag), Ty(tag) << Ty())
             return Id(Ty(tag))
             return Eval(Ty(tag) << P)
@@ -74,7 +75,7 @@ def _incidences_to_diagram(node: HyperGraph, index):
             return Box("⌜−⌝", Ty(v), Ty(v) << Ty())
             return Id(P << Ty(v))
         else:
-            return Id(Ty("io") >> Ty("io"))
+            return Id(Ty("io"))
     if kind == "sequence":
         ob = Id()
         i = 0
@@ -116,11 +117,12 @@ def _incidences_to_diagram(node: HyperGraph, index):
             key = _incidences_to_diagram(node, k)
             value = _incidences_to_diagram(node, v)
 
-            if value == Id():
-                kv = key
+            if value == Id(Ty("io") >> Ty("io")):
+                kv = key.curry(left=False) @ value.curry(left=False)
             else:
                 # vdom = value.dom
-                kv = key @ value.dom[1:] >> value
+                kv = key.curry(left=False) @ value.curry(left=False)
+                # kv = key @ value.dom[1:] >> value
                 # key = Ty("io") @ key >> Eval(Ty("io") >> Ty("io"))
                 # value = Ty("io") @ value >> Eval(Ty("io") >> Ty("io"))
                 # kv = (key @ vdom >> value)# >> Box("(;)", key.cod @ value.cod, value.cod << (key.cod @ value.cod)) 
@@ -145,7 +147,8 @@ def _incidences_to_diagram(node: HyperGraph, index):
         # if tag:
         #     ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty("io") >> Ty("io"))
         # else:
-        if i > 1:
+        # if i > 1:
             # ob = ob @ kv.dom[1:] >> kv
-            ob = ob >> Box("(||)", ob.cod, Ty("io") >> Ty("io"))
+            # ob = ob.curry()
+        ob = (Ty("io") @ Ty("io") @ ob >> Box("(||)", Ty("io") @ Ty("io") @ ob.cod, Ty("io") @ Ty("io")))
         return ob

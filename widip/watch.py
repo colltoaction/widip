@@ -5,6 +5,7 @@ from watchdog.observers import Observer
 from yaml import YAMLError
 
 from discopy.closed import Id, Ty, Box
+from discopy.utils import tuplify, untuplify
 
 from .loader import repl_read
 from .files import diagram_draw, file_diagram
@@ -76,4 +77,7 @@ def widish_main(file_name, *shell_program_args: str):
     diagram_draw(path.with_suffix(".shell.yaml"), fd)
     constants = tuple(x.name for x in fd.dom)
     result_ev = SHELL_RUNNER(fd)(*constants)
-    print(result_ev.rstrip("\n"))
+    inps = tuple("" for x in fd.cod.exponent)
+    # print("inps", inps)
+    # print("resev", result_ev)
+    print(*(tuple(x.rstrip() for x in tuplify(result_ev(*inps)))), sep="\n")
