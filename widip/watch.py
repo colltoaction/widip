@@ -77,7 +77,7 @@ def widish_main(file_name, *shell_program_args: str):
     diagram_draw(path.with_suffix(".shell.yaml"), fd)
     constants = tuple(x.name for x in fd.dom)
     result_ev = SHELL_RUNNER(fd)(*constants)
-    inps = tuple("" for x in fd.cod.exponent)
+    inps = tuple("" for x in fd.cod)
     # print("inps", inps)
     # print("resev", result_ev)
     print(*(tuple(x.rstrip() for x in tuplify(result_ev(*inps)))), sep="\n")

@@ -3,7 +3,7 @@ from nx_yaml import nx_compose_all, nx_serialize_all
 from nx_hif.hif import *
 
 from discopy.closed import Id, Ty, Box, Eval
-P = Ty("ℙ")
+P = Ty("io") >> Ty("io")
 
 from .composing import glue_diagrams
 
@@ -53,29 +53,18 @@ def _incidences_to_diagram(node: HyperGraph, index):
         if nxt:
             ((root_e, _, _, _), ) = nxt
             ((_, root, _, _), ) = hif_edge_incidences(node, root_e, key="start")
-            
             ob = _incidences_to_diagram(node, root)
-        return ob.curry(len(ob.cod), left=False)
+        return ob
     if kind == "scalar":
         v = hif_node(node, index)["value"]
         if tag and v:
-            return (Box("g", Ty("io") @ Ty(tag) @ Ty(v), Ty("io")))
-            # return Ty("io") @ Box("g", Ty(tag) @ Ty(v), Ty("io") >> Ty("io")) >> Eval(Ty("io") >> Ty("io"))
-            return Id(Ty(tag) @ Ty(v))
-            return Eval(Ty(tag) << Ty(v))
+            return (Box("g", Ty("io") @ Ty(tag) @ Ty(v), Ty("io"))).curry(left=False)
         elif tag:
-            return Box("g", Ty("io") @ Ty(tag), Ty("io"))
-            return Box(tag, Ty(tag), Ty(tag) << Ty())
-            return Id(Ty(tag))
-            return Eval(Ty(tag) << P)
-            return Box(tag, (Ty(tag) << P), Ty(tag))
+            return Box("g", Ty("io") @ Ty(tag), Ty("io")).curry(left=False)
         elif v:
-            return Id(Ty("io") >> Ty("io"))
-            return Id(v)
-            return Box("⌜−⌝", Ty(v), Ty(v) << Ty())
-            return Id(P << Ty(v))
+            return Box("⌜−⌝", Ty(v), P)
         else:
-            return Id(Ty("io"))
+            return Box("⌜−⌝", Ty(), P)
     if kind == "sequence":
         ob = Id()
         i = 0
@@ -96,8 +85,6 @@ def _incidences_to_diagram(node: HyperGraph, index):
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
         if tag:
             ob = ob >> Box(tag, ob.cod, Ty(""))
-        # if i > 1 and ob != Id(ob.dom):
-        #     ob = ob.bubble(dom=ob.dom, cod=ob.cod, drawing_name=kind)
         return ob
     if kind == "mapping":
         ob = Id()
@@ -117,38 +104,21 @@ def _incidences_to_diagram(node: HyperGraph, index):
             key = _incidences_to_diagram(node, k)
             value = _incidences_to_diagram(node, v)
 
-            if value == Id(Ty("io") >> Ty("io")):
-                kv = key.curry(left=False) @ value.curry(left=False)
-            else:
-                # vdom = value.dom
-                kv = key.curry(left=False) @ value.curry(left=False)
-                # kv = key @ value.dom[1:] >> value
-                # key = Ty("io") @ key >> Eval(Ty("io") >> Ty("io"))
-                # value = Ty("io") @ value >> Eval(Ty("io") >> Ty("io"))
-                # kv = (key @ vdom >> value)# >> Box("(;)", key.cod @ value.cod, value.cod << (key.cod @ value.cod)) 
-                # kv = (kv @ kv.cod) >> Eval(kv.cod)
+            kv = key @ value
+            bases = Ty("io")#.tensor(*map(lambda x: x.inside[0].base, key.cod))
+            exps = Ty("io")#.tensor(*map(lambda x: x.inside[0].exponent, value.cod))
+            kv = (kv >> Box("(;)", kv.cod, bases >> exps))
 
             if i==0:
                 ob = kv
-            # elif ob == Id(ob.cod):
-            #     ob = ob @ kv
             else:
                 ob = ob @ kv
 
             i += 1
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
-        # if i > 1 and ob != Id(ob.dom):
-        #     ob = ob.bubble(dom=ob.dom, cod=ob.cod, drawing_name=kind)
-        # ob = (ob @ ob.cod.exponent) >> Eval(ob.cod)
-        # if tag:
-        #     ob = ob >> Box(tag, ob.cod, Ty(tag))
-        ins = Ty().tensor(*map(lambda x: getattr(x, "base", Ty(x)), ob.cod.inside))
-        ps = Ty().tensor(*map(lambda x: getattr(x, "exponent", Ty()), ob.cod.inside)) or P
-        # if tag:
-        #     ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty("io") >> Ty("io"))
-        # else:
-        # if i > 1:
-            # ob = ob @ kv.dom[1:] >> kv
-            # ob = ob.curry()
-        ob = (Ty("io") @ Ty("io") @ ob >> Box("(||)", Ty("io") @ Ty("io") @ ob.cod, Ty("io") @ Ty("io")))
+        if i > 1:
+            bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
+            exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
+            ob = Ty(tag) @ ob if tag else ob
+            ob = (ob >> Box("(||)", ob.cod, Ty("io") >> exps))
         return ob

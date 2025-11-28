@@ -8,33 +8,32 @@ from discopy import python
 io_ty = Ty("io")
 
 def run_native_subprocess(ar, *b):
-    def run_native_subprocess_map(inp=None, *subprocess_args):
-        # print("map", b, inp, subprocess_args)
-        b0out = b[2](*b[0:1])
-        # print("b0out", b0out)
-        b1out = ""
-        if len(b) > 4:
-            b1out = b[4](*b[1:2])
-        # print("b1out", b1out)
-        return b0out, b1out
-    def run_native_subprocess_inside(inp=None, *subprocess_args):
+    def run_native_subprocess_map():
+        print(b)
+        return lambda x: (b[0](x), b[1](x))
+    def run_native_subprocess_seq():
+        # TODO call in sequence
+        # print("seq", b, )
+        return lambda x: b[1](b[0](x))
+    def run_native_subprocess_inside():
+        # print("run", b)
         try:
-            # print("inside", ar.name, b, inp, subprocess_args)
             io_result = run(
                 b[1:],
                 check=True, text=True, capture_output=True,
-                input=inp)
-            # print("io_result.stdout", io_result.stdout)
-            return io_result.stdout
+                input=b[0])
+            res = io_result.stdout.rstrip("\n")
+            return res
         except CalledProcessError as e:
             return e.stderr
     # TODO create a pipeline using input parameters
     # to the run function
-    # if ar.name == "(;)":
-    #     return run_native_subprocess_seq
+    if ar.name == "⌜−⌝":
+        return lambda x: b[0]
     if ar.name == "(||)":
         return run_native_subprocess_map()
-    # print("partial", b)
+    if ar.name == "(;)":
+        return run_native_subprocess_seq()
     return run_native_subprocess_inside()
 
 SHELL_RUNNER = Functor(
@@ -51,7 +50,6 @@ SHELL_COMPILER = Functor(
     lambda ar: {
         # "ls": ar.curry().uncurry()
     }.get(ar.name, ar),)
-        # print(ar) or ar.curry().uncurry() if ar.name not in ("(;)", "(||)") else ar)
     # TODO remove .inside[0] workaround
     # lambda ar: ar)
 
