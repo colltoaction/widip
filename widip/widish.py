@@ -8,15 +8,16 @@ from discopy import python
 io_ty = Ty("io")
 
 def run_native_subprocess(ar, *b):
-    def run_native_subprocess_map():
-        print(b)
-        return lambda x: (b[0](x), b[1](x))
-    def run_native_subprocess_seq():
+    def run_native_subprocess_map(*params):
+        print("map", b, params)
+        params = tuple(params[1:])
+        return b[0](*params), b[1](*params)
+    def run_native_subprocess_seq(*params):
         # TODO call in sequence
-        # print("seq", b, )
-        return lambda x: b[1](b[0](x))
+        params = tuple(params[1:])
+        return print("seq", b, params) or b[1](*(b[0](*params)))
     def run_native_subprocess_inside():
-        # print("run", b)
+        print("run", b)
         try:
             io_result = run(
                 b[1:],
@@ -29,11 +30,11 @@ def run_native_subprocess(ar, *b):
     # TODO create a pipeline using input parameters
     # to the run function
     if ar.name == "⌜−⌝":
-        return lambda x: b[0]
+        return lambda *v: print(f"⌜{v}⌝") or (v[0] if len(v) > 0 else "")
     if ar.name == "(||)":
-        return run_native_subprocess_map()
+        return run_native_subprocess_map
     if ar.name == "(;)":
-        return run_native_subprocess_seq()
+        return run_native_subprocess_seq
     return run_native_subprocess_inside()
 
 SHELL_RUNNER = Functor(

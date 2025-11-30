@@ -107,7 +107,8 @@ def _incidences_to_diagram(node: HyperGraph, index):
             kv = key @ value
             bases = Ty("io")#.tensor(*map(lambda x: x.inside[0].base, key.cod))
             exps = Ty("io")#.tensor(*map(lambda x: x.inside[0].exponent, value.cod))
-            kv = (kv >> Box("(;)", kv.cod, bases >> exps))
+            kv = (Ty("io") @ (kv >> Box("(;)", kv.cod, bases >> exps))) >> Eval(bases >> exps)
+            kv = kv.curry(left=False)
 
             if i==0:
                 ob = kv
@@ -117,8 +118,14 @@ def _incidences_to_diagram(node: HyperGraph, index):
             i += 1
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
         if i > 1:
-            bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
-            exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
-            ob = Ty(tag) @ ob if tag else ob
-            ob = (ob >> Box("(||)", ob.cod, Ty("io") >> exps))
+            print(ob.cod)
+            # TODO tag behavior should be to trigger eval of params, so then run g
+            ob = (ob >> Box("(||)", ob.cod, Ty("io") @ Ty("io") >> Ty("io") @ Ty("io")))
+            if tag:
+                ob = ob.cod.base @ ob >> Eval(ob.cod)
+                ob = Ty("io") @ Ty(tag) @ ob >> Box("g", Ty("io") @ Ty(tag) @ ob.cod, Ty("io"))
+            else:
+                ob = ob.cod.exponent @ ob >> Eval(ob.cod)
+            # ob = ob.curry(left=False)
+        # ob.draw()
         return ob
