@@ -16,13 +16,13 @@ def run_native_subprocess(ar, *b):
         # TODO call in sequence
         params = tuple(params[1:])
         return print("seq", b, params) or b[1](*(b[0](*params)))
-    def run_native_subprocess_inside():
-        print("run", b)
+    def run_native_subprocess_inside(inp, *args):
+        # print("run", inp, args)
         try:
             io_result = run(
-                b[1:],
+                args,
                 check=True, text=True, capture_output=True,
-                input=b[0])
+                input=inp)
             res = io_result.stdout.rstrip("\n")
             return res
         except CalledProcessError as e:
@@ -35,7 +35,9 @@ def run_native_subprocess(ar, *b):
         return run_native_subprocess_map
     if ar.name == "(;)":
         return run_native_subprocess_seq
-    return run_native_subprocess_inside()
+    if ar.name == "G":
+        return lambda io: run_native_subprocess_inside(io, *b)
+    return run_native_subprocess_inside(b[0], *b[1:])
 
 SHELL_RUNNER = Functor(
     lambda ob: str,
