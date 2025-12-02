@@ -62,11 +62,11 @@ def _incidences_to_diagram(node: HyperGraph, index):
         elif tag:
             return Box("g", Ty("io") @ Ty(tag), Ty("io")).curry(left=False)
         elif v:
-            return Box("⌜−⌝", Ty(v), Ty("io") >> Ty(v))
+            return Box("⌜−⌝", Ty(v), Ty("io") >> Ty("io"))
             return Box("G", Ty(v), Ty("io") >> Ty("io"))
             return (Ty("io") @ Box("⌜−⌝", Ty(v), Ty() >> Ty(v))).curry(left=False)
         else:
-            return Box("⌜−⌝", Ty(), Ty("io") >> Ty())
+            return Box("⌜−⌝", Ty(), Ty("io") >> Ty("io"))
             # return (Ty("io") @ Box("⌜−⌝", Ty(), Ty() >> Ty())).curry(left=False)
             # return Box("⌜−⌝", Ty(), P)
     if kind == "sequence":
@@ -125,12 +125,17 @@ def _incidences_to_diagram(node: HyperGraph, index):
             print(ob.cod)
             # TODO tag behavior should be to trigger eval of params, so then run g
             if tag:
+                par_box = Box("(||)", ob.cod, Ty("io") @ Ty("io") >> Ty("io") @ Ty("io"))
+                par_box = Ty("io") @ Ty("io") @ par_box >> Eval(Ty("io") @ Ty("io") >> Ty("io") @ Ty("io"))
+                ob = Ty("io") @ Ty("io") @ ob >> par_box
                 G_box = Box("G", Ty(tag), Ty("io") @ Ty("io") >> Ty("io"))
-                G_box = (Ty("io") @ Ty("io") @ G_box >> Eval(G_box.cod))
-                G_box.draw()
-                ob = (ob >> Box("(||)", ob.cod, Ty("io") @ Ty("io") >> Ty("io") @ Ty("io")))
-                ob = Ty("io") @ Ty("io") @ ob >> Eval(ob.cod)
-                ob = Ty("io") @ Ty(tag) @ ob >> G_box
+                G_box = (G_box) #>> Eval(G_box.cod))
+                ob = ob @ G_box
+                ob = ob >> Eval(Ty("io") @ Ty("io") >> Ty("io"))
+                # G_box.draw()
+                # ob = (ob >> Box("(||)", ob.cod, Ty("io") @ Ty("io") >> Ty("io") @ Ty("io")))
+                # ob = Ty("io") @ Ty("io") @ ob >> Eval(ob.cod)
+                # ob = Ty("io") @ Ty(tag) @ ob >> G_box
                 # ob = Ty("io") @ Ty(tag) @ ob# >> Box("g", Ty("io") @ Ty(tag) @ ob.cod, Ty("io"))
             else:
                 ob = (ob >> Box("(||)", ob.cod, Ty("io") @ Ty("io") >> Ty("io") @ Ty("io")))

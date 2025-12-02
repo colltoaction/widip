@@ -8,16 +8,18 @@ from discopy import python
 io_ty = Ty("io")
 
 def run_native_subprocess(ar, *b):
+    def run_native_subprocess_constant(*params):
+        return params[0] if params else ar.dom.name if ar.dom else ""
     def run_native_subprocess_map(*params):
         print("map", b, params)
-        params = tuple(params[1:])
-        return b[0](*params), b[1](*params)
+        return b[0](params[0]), b[1](params[1])
     def run_native_subprocess_seq(*params):
-        # TODO call in sequence
-        params = tuple(params[1:])
-        return print("seq", b, params) or b[1](*(b[0](*params)))
+        print("seq", b, params)
+        print("b[0](*params)", b[0](*params))
+        print("b[1](b[0](*params))", b[1](b[0](*params)))
+        return b[1]((b[0](*params)))
     def run_native_subprocess_inside(inp, *args):
-        # print("run", inp, args)
+        print("run", inp, args)
         try:
             io_result = run(
                 args,
@@ -27,23 +29,18 @@ def run_native_subprocess(ar, *b):
             return res
         except CalledProcessError as e:
             return e.stderr
-    # TODO create a pipeline using input parameters
-    # to the run function
     if ar.name == "⌜−⌝":
-        return lambda *v: print(f"⌜{v}⌝") or (v[0] if len(v) > 0 else "")
+        return run_native_subprocess_constant
     if ar.name == "(||)":
         return run_native_subprocess_map
     if ar.name == "(;)":
         return run_native_subprocess_seq
     if ar.name == "G":
-        return lambda io: run_native_subprocess_inside(io, *b)
-    return run_native_subprocess_inside(b[0], *b[1:])
+        return partial(run_native_subprocess_inside, run_native_subprocess_constant())
 
 SHELL_RUNNER = Functor(
     lambda ob: str,
-    lambda ar: lambda *a:
-        # TODO preprocess sequences and parallels
-        run_native_subprocess(ar, *a),
+    lambda ar: partial(run_native_subprocess, ar),
     cod=Category(python.Ty, python.Function))
 
 
@@ -64,7 +61,4 @@ def compile_shell_program(diagram):
     all boxes are io->[io]"""
     # TODO compile sequences and parallels to evals
     diagram = SHELL_COMPILER(diagram)
-    diagram
     return diagram
-    return diagram.curry(2, left=False)
-    diagram = (diagram @ diagram.cod.exponent) >> Eval(diagram.cod)
