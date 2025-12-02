@@ -11,18 +11,13 @@ def run_native_subprocess(ar, *b):
     def run_native_subprocess_constant(*params):
         return params[0] if params else ar.dom.name if ar.dom else ""
     def run_native_subprocess_map(*params):
-        print("map", b, params)
         return b[0](params[0]), b[1](params[1])
     def run_native_subprocess_seq(*params):
-        print("seq", b, params)
-        print("b[0](*params)", b[0](*params))
-        print("b[1](b[0](*params))", b[1](b[0](*params)))
         return b[1]((b[0](*params)))
-    def run_native_subprocess_inside(inp, *args):
-        print("run", inp, args)
+    def run_native_subprocess_inside(inp):
         try:
             io_result = run(
-                args,
+                b,
                 check=True, text=True, capture_output=True,
                 input=inp)
             res = io_result.stdout.rstrip("\n")
@@ -35,8 +30,8 @@ def run_native_subprocess(ar, *b):
         return run_native_subprocess_map
     if ar.name == "(;)":
         return run_native_subprocess_seq
-    if ar.name == "G":
-        return partial(run_native_subprocess_inside, run_native_subprocess_constant())
+    if ar.name == "g":
+        return run_native_subprocess_inside("")
 
 SHELL_RUNNER = Functor(
     lambda ob: str,
