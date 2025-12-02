@@ -62,11 +62,13 @@ def _incidences_to_diagram(node: HyperGraph, index):
         elif tag:
             return Box("g", Ty("io") @ Ty(tag), Ty("io")).curry(left=False)
         elif v:
+            return Box("G", Ty(v), Ty() >> Ty(v))
             return Box("⌜−⌝", Ty(v), Ty() >> Ty(v))
             return Box("G", Ty(v), Ty("io") >> Ty("io"))
             return (Ty("io") @ Box("⌜−⌝", Ty(v), Ty() >> Ty(v))).curry(left=False)
         else:
-            return Box("⌜−⌝", Ty(), Ty() >> Ty())
+            return Box("G", Ty(v), Ty() >> Ty(v))
+            # return Box("⌜−⌝", Ty(), Ty() >> Ty())
             # return (Ty("io") @ Box("⌜−⌝", Ty(), Ty() >> Ty())).curry(left=False)
             # return Box("⌜−⌝", Ty(), P)
     if kind == "sequence":
@@ -108,10 +110,12 @@ def _incidences_to_diagram(node: HyperGraph, index):
             key = _incidences_to_diagram(node, k)
             value = _incidences_to_diagram(node, v)
 
+            key_bases = Ty().tensor(*map(lambda x: x.inside[0].base, value.cod))
+            value_exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, key.cod))
             kv = key @ value
             bases = Ty().tensor(*map(lambda x: x.inside[0].base, key.cod + value.cod))
             exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, key.cod + value.cod))
-            kv = (exps @ (kv >> Box("(;)", kv.cod, exps >> bases))) >> Eval(exps >> bases)
+            kv = (value_exps @ (kv >> Box("(;)", kv.cod, value_exps >> key_bases))) >> Eval(value_exps >> key_bases)
             kv = kv.curry(left=False)
 
             if i==0:
@@ -121,16 +125,15 @@ def _incidences_to_diagram(node: HyperGraph, index):
 
             i += 1
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
-        if i > 1:
+        if i > 1 or tag:
             bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
             exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
             if tag:
-                par_box = Box("(||)", ob.cod, bases >> exps)
-                par_box = Ty(tag) @ bases @ par_box >> Ty(tag) @ Eval(bases >> exps)
-                ob = Ty(tag) @ bases @ ob >> par_box
-                G_box = Box("g", Ty(tag) @ bases, Ty(tag))
-                ob = ob >> G_box
+                par_box = Box("(||)", ob.cod, exps >> bases)
+                ob = ob >> par_box
+                ob = Ty(tag) @ exps @ ob >> Ty(tag) @ Eval(par_box.cod)
+                ob = ob >> Box("g", ob.cod, Ty(tag))
             else:
-                ob = (ob >> Box("(||)", ob.cod, bases >> exps))
+                ob = (ob >> Box("(||)", ob.cod, exps >> bases))
                 ob = ob.cod.exponent @ ob >> Eval(ob.cod)
         return ob

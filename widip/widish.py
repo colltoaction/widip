@@ -2,6 +2,7 @@ from functools import partial
 from subprocess import CalledProcessError, run
 
 from discopy.closed import Category, Functor, Ty, Box, Eval
+from discopy.utils import tuplify, untuplify
 from discopy import python
 
 
@@ -9,19 +10,22 @@ io_ty = Ty("io")
 
 def run_native_subprocess(ar, *b):
     def run_native_subprocess_constant(*params):
-        return params[0] if params else ar.dom.name if ar.dom else ""
+        return tuplify(params[0] if params else ar.dom.name if ar.dom else "")
     def run_native_subprocess_map(*params):
-        return b[0](params[0]), b[1](params[1])
+        res = tuple((x(p) for x, p in zip(b, params)))
+        return untuplify(res)
     def run_native_subprocess_seq(*params):
-        return b[1]((b[0](*params)))
-    def run_native_subprocess_inside(inp):
+        res = tuplify(b[1](b[0](*params)))
+        return res
+    def run_native_subprocess_inside(*params):
         try:
             io_result = run(
                 b,
                 check=True, text=True, capture_output=True,
-                input=inp)
+                # input=params,
+                )
             res = io_result.stdout.rstrip("\n")
-            return res
+            return tuplify(res)
         except CalledProcessError as e:
             return e.stderr
     if ar.name == "⌜−⌝":
@@ -31,7 +35,10 @@ def run_native_subprocess(ar, *b):
     if ar.name == "(;)":
         return run_native_subprocess_seq
     if ar.name == "g":
-        return run_native_subprocess_inside("")
+        res = run_native_subprocess_inside(*b)
+        return res
+    if ar.name == "G":
+        return run_native_subprocess_constant
 
 SHELL_RUNNER = Functor(
     lambda ob: str,
