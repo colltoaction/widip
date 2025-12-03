@@ -10,32 +10,21 @@ io_ty = Ty("io")
 
 def run_native_subprocess(ar, *b):
     def run_native_subprocess_constant(*params):
-        # res = tuplify(untuplify(params[:len(ar.cod.base)]) if params else ar.dom.name if ar.dom else "")
         res = tuple(map(untuplify, params)) + tuple(map(untuplify, b))
         return res
     def run_native_subprocess_map(*params):
-        # TODO for each bases
-        i = 0
-        start = 0
-        bps = []
-        for i in range(len(b)):
-            e = ar.dom[i].inside[0].exponent
-            end = start+len(e)
-            xp = params[start:end]
-            bps.append(xp)
-            start = end
-        res = tuple((x(*tuplify(ps)) for x, ps in zip(b, bps)))
+        res = untuplify(tuple(untuplify(x(*params)) for x in b))
         return res
     def run_native_subprocess_seq(*params):
         b0 = b[0](*params)
-        res = "\n".join(tuplify(b[1](*tuplify(b0))))
+        res = tuplify(b[1](*tuplify(b0)))
         return res
     def run_native_subprocess_inside(*params):
         try:
             io_result = run(
                 b,
                 check=True, text=True, capture_output=True,
-                input="\n".join(params) or None,
+                input="\n".join(params) if params else None,
                 )
             res = io_result.stdout.rstrip("\n")
             return res

@@ -36,8 +36,6 @@ def _incidences_to_diagram(node: HyperGraph, index):
             if not starts:
                 break
             ((_, nxt_node, _, _), ) = starts
-            dkind = hif_node(node, nxt_node)["kind"]
-            dtag = (hif_node(node, nxt_node).get("tag") or "")[1:]
             doc = _incidences_to_diagram(node, nxt_node)
             if ob == Id():
                 ob = doc
@@ -59,21 +57,12 @@ def _incidences_to_diagram(node: HyperGraph, index):
         v = hif_node(node, index)["value"]
         if tag and v:
             return Box("G", Ty(tag) @ Ty(v), Ty() >> Ty())
-            return Box("g", Ty(tag) @ Ty(v), Ty(""))
-            return Box("G", Ty(tag) @ Ty(v), Ty() >> Ty())
         elif tag:
             return Box("G", Ty(tag), Ty() >> Ty())
         elif v:
             return Box("⌜−⌝", Ty(v), Ty() >> Ty())
-            return Box("G", Ty(v), Ty() >> Ty(v))
-            return Box("G", Ty(v), Ty("io") >> Ty("io"))
-            return (Ty("io") @ Box("⌜−⌝", Ty(v), Ty() >> Ty(v))).curry(left=False)
         else:
             return Box("⌜−⌝", Ty(), Ty() >> Ty())
-            return Box("⌜−⌝", Ty(v), Ty(v))
-            return Box("G", Ty(), Ty() >> Ty(v))
-            # return (Ty("io") @ Box("⌜−⌝", Ty(), Ty() >> Ty())).curry(left=False)
-            # return Box("⌜−⌝", Ty(), P)
     if kind == "sequence":
         ob = Id()
         i = 0
@@ -83,17 +72,20 @@ def _incidences_to_diagram(node: HyperGraph, index):
                 break
             ((v_edge, _, _, _), ) = nxt
             ((_, v, _, _), ) = hif_edge_incidences(node, v_edge, key="start")
-            vkind = hif_node(node, v)["kind"]
-            vtag = (hif_node(node, v).get("tag") or "")[1:]
             value = _incidences_to_diagram(node, v)
-            if vkind == "scalar" and vtag:
-                ob = ob >> Box(vtag, ob.cod, value.dom) >> value
+            if i==0:
+                ob = value
             else:
-                ob = glue_diagrams(ob, value)
+                ob = ob @ value
+                bases = ob.cod[0].inside[0].exponent
+                exps = value.cod[0].inside[0].base
+                ob = ob >> Box("(;)", ob.cod, bases >> exps)
+
             i += 1
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
         if tag:
-            ob = ob >> Box(tag, ob.cod, Ty(""))
+            ob = Box("G", Ty(tag), Ty() >> Ty()) @ ob
+            ob = ob >> Box("(;)", ob.cod, Ty() >> Ty())
         return ob
     if kind == "mapping":
         ob = Id()
@@ -106,20 +98,13 @@ def _incidences_to_diagram(node: HyperGraph, index):
             ((_, k, _, _), ) = hif_edge_incidences(node, k_edge, key="start")
             ((v_edge, _, _, _), ) = hif_node_incidences(node, k, key="forward")
             ((_, v, _, _), ) = hif_edge_incidences(node, v_edge, key="start")
-            kkind = hif_node(node, k)["kind"]
-            vkind = hif_node(node, v)["kind"]
-            ktag = (hif_node(node, k).get("tag") or "")[1:]
-            vtag = (hif_node(node, v).get("tag") or "")[1:]
             key = _incidences_to_diagram(node, k)
             value = _incidences_to_diagram(node, v)
 
-            key_bases = Ty().tensor(*map(lambda x: getattr(x.inside[0], "base", Ty()), value.cod))
-            value_exps = Ty().tensor(*map(lambda x: getattr(x.inside[0], "exponent", Ty()), key.cod))
             kv = key @ value
             bases = key.cod[0].inside[0].exponent
             exps = value.cod[0].inside[0].base
             kv = kv >> Box("(;)", kv.cod, bases >> exps)
-            # kv = kv.curry(left=False)
 
             if i==0:
                 ob = kv
@@ -133,6 +118,6 @@ def _incidences_to_diagram(node: HyperGraph, index):
         par_box = Box("(||)", ob.cod, bases >> exps)
         ob = ob >> par_box
         if tag:
-            ob = bases @ ob >> Eval(par_box.cod)
-            ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty("") >> Ty(""))
+            ob = Box("G", Ty(tag), bases >> exps) @ ob
+            ob = ob >> Box("(;)", ob.cod, bases >> exps)
         return ob

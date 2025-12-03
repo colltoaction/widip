@@ -76,4 +76,4 @@ def widish_main(file_name, *shell_program_args: str):
     constants = tuple(x.name for x in fd.dom)
     runner = SHELL_RUNNER(fd)(*constants)
     run_res = runner()
-    print(*(tuple(x.rstrip() for x in tuplify(run_res))), sep="\n")
+    print(*(tuple(x.rstrip() for x in tuplify(untuplify(run_res)) if x)), sep="\n")
