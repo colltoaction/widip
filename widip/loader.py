@@ -58,18 +58,18 @@ def _incidences_to_diagram(node: HyperGraph, index):
     if kind == "scalar":
         v = hif_node(node, index)["value"]
         if tag and v:
-            return Box("G", Ty(tag) @ Ty(v), Ty(tag) >> Ty(""))
+            return Box("G", Ty(tag) @ Ty(v), Ty() >> Ty())
             return Box("g", Ty(tag) @ Ty(v), Ty(""))
-            return Box("G", Ty(tag) @ Ty(v), Ty() >> Ty(""))
+            return Box("G", Ty(tag) @ Ty(v), Ty() >> Ty())
         elif tag:
-            return Box("g", Ty("io") @ Ty(tag), Ty("io")).curry(left=False)
+            return Box("G", Ty(tag), Ty() >> Ty())
         elif v:
-            return Box("⌜−⌝", Ty(), Ty(v) >> Ty(v))
+            return Box("⌜−⌝", Ty(v), Ty() >> Ty())
             return Box("G", Ty(v), Ty() >> Ty(v))
             return Box("G", Ty(v), Ty("io") >> Ty("io"))
             return (Ty("io") @ Box("⌜−⌝", Ty(v), Ty() >> Ty(v))).curry(left=False)
         else:
-            return Box("⌜−⌝", Ty(), Ty("") >> Ty(""))
+            return Box("⌜−⌝", Ty(), Ty() >> Ty())
             return Box("⌜−⌝", Ty(v), Ty(v))
             return Box("G", Ty(), Ty() >> Ty(v))
             # return (Ty("io") @ Box("⌜−⌝", Ty(), Ty() >> Ty())).curry(left=False)
@@ -134,5 +134,5 @@ def _incidences_to_diagram(node: HyperGraph, index):
         ob = ob >> par_box
         if tag:
             ob = bases @ ob >> Eval(par_box.cod)
-            ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty(tag) >> Ty(""))
+            ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty("") >> Ty(""))
         return ob
