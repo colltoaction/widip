@@ -34,9 +34,11 @@ def run_native_subprocess(ar, *b):
         print("map res", b, res)
         return res
     def run_native_subprocess_seq(*params):
+        print("seq", b, params)
         b0 = b[0](*params)
         print("seq", b0, b, params)
-        res = untuplify(b[1](b0))
+        res = untuplify(b[1](*tuplify(b0)))
+        print("seq res", b0, res)
         return res
     def run_native_subprocess_inside(*params):
         try:
@@ -44,7 +46,7 @@ def run_native_subprocess(ar, *b):
             io_result = run(
                 b,
                 check=True, text=True, capture_output=True,
-                # input=params,
+                input="\n".join(params) or None,
                 )
             res = io_result.stdout.rstrip("\n")
             return res
@@ -85,5 +87,4 @@ def compile_shell_program(diagram):
     all boxes are io->[io]"""
     # TODO compile sequences and parallels to evals
     diagram = SHELL_COMPILER(diagram)
-    diagram = diagram.cod[-1].inside[0].exponent @ diagram >> Eval(diagram.cod[-1].inside[0])
     return diagram

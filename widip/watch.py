@@ -76,5 +76,6 @@ def widish_main(file_name, *shell_program_args: str):
     fd = compile_shell_program(fd)
     diagram_draw(path.with_suffix(".shell.yaml"), fd)
     constants = tuple(x.name for x in fd.dom)
-    stdout = SHELL_RUNNER(fd)(*constants)
-    print(*(tuple(x.rstrip() for x in tuplify(stdout))), sep="\n")
+    runner = SHELL_RUNNER(fd)(*constants)
+    run_res = runner()
+    print(*(tuple(x.rstrip() for x in tuplify(run_res))), sep="\n")
