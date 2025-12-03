@@ -1,4 +1,4 @@
-from discopy.frobenius import Box, Ty, Diagram, Id
+from discopy.closed import Box, Ty, Diagram, Id
 
 from .files import stream_diagram
 

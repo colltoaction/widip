@@ -1,7 +1,9 @@
 from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
+from nx_hif.hif import *
 
-from discopy.frobenius import Hypergraph as H, Id, Ob, Ty, Box, Spider, Bubble
+from discopy.closed import Id, Ty, Box, Eval
+P = Ty("io") >> Ty("io")
 
 from .composing import glue_diagrams
 
@@ -11,93 +13,111 @@ def repl_read(stream):
     diagrams = incidences_to_diagram(incidences)
     return diagrams
 
-def repl_print(diagram):
-    return nx_serialize_all(diagram)
-
-def incidences_to_diagram(node):
+def incidences_to_diagram(node: HyperGraph):
     # TODO properly skip stream and document start
     diagram = _incidences_to_diagram(node, 0)
     return diagram
 
-def _incidences_to_diagram(node, index):
+def _incidences_to_diagram(node: HyperGraph, index):
     """
     Takes an nx_yaml rooted bipartite graph
     and returns an equivalent string diagram
     """
-    tag = (node.nodes[index+1].get("tag") or "")[1:]
-    kind = node.nodes[index+1]["kind"]
+    tag = (hif_node(node, index).get("tag") or "")[1:]
+    kind = hif_node(node, index)["kind"]
     if kind == "stream":
         ob = Id()
-        for v in node[index+1]:
-            doc = _incidences_to_diagram(node, v)
-            ob @= doc
+        nxt = tuple(hif_node_incidences(node, index, key="next"))
+        while True:
+            if not nxt:
+                break
+            ((nxt_edge, _, _, _), ) = nxt
+            starts = tuple(hif_edge_incidences(node, nxt_edge, key="start"))
+            if not starts:
+                break
+            ((_, nxt_node, _, _), ) = starts
+            doc = _incidences_to_diagram(node, nxt_node)
+            if ob == Id():
+                ob = doc
+            else:
+                ob = glue_diagrams(ob, doc)
+
+            nxt = tuple(hif_node_incidences(node, nxt_node, key="forward"))
+
         return ob
     if kind == "document":
-        (root, ) = node[index+1]
-        return _incidences_to_diagram(node, root)
-    if kind == "scalar":
-        v = node.nodes[index+1]["value"]
-        if not v and tag:
-            ob = Id("")
-        elif not v:
-            ob = Id()
-        else:
-            ob = Id(v)
+        nxt = tuple(hif_node_incidences(node, index, key="next"))
+        ob = Id()
+        if nxt:
+            ((root_e, _, _, _), ) = nxt
+            ((_, root, _, _), ) = hif_edge_incidences(node, root_e, key="start")
+            ob = _incidences_to_diagram(node, root)
         return ob
+    if kind == "scalar":
+        v = hif_node(node, index)["value"]
+        if tag and v:
+            return Box("G", Ty(tag) @ Ty(v), Ty() >> Ty())
+        elif tag:
+            return Box("G", Ty(tag), Ty() >> Ty())
+        elif v:
+            return Box("⌜−⌝", Ty(v), Ty() >> Ty())
+        else:
+            return Box("⌜−⌝", Ty(), Ty() >> Ty())
     if kind == "sequence":
         ob = Id()
-        for v in node[index+1]:
-            vtag = (node.nodes[v+1].get("tag") or "")[1:]
+        i = 0
+        nxt = tuple(hif_node_incidences(node, index, key="next"))
+        while True:
+            if not nxt:
+                break
+            ((v_edge, _, _, _), ) = nxt
+            ((_, v, _, _), ) = hif_edge_incidences(node, v_edge, key="start")
             value = _incidences_to_diagram(node, v)
-            if ob == Id():
-                ob = Id(value.dom)
-            if value == Id() and vtag:
-                ob = ob >> Box(vtag, ob.cod, Ty())
-            elif value != Id() and vtag:
-                ob = glue_diagrams(ob, Box(vtag, value.dom, value.cod))
-            elif value != Id():
-                ob = glue_diagrams(ob, value)
-        if ob != Id(ob.dom):
-            obub = Bubble(ob, ob.dom, ob.cod, drawing_name=kind)
-        else:
-            obub = ob
-        return obub
+            if i==0:
+                ob = value
+            else:
+                ob = ob @ value
+                bases = ob.cod[0].inside[0].exponent
+                exps = value.cod[0].inside[0].base
+                ob = ob >> Box("(;)", ob.cod, bases >> exps)
+
+            i += 1
+            nxt = tuple(hif_node_incidences(node, v, key="forward"))
+        if tag:
+            ob = Box("G", Ty(tag), Ty() >> Ty()) @ ob
+            ob = ob >> Box("(;)", ob.cod, Ty() >> Ty())
+        return ob
     if kind == "mapping":
         ob = Id()
-        keys = Id()
-        values = Id()
         i = 0
-        for k, v in batched(node[index+1], 2):
-            ktag = (node.nodes[k+1].get("tag") or "")[1:]
-            vtag = (node.nodes[v+1].get("tag") or "")[1:]
+        nxt = tuple(hif_node_incidences(node, index, key="next"))
+        while True:
+            if not nxt:
+                break
+            ((k_edge, _, _, _), ) = nxt
+            ((_, k, _, _), ) = hif_edge_incidences(node, k_edge, key="start")
+            ((v_edge, _, _, _), ) = hif_node_incidences(node, k, key="forward")
+            ((_, v, _, _), ) = hif_edge_incidences(node, v_edge, key="start")
             key = _incidences_to_diagram(node, k)
             value = _incidences_to_diagram(node, v)
-            if key != Id() and ktag:
-                kv = Box(ktag, key.dom, value.dom)
-            elif key != Id():
-                kbub = Bubble(key, key.dom, key.cod, drawing_name=kind)
-                if kbub.is_id_on_objects:
-                    kv = kbub.arg
-                else:
-                    kv = kbub
-            elif ktag:
-                kv = Box(ktag, Ty(), value.dom)
+
+            kv = key @ value
+            bases = key.cod[0].inside[0].exponent
+            exps = value.cod[0].inside[0].base
+            kv = kv >> Box("(;)", kv.cod, bases >> exps)
+
+            if i==0:
+                ob = kv
             else:
-                kv = key
-            if value != Id() and vtag:
-                kv = kv >> Box(vtag, kv.cod, value.cod)
-            elif value != Id():
-                vbub = Bubble(value, kv.cod, value.cod, drawing_name=kind)
-                if vbub.is_id_on_objects:
-                    kv = kv >> vbub.arg
-                else:
-                    kv = kv >> vbub
-            ob @= kv
-            keys @= key
-            values @= value
+                ob = ob @ kv
+
             i += 1
-        if i > 1 and ob != Id(ob.dom):
-            obub = Bubble(ob, ob.dom, ob.cod, drawing_name=kind)
-        else:
-            obub = ob
-        return obub
+            nxt = tuple(hif_node_incidences(node, v, key="forward"))
+        bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
+        exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
+        par_box = Box("(||)", ob.cod, bases >> exps)
+        ob = ob >> par_box
+        if tag:
+            ob = Box("G", Ty(tag), bases >> exps) @ ob
+            ob = ob >> Box("(;)", ob.cod, bases >> exps)
+        return ob

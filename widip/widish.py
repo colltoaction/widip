@@ -1,56 +1,68 @@
-from subprocess import run
+from functools import partial
+from subprocess import CalledProcessError, run
 
-from discopy.frobenius import Category, Functor, Ty, Box
-from discopy.frobenius import Hypergraph as H
+from discopy.closed import Category, Functor, Ty, Box, Eval
+from discopy.utils import tuplify, untuplify
 from discopy import python
 
 
 io_ty = Ty("io")
 
-def run_native_subprocess(ar, *a):
-    # TODO unnamed cables/empty strings are dropped
-    # if not x == Ty("")
-    assert ar.name == "run" and ar.dom[0] == io_ty
-    a = "".join(a)
-    io_result = run(
-        tuple(str(x) for x in ar.dom[1:]),
-        check=True, input=a, text=True, capture_output=True)
-    return io_result.stdout
+def run_native_subprocess(ar, *b):
+    def run_native_subprocess_constant(*params):
+        res = tuple(map(untuplify, params)) + tuple(map(untuplify, b))
+        return res
+    def run_native_subprocess_map(*params):
+        res = untuplify(tuple(untuplify(x(*params)) for x in b))
+        return res
+    def run_native_subprocess_seq(*params):
+        b0 = b[0](*params)
+        res = tuplify(b[1](*tuplify(b0)))
+        return res
+    def run_native_subprocess_inside(*params):
+        try:
+            io_result = run(
+                b,
+                check=True, text=True, capture_output=True,
+                input="\n".join(params) if params else None,
+                )
+            res = io_result.stdout.rstrip("\n")
+            return res
+        except CalledProcessError as e:
+            return e.stderr
+    if ar.name == "⌜−⌝":
+        return run_native_subprocess_constant
+    if ar.name == "(||)":
+        return run_native_subprocess_map
+    if ar.name == "(;)":
+        return run_native_subprocess_seq
+    if ar.name == "g":
+        res = run_native_subprocess_inside(*b)
+        return res
+    if ar.name == "G":
+        return run_native_subprocess_inside
 
-
-class IORun(python.Function):
-    @classmethod
-    def spiders(cls, n_legs_in: int, n_legs_out: int, typ: Ty):
-        def step(*io_inputs):
-            assert len(io_inputs) == n_legs_in
-            io_output = "".join(io_inputs)
-            return (io_output, ) * n_legs_out
-        return IORun(
-            inside=step,
-            dom=tuple(str for _ in range(n_legs_in)),
-            cod=tuple(str for _ in range(n_legs_out)))
-
- 
 SHELL_RUNNER = Functor(
     lambda ob: str,
-    lambda ar: lambda *a:
-        run_native_subprocess(ar, *a),
-    cod=Category(python.Ty, IORun))
+    lambda ar: partial(run_native_subprocess, ar),
+    cod=Category(python.Ty, python.Function))
 
 
-def command_io(diagram):
+SHELL_COMPILER = Functor(
+    # lambda ob: Ty() if ob == Ty("io") else ob,
+    lambda ob: ob,
+    lambda ar: {
+        # "ls": ar.curry().uncurry()
+    }.get(ar.name, ar),)
+    # TODO remove .inside[0] workaround
+    # lambda ar: ar)
+
+
+def compile_shell_program(diagram):
     """
     close input parameters (constants)
     drop outputs matching input parameters
     all boxes are io->[io]"""
-    return (
-        H.spiders(len(diagram.dom), 1, io_ty).to_diagram() @ H.spiders(0, 1, Ty(diagram.name)).to_diagram() @ H.spiders(0, 1, diagram.dom).to_diagram() >>
-        Box("run",
-            io_ty @ Ty(diagram.name) @ diagram.dom,
-            io_ty) >>
-        # TODO splitting into len(cod) copies more than needed
-        H.spiders(1, len(diagram.cod), io_ty).to_diagram())
-
-compile_shell_program = Functor(
-    lambda x: io_ty,
-    lambda b: command_io(b),)
+    # TODO compile sequences and parallels to evals
+    diagram = SHELL_COMPILER(diagram)
+    return diagram

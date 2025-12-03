@@ -1,4 +1,4 @@
-from discopy.frobenius import Box, Ty, Diagram, Spider, Id, Spider
+from discopy.closed import Box, Ty, Diagram, Spider, Id, Spider
 
 from .loader import compose_all
 
