@@ -10,22 +10,44 @@ io_ty = Ty("io")
 
 def run_native_subprocess(ar, *b):
     def run_native_subprocess_constant(*params):
-        return tuplify(params[0] if params else ar.dom.name if ar.dom else "")
+        print("ctt b", b)
+        print("ctt", ar.dom, ar.cod, params)
+        # res = tuplify(untuplify(params[:len(ar.cod.base)]) if params else ar.dom.name if ar.dom else "")
+        res = tuple(map(untuplify, params)) + tuple(map(untuplify, b))
+        print("ctt res", ar.dom, res)
+        return res
     def run_native_subprocess_map(*params):
-        res = tuple((x(p) for x, p in zip(b, params)))
-        return untuplify(res)
+        print("b, params", b, params)
+        print("b, params", ar.cod, ar.dom)
+        # TODO for each bases
+        i = 0
+        start = 0
+        bps = []
+        for i in range(len(b)):
+            e = ar.dom[i].inside[0].exponent
+            print(e, ar.dom[i].inside[0])
+            end = start+len(e)
+            xp = params[start:end]
+            bps.append(xp)
+            start = end
+        res = tuple((x(*tuplify(ps)) for x, ps in zip(b, bps)))
+        print("map res", b, res)
+        return res
     def run_native_subprocess_seq(*params):
-        res = tuplify(b[1](b[0](*params)))
+        b0 = b[0](*params)
+        print("seq", b0, b, params)
+        res = untuplify(b[1](b0))
         return res
     def run_native_subprocess_inside(*params):
         try:
+            print("run", b, params)
             io_result = run(
                 b,
                 check=True, text=True, capture_output=True,
                 # input=params,
                 )
             res = io_result.stdout.rstrip("\n")
-            return tuplify(res)
+            return res
         except CalledProcessError as e:
             return e.stderr
     if ar.name == "⌜−⌝":
@@ -38,7 +60,7 @@ def run_native_subprocess(ar, *b):
         res = run_native_subprocess_inside(*b)
         return res
     if ar.name == "G":
-        return run_native_subprocess_constant
+        return run_native_subprocess_inside
 
 SHELL_RUNNER = Functor(
     lambda ob: str,
@@ -63,4 +85,5 @@ def compile_shell_program(diagram):
     all boxes are io->[io]"""
     # TODO compile sequences and parallels to evals
     diagram = SHELL_COMPILER(diagram)
+    diagram = diagram.cod[-1].inside[0].exponent @ diagram >> Eval(diagram.cod[-1].inside[0])
     return diagram

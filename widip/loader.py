@@ -58,17 +58,20 @@ def _incidences_to_diagram(node: HyperGraph, index):
     if kind == "scalar":
         v = hif_node(node, index)["value"]
         if tag and v:
-            return Box("g", Ty(tag) @ Ty(v), Ty(tag))
+            return Box("G", Ty(tag) @ Ty(v), Ty() >> Ty(""))
+            return Box("g", Ty(tag) @ Ty(v), Ty(""))
+            return Box("G", Ty(tag) @ Ty(v), Ty() >> Ty(""))
         elif tag:
             return Box("g", Ty("io") @ Ty(tag), Ty("io")).curry(left=False)
         elif v:
-            return Box("G", Ty(v), Ty() >> Ty(v))
             return Box("⌜−⌝", Ty(v), Ty() >> Ty(v))
+            return Box("G", Ty(v), Ty() >> Ty(v))
             return Box("G", Ty(v), Ty("io") >> Ty("io"))
             return (Ty("io") @ Box("⌜−⌝", Ty(v), Ty() >> Ty(v))).curry(left=False)
         else:
-            return Box("G", Ty(v), Ty() >> Ty(v))
-            # return Box("⌜−⌝", Ty(), Ty() >> Ty())
+            return Box("⌜−⌝", Ty(), Ty() >> Ty(v))
+            return Box("⌜−⌝", Ty(v), Ty(v))
+            return Box("G", Ty(), Ty() >> Ty(v))
             # return (Ty("io") @ Box("⌜−⌝", Ty(), Ty() >> Ty())).curry(left=False)
             # return Box("⌜−⌝", Ty(), P)
     if kind == "sequence":
@@ -110,13 +113,13 @@ def _incidences_to_diagram(node: HyperGraph, index):
             key = _incidences_to_diagram(node, k)
             value = _incidences_to_diagram(node, v)
 
-            key_bases = Ty().tensor(*map(lambda x: x.inside[0].base, value.cod))
-            value_exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, key.cod))
+            key_bases = Ty().tensor(*map(lambda x: getattr(x.inside[0], "base", Ty()), value.cod))
+            value_exps = Ty().tensor(*map(lambda x: getattr(x.inside[0], "exponent", Ty()), key.cod))
             kv = key @ value
-            bases = Ty().tensor(*map(lambda x: x.inside[0].base, key.cod + value.cod))
-            exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, key.cod + value.cod))
+            bases = Ty().tensor(*map(lambda x: getattr(x.inside[0], "base", Ty()), key.cod + value.cod))
+            exps = Ty().tensor(*map(lambda x: getattr(x.inside[0], "exponent", Ty()), key.cod + value.cod))
             kv = (value_exps @ (kv >> Box("(;)", kv.cod, value_exps >> key_bases))) >> Eval(value_exps >> key_bases)
-            kv = kv.curry(left=False)
+            kv = kv.curry(len(kv.dom), left=False)
 
             if i==0:
                 ob = kv
@@ -131,9 +134,9 @@ def _incidences_to_diagram(node: HyperGraph, index):
             if tag:
                 par_box = Box("(||)", ob.cod, exps >> bases)
                 ob = ob >> par_box
-                ob = Ty(tag) @ exps @ ob >> Ty(tag) @ Eval(par_box.cod)
-                ob = ob >> Box("g", ob.cod, Ty(tag))
+                ob = exps @ ob >> Eval(par_box.cod)
+                ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty() >> Ty(""))
             else:
                 ob = (ob >> Box("(||)", ob.cod, exps >> bases))
-                ob = ob.cod.exponent @ ob >> Eval(ob.cod)
+                # ob = ob.cod.exponent @ ob >> Eval(ob.cod)
         return ob
