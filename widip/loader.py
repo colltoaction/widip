@@ -56,13 +56,13 @@ def _incidences_to_diagram(node: HyperGraph, index):
     if kind == "scalar":
         v = hif_node(node, index)["value"]
         if tag and v:
-            return Box("G", Ty(tag) @ Ty(v), Ty() >> Ty())
+            return Box("G", Ty(tag) @ Ty(v), Ty() >> Ty(v))
         elif tag:
-            return Box("G", Ty(tag), Ty() >> Ty())
+            return Box("G", Ty(tag), Ty() >> Ty(v))
         elif v:
-            return Box("⌜−⌝", Ty(v), Ty() >> Ty())
+            return Box("⌜−⌝", Ty(v), Ty() >> Ty(v))
         else:
-            return Box("⌜−⌝", Ty(), Ty() >> Ty())
+            return Box("⌜−⌝", Ty(), Ty() >> Ty(v))
     if kind == "sequence":
         ob = Id()
         i = 0
@@ -115,9 +115,11 @@ def _incidences_to_diagram(node: HyperGraph, index):
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
         bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
         exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
+        # TODO if len 0
         par_box = Box("(||)", ob.cod, bases >> exps)
         ob = ob >> par_box
         if tag:
-            ob = Box("G", Ty(tag), bases >> exps) @ ob
-            ob = ob >> Box("(;)", ob.cod, bases >> exps)
+            ob = (bases @ ob >> Eval(bases >> exps))
+            ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty() >> Ty(tag))
+            # ob = ob >> Box("(;)", ob.cod, bases >> exps)
         return ob

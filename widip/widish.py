@@ -10,14 +10,20 @@ io_ty = Ty("io")
 
 def run_native_subprocess(ar, *b):
     def run_native_subprocess_constant(*params):
-        res = tuple(map(untuplify, params)) + tuple(map(untuplify, b))
+        res = untuplify(tuple(map(untuplify, tuplify(untuplify(params)))) + tuple(map(untuplify, b)))
         return res
     def run_native_subprocess_map(*params):
-        res = untuplify(tuple(untuplify(x(*params)) for x in b))
-        return res
+        mapped = []
+        start = 0
+        for d, x in zip(ar.dom, b):
+            l = len(d.inside[0].exponent)
+            mapped.append(x(untuplify(params[start:start+l])))
+            start += l
+        res = untuplify(tuple(untuplify(x(*tuplify(untuplify(ps)))) for x, ps in zip(b, params)))
+        return untuplify(tuple(mapped))
     def run_native_subprocess_seq(*params):
-        b0 = b[0](*params)
-        res = tuplify(b[1](*tuplify(b0)))
+        b0 = b[0](*untuplify(params))
+        res = untuplify(b[1](*tuplify(b0)))
         return res
     def run_native_subprocess_inside(*params):
         try:
