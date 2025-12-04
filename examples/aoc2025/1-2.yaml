@@ -1,0 +1,9 @@
+- !cat examples/aoc2025/1-1.input
+- !tr {LR, -+}
+- !awk |
+    BEGIN {dial=50; sum=0} {
+      dial += $1
+      sum += (dial <= 0 || dial > 99) ? 1 : 0;
+      dial = (dial+100)%100;
+    }
+    END {print sum}
