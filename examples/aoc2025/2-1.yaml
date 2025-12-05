@@ -1,0 +1,3 @@
+- !cat examples/aoc2025/2-1.input
+- !tr {",-", " "}
+- !xargs {"-n2", seq}
