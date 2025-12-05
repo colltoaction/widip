@@ -1,9 +1,13 @@
 - !cat examples/aoc2025/1-1.input
 - !tr {LR, -+}
-- !awk |
-    BEGIN {dial=50; sum=0} {
-      dial += $1
-      sum += (dial <= 0 || dial > 99) ? 1 : 0;
-      dial = (dial+100)%100;
+- # TODO change simulation for math
+  !awk |
+    BEGIN { AT = 50 }
+    {
+      if ($1<0) {DIR = -1} else {DIR = 1}
+      TICKS = DIR*$1
+      while (TICKS-->0) {
+        HITS += (AT+=DIR)%100 == 0
+      }
     }
-    END {print sum}
+    END { print HITS }
