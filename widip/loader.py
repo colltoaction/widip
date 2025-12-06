@@ -56,13 +56,13 @@ def _incidences_to_diagram(node: HyperGraph, index):
     if kind == "scalar":
         v = hif_node(node, index)["value"]
         if tag and v:
-            return Box("G", Ty(tag) @ Ty(v), Ty() >> Ty(v))
+            return Box("G", Ty(tag) @ Ty(v), Ty() << Ty(""))
         elif tag:
-            return Box("G", Ty(tag), Ty() >> Ty(v))
+            return Box("G", Ty(tag), Ty() << Ty(""))
         elif v:
-            return Box("⌜−⌝", Ty(v), Ty() >> Ty(v))
+            return Box("⌜−⌝", Ty(v), Ty() << Ty(""))
         else:
-            return Box("⌜−⌝", Ty(), Ty() >> Ty(v))
+            return Box("⌜−⌝", Ty(), Ty() << Ty(""))
     if kind == "sequence":
         ob = Id()
         i = 0
@@ -84,8 +84,10 @@ def _incidences_to_diagram(node: HyperGraph, index):
             i += 1
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
         if tag:
-            ob = Box("G", Ty(tag), Ty() >> Ty()) @ ob
-            ob = ob >> Box("(;)", ob.cod, Ty() >> Ty())
+            bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
+            exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
+            ob = (bases @ ob >> Eval(bases >> exps))
+            ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty() >> Ty(tag))
         return ob
     if kind == "mapping":
         ob = Id()
@@ -102,9 +104,6 @@ def _incidences_to_diagram(node: HyperGraph, index):
             value = _incidences_to_diagram(node, v)
 
             kv = key @ value
-            bases = key.cod[0].inside[0].exponent
-            exps = value.cod[0].inside[0].base
-            kv = kv >> Box("(;)", kv.cod, bases >> exps)
 
             if i==0:
                 ob = kv
@@ -113,13 +112,11 @@ def _incidences_to_diagram(node: HyperGraph, index):
 
             i += 1
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
-        bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
-        exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
-        # TODO if len 0
-        par_box = Box("(||)", ob.cod, bases >> exps)
+        bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod[0::2]))
+        exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod[1::2]))
+        par_box = Box("(||)", ob.cod, exps << bases)
         ob = ob >> par_box
         if tag:
-            ob = (bases @ ob >> Eval(bases >> exps))
-            ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty() >> Ty(tag))
-            # ob = ob >> Box("(;)", ob.cod, bases >> exps)
+            ob = (ob @ bases>> Eval(exps << bases))
+            ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty("") << Ty(""))
         return ob

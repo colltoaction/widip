@@ -1,4 +1,5 @@
 from functools import partial
+from itertools import batched
 from subprocess import CalledProcessError, run
 
 from discopy.closed import Category, Functor, Ty, Box, Eval
@@ -10,16 +11,20 @@ io_ty = Ty("io")
 
 def run_native_subprocess(ar, *b):
     def run_native_subprocess_constant(*params):
-        res = untuplify(tuple(map(untuplify, tuplify(untuplify(params)))) + tuple(map(untuplify, b)))
-        return res
+        if not params:
+            return "" if ar.dom == Ty() else ar.dom.name
+        return untuplify(params)
     def run_native_subprocess_map(*params):
+        # TODO cat then copy to two
+        # but formal is to pass through
         mapped = []
         start = 0
-        for d, x in zip(ar.dom, b):
-            l = len(d.inside[0].exponent)
-            mapped.append(x(untuplify(params[start:start+l])))
-            start += l
-        res = untuplify(tuple(untuplify(x(*tuplify(untuplify(ps)))) for x, ps in zip(b, params)))
+        for (dk, k), (dv, v) in batched(zip(ar.dom, b), 2):
+            # note that the key cod and value dom might be different
+            b0 = k(*tuplify(params))
+            res = untuplify(v(*tuplify(b0)))
+            mapped.append(untuplify(res))
+        
         return untuplify(tuple(mapped))
     def run_native_subprocess_seq(*params):
         b0 = b[0](*untuplify(params))
