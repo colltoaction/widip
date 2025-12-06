@@ -1,12 +1,5 @@
 - !cat examples/aoc2025/2-1.input
 - !tr {",-", " "}
 - !xargs {"-n2", seq}
-- !awk |
-    {
-      l0 = length($1)
-      len = int((l0)/2)
-      l = substr($1, 0, len)
-      r = substr($1, len+1)
-      if (l == r) sum+=$1
-    }
-    END {print sum}
+- !grep {-E, "^(.+)\\1{1}$"}
+- !awk '{ sum += $0 } END { print sum }'

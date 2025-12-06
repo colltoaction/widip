@@ -1,25 +1,5 @@
 - !cat examples/aoc2025/2-1.input
 - !tr {",-", " "}
 - !xargs {"-n2", seq}
-- !awk |
-    {
-      l0 = length($1)
-      maxlen = int(l0/2)
-      for (sublen=1; sublen<=maxlen; sublen+=1) {
-        l = substr($1, 1, sublen)
-        has_difference = 0
-        occlen = int(l0/sublen)
-        for (j=0; j<occlen; j+=1) {
-          r = substr($1, sublen*j+1, sublen)
-          if (l != r) {
-            has_difference = 1
-            break
-          }
-        }
-        if (!has_difference && l0 % sublen == 0) {
-          sum+=$1
-          next
-        }
-      }
-    }
-    END {print sum}
+- !grep {-E, "^(.+)\\1{1,}$"}
+- !awk '{ sum += $0 } END { print sum }'
