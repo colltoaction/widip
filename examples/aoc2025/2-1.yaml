@@ -2,4 +2,4 @@
 - !tr {",-", " "}
 - !xargs {"-n2", seq}
 - !grep {-E, "^(.+)\\1{1}$"}
-- !awk '{ sum += $0 } END { print sum }'
+- !awk {-f, examples/aoc2025/sum.awk}
