@@ -26,3 +26,12 @@ $ python -m widip examples/aoc2025/2-1.yaml
 ```
 
 <img src="2-1.jpg" width="400">
+
+## Day 2-2
+
+```
+$ python -m widip examples/aoc2025/2-2.yaml
+22471660255
+```
+
+<img src="2-2.jpg" width="400">
