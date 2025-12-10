@@ -12,8 +12,6 @@ P = Ty("io")
 
 def glue_diagrams(left, right):
     # Simplified glue: just compose in parallel.
-    # Since blocks typically consume data and produce 'io',
-    # and 'io' is not 'data', they don't chain sequentially.
     return left @ right
 
 def repl_read(stream):
@@ -63,25 +61,34 @@ def _incidences_to_diagram(node: HyperGraph, index):
         return ob
     if kind == "scalar":
         v = hif_node(node, index)["value"]
-        box = None
         if tag and v:
             # G: tag @ v -> io
-            box = Box("G", Ty(tag, v), P)
+            dom, cod = Ty(tag, v), P
+            box = Box("G", dom, cod)
+            spider_types = tuple(dom @ cod)
+            wires = ((0, 1), (((0, 1), (2,)), ), (2,))
+            return DiscopyHypergraph(dom, cod, (box, ), wires, spider_types)
         elif tag:
             # G: tag -> io
-            box = Box("G", Ty(tag), P)
+            dom, cod = Ty(tag), P
+            box = Box("G", dom, cod)
+            spider_types = tuple(dom @ cod)
+            wires = ((0,), (((0,), (1,)), ), (1,))
+            return DiscopyHypergraph(dom, cod, (box, ), wires, spider_types)
         elif v:
             # ⌜−⌝: v -> io
-            box = Box("⌜−⌝", Ty(v), P)
+            dom, cod = Ty(v), P
+            box = Box("⌜−⌝", dom, cod)
+            spider_types = tuple(dom @ cod)
+            wires = ((0,), (((0,), (1,)), ), (1,))
+            return DiscopyHypergraph(dom, cod, (box, ), wires, spider_types)
         else:
             # ⌜−⌝: empty -> io
-            box = Box("⌜−⌝", Ty(), P)
-
-        spider_types = tuple(box.dom @ box.cod)
-        left = tuple(range(len(box.dom)))
-        right = tuple(range(len(box.dom), len(spider_types)))
-        wires = (left, ((left, right), ), right)
-        return DiscopyHypergraph(box.dom, box.cod, (box, ), wires, spider_types)
+            dom, cod = Ty(), P
+            box = Box("⌜−⌝", dom, cod)
+            spider_types = tuple(dom @ cod)
+            wires = ((), (((), (0,)), ), (0,))
+            return DiscopyHypergraph(dom, cod, (box, ), wires, spider_types)
 
     if kind == "sequence":
         ob = DiscopyHypergraph.id()
@@ -97,36 +104,28 @@ def _incidences_to_diagram(node: HyperGraph, index):
                 ob = value
             else:
                 ob = ob @ value
-
+                # (;): P @ P -> P
                 box = Box("(;)", ob.cod, P)
                 spider_types = tuple(box.dom @ box.cod)
-                left = tuple(range(len(box.dom)))
-                right = tuple(range(len(box.dom), len(spider_types)))
-                wires = (left, ((left, right), ), right)
+                wires = ((0, 1), (((0, 1), (2,)), ), (2,))
                 h_box = DiscopyHypergraph(box.dom, box.cod, (box, ), wires, spider_types)
-
                 ob = ob >> h_box
 
             i += 1
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
         if tag:
-            # tag @ ob -> G -> P
+            # Eval: P @ P -> P
             ev = Box("Eval", P @ P, P)
-
             spider_types = tuple(ev.dom @ ev.cod)
-            left = tuple(range(len(ev.dom)))
-            right = tuple(range(len(ev.dom), len(spider_types)))
-            wires = (left, ((left, right), ), right)
+            wires = ((0, 1), (((0, 1), (2,)), ), (2,))
             h_ev = DiscopyHypergraph(ev.dom, ev.cod, (ev, ), wires, spider_types)
 
             ob = DiscopyHypergraph.id(P) @ ob >> h_ev
 
+            # G: tag @ P -> P
             box = Box("G", Ty(tag) @ ob.cod, P)
-
             spider_types = tuple(box.dom @ box.cod)
-            left = tuple(range(len(box.dom)))
-            right = tuple(range(len(box.dom), len(spider_types)))
-            wires = (left, ((left, right), ), right)
+            wires = ((0, 1), (((0, 1), (2,)), ), (2,))
             h_box = DiscopyHypergraph(box.dom, box.cod, (box, ), wires, spider_types)
 
             ob = DiscopyHypergraph.id(Ty(tag)) @ ob >> h_box
@@ -155,33 +154,31 @@ def _incidences_to_diagram(node: HyperGraph, index):
             i += 1
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
 
+        # (||): P...P -> P
         par_box = Box("(||)", ob.cod, P)
 
         spider_types = tuple(par_box.dom @ par_box.cod)
-        left = tuple(range(len(par_box.dom)))
-        right = tuple(range(len(par_box.dom), len(spider_types)))
+        n_dom = len(par_box.dom)
+        left = tuple(range(n_dom))
+        right = tuple(range(n_dom, n_dom + len(par_box.cod)))
         wires = (left, ((left, right), ), right)
         h_par_box = DiscopyHypergraph(par_box.dom, par_box.cod, (par_box, ), wires, spider_types)
 
         ob = ob >> h_par_box
 
         if tag:
+            # Eval: P @ P -> P
             ev = Box("Eval", P @ P, P)
-
             spider_types = tuple(ev.dom @ ev.cod)
-            left = tuple(range(len(ev.dom)))
-            right = tuple(range(len(ev.dom), len(spider_types)))
-            wires = (left, ((left, right), ), right)
+            wires = ((0, 1), (((0, 1), (2,)), ), (2,))
             h_ev = DiscopyHypergraph(ev.dom, ev.cod, (ev, ), wires, spider_types)
 
             ob = ob @ DiscopyHypergraph.id(P) >> h_ev
 
+            # G: tag @ P -> P
             box = Box("G", Ty(tag) @ ob.cod, P)
-
             spider_types = tuple(box.dom @ box.cod)
-            left = tuple(range(len(box.dom)))
-            right = tuple(range(len(box.dom), len(spider_types)))
-            wires = (left, ((left, right), ), right)
+            wires = ((0, 1), (((0, 1), (2,)), ), (2,))
             h_box = DiscopyHypergraph(box.dom, box.cod, (box, ), wires, spider_types)
 
             ob = DiscopyHypergraph.id(Ty(tag)) @ ob >> h_box
