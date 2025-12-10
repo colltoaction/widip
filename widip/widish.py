@@ -2,7 +2,7 @@ from functools import partial
 from itertools import batched
 from subprocess import CalledProcessError, run
 
-from discopy.closed import Category, Functor, Ty, Box, Eval
+from discopy.markov import Category, Functor, Ty, Box
 from discopy.utils import tuplify, untuplify
 from discopy import python
 
@@ -12,6 +12,9 @@ io_ty = Ty("io")
 def run_native_subprocess(ar, *b):
     def run_native_subprocess_constant(*params):
         if not params:
+            # ar.dom might be Ty(), so we return empty string?
+            # Or ar.dom.name if it has one.
+            # In markov, Ty() is empty. Ty('io').name is 'io'.
             return "" if ar.dom == Ty() else ar.dom.name
         return untuplify(params)
     def run_native_subprocess_map(*params):

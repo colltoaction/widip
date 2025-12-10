@@ -4,7 +4,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from yaml import YAMLError
 
-from discopy.closed import Id, Ty, Box
+from discopy.markov import Id, Ty, Box
 from discopy.utils import tuplify, untuplify
 
 from .loader import repl_read

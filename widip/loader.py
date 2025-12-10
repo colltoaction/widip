@@ -2,16 +2,24 @@ from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
 from nx_hif.hif import *
 
-from discopy.closed import Id, Ty, Box, Eval
-P = Ty("io") >> Ty("io")
+from discopy.markov import Id, Ty, Box, Hypergraph
 
 from .composing import glue_diagrams
 
 
+# "io" type for general data flow
+P = Ty("io")
+
+def glue_diagrams(left, right):
+    # Simplified glue: just compose in parallel.
+    # Since blocks typically consume data and produce 'io',
+    # and 'io' is not 'data', they don't chain sequentially.
+    return left @ right
+
 def repl_read(stream):
     incidences = nx_compose_all(stream)
     diagrams = incidences_to_diagram(incidences)
-    return diagrams
+    return diagrams.to_diagram()
 
 def incidences_to_diagram(node: HyperGraph):
     # TODO properly skip stream and document start
@@ -26,7 +34,7 @@ def _incidences_to_diagram(node: HyperGraph, index):
     tag = (hif_node(node, index).get("tag") or "")[1:]
     kind = hif_node(node, index)["kind"]
     if kind == "stream":
-        ob = Id()
+        ob = Hypergraph.id()
         nxt = tuple(hif_node_incidences(node, index, key="next"))
         while True:
             if not nxt:
@@ -37,7 +45,7 @@ def _incidences_to_diagram(node: HyperGraph, index):
                 break
             ((_, nxt_node, _, _), ) = starts
             doc = _incidences_to_diagram(node, nxt_node)
-            if ob == Id():
+            if ob == Hypergraph.id():
                 ob = doc
             else:
                 ob = glue_diagrams(ob, doc)
@@ -47,7 +55,7 @@ def _incidences_to_diagram(node: HyperGraph, index):
         return ob
     if kind == "document":
         nxt = tuple(hif_node_incidences(node, index, key="next"))
-        ob = Id()
+        ob = Hypergraph.id()
         if nxt:
             ((root_e, _, _, _), ) = nxt
             ((_, root, _, _), ) = hif_edge_incidences(node, root_e, key="start")
@@ -56,15 +64,19 @@ def _incidences_to_diagram(node: HyperGraph, index):
     if kind == "scalar":
         v = hif_node(node, index)["value"]
         if tag and v:
-            return Box("G", Ty(tag) @ Ty(v), Ty() << Ty(""))
+            # G: tag @ v -> io
+            return Hypergraph.from_box(Box("G", Ty(tag, v), P))
         elif tag:
-            return Box("G", Ty(tag), Ty() << Ty(""))
+            # G: tag -> io
+            return Hypergraph.from_box(Box("G", Ty(tag), P))
         elif v:
-            return Box("⌜−⌝", Ty(v), Ty() << Ty(""))
+            # ⌜−⌝: v -> io
+            return Hypergraph.from_box(Box("⌜−⌝", Ty(v), P))
         else:
-            return Box("⌜−⌝", Ty(), Ty() << Ty(""))
+            # ⌜−⌝: empty -> io
+            return Hypergraph.from_box(Box("⌜−⌝", Ty(), P))
     if kind == "sequence":
-        ob = Id()
+        ob = Hypergraph.id()
         i = 0
         nxt = tuple(hif_node_incidences(node, index, key="next"))
         while True:
@@ -77,20 +89,20 @@ def _incidences_to_diagram(node: HyperGraph, index):
                 ob = value
             else:
                 ob = ob @ value
-                bases = ob.cod[0].inside[0].exponent
-                exps = value.cod[0].inside[0].base
-                ob = ob >> Box("(;)", ob.cod, bases >> exps)
+                ob = ob >> Hypergraph.from_box(Box("(;)", ob.cod, P))
 
             i += 1
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
         if tag:
-            bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
-            exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
-            ob = (bases @ ob >> Eval(bases >> exps))
-            ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty() >> Ty(tag))
+            # tag @ ob -> G -> P
+            ev = Box("Eval", P @ P, P)
+            ob = Hypergraph.id(P) @ ob >> Hypergraph.from_box(ev)
+
+            box = Box("G", Ty(tag) @ ob.cod, P)
+            ob = Hypergraph.id(Ty(tag)) @ ob >> Hypergraph.from_box(box)
         return ob
     if kind == "mapping":
-        ob = Id()
+        ob = Hypergraph.id()
         i = 0
         nxt = tuple(hif_node_incidences(node, index, key="next"))
         while True:
@@ -112,11 +124,14 @@ def _incidences_to_diagram(node: HyperGraph, index):
 
             i += 1
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
-        bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod[0::2]))
-        exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod[1::2]))
-        par_box = Box("(||)", ob.cod, exps << bases)
-        ob = ob >> par_box
+
+        par_box = Box("(||)", ob.cod, P)
+        ob = ob >> Hypergraph.from_box(par_box)
+
         if tag:
-            ob = (ob @ bases>> Eval(exps << bases))
-            ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty("") << Ty(""))
+            ev = Box("Eval", P @ P, P)
+            ob = ob @ Hypergraph.id(P) >> Hypergraph.from_box(ev)
+
+            box = Box("G", Ty(tag) @ ob.cod, P)
+            ob = Hypergraph.id(Ty(tag)) @ ob >> Hypergraph.from_box(box)
         return ob
