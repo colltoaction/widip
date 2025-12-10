@@ -2,7 +2,7 @@ from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
 from nx_hif.hif import *
 
-from discopy.markov import Id, Ty, Box, Hypergraph
+from discopy.markov import Id, Ty, Box, Hypergraph as DiscopyHypergraph
 
 from .composing import glue_diagrams
 
@@ -34,7 +34,7 @@ def _incidences_to_diagram(node: HyperGraph, index):
     tag = (hif_node(node, index).get("tag") or "")[1:]
     kind = hif_node(node, index)["kind"]
     if kind == "stream":
-        ob = Hypergraph.id()
+        ob = DiscopyHypergraph.id()
         nxt = tuple(hif_node_incidences(node, index, key="next"))
         while True:
             if not nxt:
@@ -45,7 +45,7 @@ def _incidences_to_diagram(node: HyperGraph, index):
                 break
             ((_, nxt_node, _, _), ) = starts
             doc = _incidences_to_diagram(node, nxt_node)
-            if ob == Hypergraph.id():
+            if ob == DiscopyHypergraph.id():
                 ob = doc
             else:
                 ob = glue_diagrams(ob, doc)
@@ -55,7 +55,7 @@ def _incidences_to_diagram(node: HyperGraph, index):
         return ob
     if kind == "document":
         nxt = tuple(hif_node_incidences(node, index, key="next"))
-        ob = Hypergraph.id()
+        ob = DiscopyHypergraph.id()
         if nxt:
             ((root_e, _, _, _), ) = nxt
             ((_, root, _, _), ) = hif_edge_incidences(node, root_e, key="start")
@@ -65,18 +65,18 @@ def _incidences_to_diagram(node: HyperGraph, index):
         v = hif_node(node, index)["value"]
         if tag and v:
             # G: tag @ v -> io
-            return Hypergraph.from_box(Box("G", Ty(tag, v), P))
+            return DiscopyHypergraph.from_box(Box("G", Ty(tag, v), P))
         elif tag:
             # G: tag -> io
-            return Hypergraph.from_box(Box("G", Ty(tag), P))
+            return DiscopyHypergraph.from_box(Box("G", Ty(tag), P))
         elif v:
             # ⌜−⌝: v -> io
-            return Hypergraph.from_box(Box("⌜−⌝", Ty(v), P))
+            return DiscopyHypergraph.from_box(Box("⌜−⌝", Ty(v), P))
         else:
             # ⌜−⌝: empty -> io
-            return Hypergraph.from_box(Box("⌜−⌝", Ty(), P))
+            return DiscopyHypergraph.from_box(Box("⌜−⌝", Ty(), P))
     if kind == "sequence":
-        ob = Hypergraph.id()
+        ob = DiscopyHypergraph.id()
         i = 0
         nxt = tuple(hif_node_incidences(node, index, key="next"))
         while True:
@@ -89,20 +89,20 @@ def _incidences_to_diagram(node: HyperGraph, index):
                 ob = value
             else:
                 ob = ob @ value
-                ob = ob >> Hypergraph.from_box(Box("(;)", ob.cod, P))
+                ob = ob >> DiscopyHypergraph.from_box(Box("(;)", ob.cod, P))
 
             i += 1
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
         if tag:
             # tag @ ob -> G -> P
             ev = Box("Eval", P @ P, P)
-            ob = Hypergraph.id(P) @ ob >> Hypergraph.from_box(ev)
+            ob = DiscopyHypergraph.id(P) @ ob >> DiscopyHypergraph.from_box(ev)
 
             box = Box("G", Ty(tag) @ ob.cod, P)
-            ob = Hypergraph.id(Ty(tag)) @ ob >> Hypergraph.from_box(box)
+            ob = DiscopyHypergraph.id(Ty(tag)) @ ob >> DiscopyHypergraph.from_box(box)
         return ob
     if kind == "mapping":
-        ob = Hypergraph.id()
+        ob = DiscopyHypergraph.id()
         i = 0
         nxt = tuple(hif_node_incidences(node, index, key="next"))
         while True:
@@ -126,12 +126,12 @@ def _incidences_to_diagram(node: HyperGraph, index):
             nxt = tuple(hif_node_incidences(node, v, key="forward"))
 
         par_box = Box("(||)", ob.cod, P)
-        ob = ob >> Hypergraph.from_box(par_box)
+        ob = ob >> DiscopyHypergraph.from_box(par_box)
 
         if tag:
             ev = Box("Eval", P @ P, P)
-            ob = ob @ Hypergraph.id(P) >> Hypergraph.from_box(ev)
+            ob = ob @ DiscopyHypergraph.id(P) >> DiscopyHypergraph.from_box(ev)
 
             box = Box("G", Ty(tag) @ ob.cod, P)
-            ob = Hypergraph.id(Ty(tag)) @ ob >> Hypergraph.from_box(box)
+            ob = DiscopyHypergraph.id(Ty(tag)) @ ob >> DiscopyHypergraph.from_box(box)
         return ob
