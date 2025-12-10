@@ -2,8 +2,9 @@ from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
 from nx_hif.hif import *
 
-from discopy.markov import Id, Ty, Box, Eval
-P = Ty("io") >> Ty("io")
+from discopy.closed import Id, Ty, Box, Eval
+
+P = Ty() << Ty("")
 
 from .composing import glue_diagrams
 
@@ -46,6 +47,10 @@ def _incidences_to_diagram(node: HyperGraph, index):
 
 def load_scalar(node, index, tag):
     v = hif_node(node, index)["value"]
+    if tag == "fix" and v:
+        return Box("Ω", Ty(), Ty(v) << P) @ P \
+            >> Eval(Ty(v) << P) \
+            >> Box("e", Ty(v), Ty(v))
     if tag and v:
         return Box("G", Ty(tag) @ Ty(v), Ty() << Ty(""))
     elif tag:
