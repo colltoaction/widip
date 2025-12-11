@@ -32,9 +32,9 @@ def test_simple_box():
     assert len(cod_incs) == 1
     assert cod_incs[0][1] == 1
 
-    # TODO
     encoded = encode_hif_data(nx_h)
-    assert {} == encoded
+    assert encoded['edges']
+    assert encoded['incidences']
 
 def test_composition():
     x, y, z = Ty('x'), Ty('y'), Ty('z')
@@ -66,9 +66,9 @@ def test_composition():
     assert f_cod[1] == 1
     assert g_dom[1] == 1
 
-    # TODO
     encoded = encode_hif_data(nx_h)
-    assert {} == encoded
+    assert encoded['edges']
+    assert encoded['incidences']
 
 def test_roundtrip_simple_box():
     x, y = Ty('x'), Ty('y')
@@ -86,10 +86,10 @@ def test_roundtrip_simple_box():
     assert h_prime.n_spiders == h.n_spiders
     assert h_prime.wires == h.wires
 
-    # TODO
     nx_h_prime = discopy_to_hif(h_prime)
-    encoded = encode_hif_data(nx_h_prime)
-    assert {} == encoded
+    encoded_orig = encode_hif_data(nx_h)
+    encoded_prime = encode_hif_data(nx_h_prime)
+    assert encoded_orig == encoded_prime
 
 
 def test_roundtrip_composition():
@@ -106,10 +106,8 @@ def test_roundtrip_composition():
     assert len(h_prime.boxes) == 2
     assert h_prime.wires == h.wires
 
-    # TODO
     nx_h_prime = discopy_to_hif(h_prime)
-    encoded = encode_hif_data(nx_h_prime)
-    assert {} == encoded
+    assert encode_hif_data(nx_h) == encode_hif_data(nx_h_prime)
 
 def test_roundtrip_tensor():
     x, y = Ty('x'), Ty('y')
@@ -125,7 +123,26 @@ def test_roundtrip_tensor():
     assert len(h_prime.boxes) == 2
     assert h_prime.wires == h.wires
 
-    # TODO
     nx_h_prime = discopy_to_hif(h_prime)
-    encoded = encode_hif_data(nx_h_prime)
-    assert {} == encoded
+    assert encode_hif_data(nx_h) == encode_hif_data(nx_h_prime)
+
+def test_roundtrip_identity():
+    x = Ty('x')
+    # Identity wire: x -> x
+    # 1 spider (0)
+    # dom: [0], cod: [0]
+    # boxes: []
+    # wires must be tuples to satisfy Hypergraph.__init__ checks when summing
+    h = Hypergraph(x, x, [], ((0,), (), (0,)), (x,))
+
+    nx_h = discopy_to_hif(h)
+    h_prime = hif_to_discopy(nx_h)
+
+    assert h_prime.dom == h.dom
+    assert h_prime.cod == h.cod
+    assert len(h_prime.boxes) == 0
+    assert h_prime.wires == h.wires
+    assert h_prime.spider_types == h.spider_types
+
+    nx_h_prime = discopy_to_hif(h_prime)
+    assert encode_hif_data(nx_h) == encode_hif_data(nx_h_prime)
