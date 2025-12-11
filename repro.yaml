@@ -1,0 +1,3 @@
+- !crack: { a, b }
+  !crack: { c, d }
+- !echo: out

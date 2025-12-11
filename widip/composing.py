@@ -41,73 +41,8 @@ def adapter_hypergraph(left, right):
     return g.to_diagram()
 
 def glue_diagrams(left, right):
-    return
-    """a diagram connecting equal objects within each type"""
-    """glues two diagrams sequentially with closed generators"""
-    if left.cod == right.dom:
-        return left >> right
-    l_dom, l_cod, r_dom, r_cod = left.dom, left.cod, right.dom, right.cod
-    dw_l = {
-        t
-        for t in l_cod
-        if t not in r_dom}
-    dw_r = {
-        t
-        for t in r_dom
-        if t not in l_cod}
-    cw_l = {
-        t
-        for t in l_cod
-        if t in r_dom}
-    cw_r = {
-        t
-        for t in r_dom
-        if t in l_cod}
-    # TODO convention for repeated in both sides
-    mid_names = tuple({t for t in l_cod + r_dom})
-    dom_wires = l_dom_wires = tuple(
-        i
-        for i in range(len(l_dom) + len(dw_r))
-    )
-    l_cod_wires = tuple(
-        (mid_names.index(t)
-        + len(l_dom) + len(dw_r))
-        for t in l_cod) + \
-        tuple(
-            (mid_names.index(t) + len(l_dom) + len(dw_r))
-            for t in dw_r
-        )
-    r_dom_wires = tuple(
-            (mid_names.index(t) + len(l_dom) + len(dw_r))
-            for t in dw_l) + \
-        tuple(
-            (mid_names.index(t)
-            + len(l_dom) + len(dw_r))
-            for t in r_dom
-        )
-    cod_wires = r_cod_wires = tuple(
-        i
-        + len(l_dom) + len(dw_r)
-        + len(mid_names)
-        for i in range(len(dw_l) + len(r_cod))
-    )
-    glued = H(
-        dom=l_dom @ Ty().tensor(*dw_r),
-        cod=Ty().tensor(*dw_l) @ r_cod,
-        boxes=(
-            left @ Ty().tensor(*dw_r),
-            Ty().tensor(*dw_l) @ right,
-        ),
-        wires=(
-            dom_wires,
-            (
-                (l_dom_wires, l_cod_wires),
-                (r_dom_wires, r_cod_wires),
-            ),
-            cod_wires,
-        ),
-    ).to_diagram()
-    return glued
+    # Use parallel composition as per memory instructions
+    return left @ right
 
 def replace_id_f(name):
     return Functor(
