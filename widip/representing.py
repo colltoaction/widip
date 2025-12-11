@@ -5,93 +5,109 @@ from nx_hif.hif import (
 
 from discopy.markov import Hypergraph, Ty, Box
 from discopy.cat import Ob
-import json
+import numbers
+
+ATTR_BOX_NAME = "__hif_attr__"
 
 def discopy_to_hif(diagram: Hypergraph):
     """
     Convert a discopy.markov.Hypergraph to an nx_hif structure.
     Does NOT encode diagram boundary (dom/cod) as attributes.
-    Preserves original HIF IDs if present in attributes (stored in Ob name via JSON).
-    Ensures 'kind' attribute exists for nx_yaml serialization.
+    Preserves all attributes via special attribute boxes.
+    Infers edge IDs from incidence integer keys to satisfy nx_yaml expectations.
     """
     H = hif_create()
 
     # Map spider indices to HIF Node IDs
     spider_to_hif_id = {}
 
+    # Collect attributes from ATTR_BOXES first
+    spider_attrs = {i: {} for i in range(diagram.n_spiders)}
+
+    # Identify regular boxes vs attr boxes
+    regular_boxes = []
+
+    for i, (box, (dom_wires, cod_wires)) in enumerate(zip(diagram.boxes, diagram.wires[1])):
+        if box.name == ATTR_BOX_NAME and box.data:
+            if dom_wires:
+                spider_idx = dom_wires[0]
+                k = box.data.get("key")
+                v = box.data.get("value")
+                if k:
+                    spider_attrs[spider_idx][k] = v
+        else:
+            regular_boxes.append((i, box, dom_wires, cod_wires))
+
+    # Create nodes
     for i in range(diagram.n_spiders):
         t = diagram.spider_types[i] if i < len(diagram.spider_types) else Ty()
 
-        attrs = {}
+        attrs = spider_attrs[i]
         hif_id = i # Default ID
 
-        # Try to parse attributes from Ty name (JSON)
-        # Ty might be composite, but we expect atomic Ob for attributes.
-        # Assuming one Ob per spider.
-        if len(t.inside) == 1:
-            name = t.inside[0].name
-            try:
-                attrs = json.loads(name)
-                if not isinstance(attrs, dict):
-                    attrs = {"type": name}
-            except (json.JSONDecodeError, TypeError):
-                # Fallback: treat name as simple string type/value
-                if name:
-                    attrs = {"type": name}
-        elif t.name:
-             attrs = {"type": t.name}
-
-        # Restore original ID
-        if "_hif_id" in attrs:
-            hif_id = attrs.pop("_hif_id")
-
-        # Ensure 'kind' attribute for nx_yaml
         if "kind" not in attrs:
-            attrs["kind"] = "scalar"
-            # Scalar needs 'value'. Use 'type' or empty string.
-            if "value" not in attrs:
-                attrs["value"] = attrs.get("type", "")
+            kind = t.name if t.name else "scalar"
+            attrs["kind"] = kind
+
+        if attrs.get("kind") == "scalar" and "value" not in attrs:
+            attrs["value"] = ""
 
         spider_to_hif_id[i] = hif_id
         hif_add_node(H, hif_id, **attrs)
 
-    # Add edges for boxes
-    for i, (box, (dom_wires, cod_wires)) in enumerate(zip(diagram.boxes, diagram.wires[1])):
-        edge_id = f"box_{i}"
+    # Pre-calculate IDs to reserve
+    box_ids = {} # original index -> edge_id
+    used_ids = set(spider_to_hif_id.values())
+
+    # Infer IDs from keys (incidences)
+    for i, box, _, _ in regular_boxes:
+        edge_id = None
+        inc_meta = []
+        if isinstance(box.data, dict) and "incidences" in box.data:
+            inc_meta = box.data["incidences"]
+
+        for m in inc_meta:
+            keys_to_check = [m.get('key')]
+            if 'attrs' in m:
+                keys_to_check.append(m['attrs'].get('key'))
+
+            for key in keys_to_check:
+                val = None
+                if isinstance(key, numbers.Integral):
+                    val = int(key)
+                elif isinstance(key, str) and key.isdigit():
+                    val = int(key)
+
+                if val is not None:
+                    edge_id = val + 1
+                    box_ids[i] = edge_id
+                    used_ids.add(edge_id)
+                    break
+            if edge_id is not None:
+                break
+
+    # Assign remaining
+    next_id = 0
+    for i, box, _, _ in regular_boxes:
+        if i not in box_ids:
+            while next_id in used_ids:
+                next_id += 1
+            box_ids[i] = next_id
+            used_ids.add(next_id)
+            next_id += 1
+
+    for i, box, dom_wires, cod_wires in regular_boxes:
+        edge_id = box_ids[i]
 
         attrs = {}
         if isinstance(box.data, dict) and "attributes" in box.data:
             attrs = box.data["attributes"].copy()
-            if "_hif_id" in attrs:
-                edge_id = attrs.pop("_hif_id")
+            attrs.pop("_hif_id", None)
         else:
             if box.name:
                 attrs["name"] = box.name
-            if box.dom.name:
-                attrs["dom"] = box.dom.name
-            if box.cod.name:
-                attrs["cod"] = box.cod.name
-
-        # Ensure kind for edges? nx_yaml edges (events) have kind?
-        # nx_yaml serializer emits edges as events?
-        # Actually nx_yaml uses edge attributes for event kind?
-        # Let's check `emit_between_edges`.
-        # `k = hif_edge(node, edge).get("kind")`.
-        # If missing, it defaults? Or crashes?
-        # `nx_yaml` serializer usually infers or expects 'event' kind?
-        # `inspect_yaml_correct.py` showed `Edge 1: {'kind': 'event'}`.
-        # So we probably should default edges to `kind="event"` if missing?
-        # Or `kind="call"`?
-        # If I don't set it, `emit_node` calls `emit_between` calls `emit_between_edges`.
-        # `emit_between_edges` checks `k = hif_edge(node, edge).get("kind")`.
-        # If `k` is None?
-        # `nx_yaml` code: `if k == "event": ... elif k == "kv": ...`.
-        # If unknown, it might ignore or fail?
-        # The serializer traceback showed `emit_node` failing on *node* kind.
-        # But let's be safe and set edge kind if missing.
-        # Default for a box is likely an operation/event.
-        if "kind" not in attrs:
-            attrs["kind"] = "event"
+            if "kind" not in attrs:
+                attrs["kind"] = "event"
 
         hif_add_edge(H, edge_id, **attrs)
 
@@ -109,12 +125,22 @@ def discopy_to_hif(diagram: Hypergraph):
             hif_node_id = spider_to_hif_id[spider_idx]
 
             meta = get_meta(role, index)
+            kwargs = {}
             if meta:
                 meta_attrs = meta.get('attrs', {}).copy()
                 meta_attrs.pop('role', None)
-                hif_add_incidence(H, edge_id, hif_node_id, key=meta.get('key'), role=meta.get('role'), **meta_attrs)
-            else:
-                hif_add_incidence(H, edge_id, hif_node_id, role=role, index=index)
+
+                key = meta.get('key')
+                if isinstance(key, str):
+                    kwargs['key'] = key
+                elif isinstance(key, numbers.Integral):
+                    kwargs['key'] = int(key)
+                elif isinstance(key, str) and key.isdigit():
+                    kwargs['key'] = int(key) # Restore int if it looked like int
+
+                kwargs.update(meta_attrs)
+
+            hif_add_incidence(H, edge_id, hif_node_id, role=role, index=index, **kwargs)
 
         for j, spider_idx in enumerate(dom_wires):
             add_inc(spider_idx, "dom", j)
@@ -134,20 +160,24 @@ def hif_to_discopy(H):
     sorted_nodes = sorted(all_nodes, key=lambda x: str(x))
     node_to_idx = {n: i for i, n in enumerate(sorted_nodes)}
 
+    # Pre-compute edge set for fast lookup
+    all_edges_set = set(all_edges)
+
     spider_types_list = []
+    attr_boxes = []
 
     for i, n in enumerate(sorted_nodes):
         attrs = hif_node(H, n)
-        attrs_copy = attrs.copy() if attrs else {}
-        attrs_copy["_hif_id"] = n
+        kind = attrs.get("kind") or attrs.get("type") or "scalar"
 
-        # Serialize attributes to JSON string
-        try:
-            json_str = json.dumps(attrs_copy, sort_keys=True, default=str)
-            spider_types_list.append(Ty(Ob(json_str)))
-        except TypeError:
-            name = str(attrs_copy.get("type", ""))
-            spider_types_list.append(Ty(name))
+        t = Ty(str(kind))
+        spider_types_list.append(t)
+
+        attrs_to_store = attrs.copy() if attrs else {}
+
+        for k, v in attrs_to_store.items():
+            b = Box(ATTR_BOX_NAME, t, Ty(), data={"key": k, "value": v})
+            attr_boxes.append((b, ((i,), ())))
 
     spider_types = tuple(spider_types_list)
 
@@ -164,17 +194,23 @@ def hif_to_discopy(H):
             edge_id = None
             node_id = None
 
-            if u in node_to_idx: node_id = u
-            elif u in all_edges: edge_id = u
+            u_is_node = u in node_to_idx
+            u_is_edge = u in all_edges_set
+            v_is_node = v in node_to_idx
+            v_is_edge = v in all_edges_set
+
+            if u_is_node and v_is_edge:
+                node_id = u
+                edge_id = v
+            elif u_is_edge and v_is_node:
+                edge_id = u
+                node_id = v
             elif isinstance(u, tuple) and len(u) == 2:
                 if u[1] == 1: edge_id = u[0]
                 elif u[1] == 0: node_id = u[0]
-
-            if v in node_to_idx: node_id = v
-            elif v in all_edges: edge_id = v
-            elif isinstance(v, tuple) and len(v) == 2:
-                if v[1] == 1: edge_id = v[0]
-                elif v[1] == 0: node_id = v[0]
+                if isinstance(v, tuple) and len(v) == 2:
+                    if v[1] == 1: edge_id = v[0]
+                    elif v[1] == 0: node_id = v[0]
 
             if edge_id is not None and node_id is not None:
                 if edge_id not in incidences_by_edge:
@@ -189,7 +225,9 @@ def hif_to_discopy(H):
     for e in sorted_edges:
         attrs = hif_edge(H, e)
         attrs_copy = attrs.copy() if attrs else {}
-        attrs_copy["_hif_id"] = e
+
+        kind = attrs.get("kind") or attrs.get("name") or "event"
+        name = str(kind)
 
         incs = []
         if e in incidences_by_edge:
@@ -245,8 +283,6 @@ def hif_to_discopy(H):
         for s in b_cod_wires:
             b_cod = b_cod @ spider_types[s]
 
-        name = attrs.get("name") or attrs.get("kind") or str(e)
-
         box_data = {
             "attributes": attrs_copy,
             "incidences": inc_metadata
@@ -255,6 +291,10 @@ def hif_to_discopy(H):
         box = Box(name, b_dom, b_cod, data=box_data)
         boxes.append(box)
         box_wires_list.append((tuple(b_dom_wires), tuple(b_cod_wires)))
+
+    for b, w in attr_boxes:
+        boxes.append(b)
+        box_wires_list.append(w)
 
     wires = (tuple(dom_wires), tuple(box_wires_list), tuple(cod_wires))
 
