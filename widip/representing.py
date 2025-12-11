@@ -6,13 +6,12 @@ from nx_hif.hif import (
 from discopy.markov import Hypergraph, Ty, Box
 from discopy.cat import Ob
 import json
-import ast
 
 def discopy_to_hif(diagram: Hypergraph):
     """
     Convert a discopy.markov.Hypergraph to an nx_hif structure.
     Does NOT encode diagram boundary (dom/cod) as attributes.
-    Preserves original HIF IDs if present in attributes (stored in Ob name via repr).
+    Preserves original HIF IDs if present in attributes (stored in Ob name via JSON).
     """
     H = hif_create()
 
@@ -25,17 +24,14 @@ def discopy_to_hif(diagram: Hypergraph):
         attrs = {}
         hif_id = i # Default ID
 
+        # Try to parse attributes from Ty name (JSON)
         if len(t.inside) == 1:
             name = t.inside[0].name
             try:
-                # Try literal_eval to support python types like tuples
-                val = ast.literal_eval(name)
-                if isinstance(val, dict):
-                    attrs = val
-                else:
+                attrs = json.loads(name)
+                if not isinstance(attrs, dict):
                     attrs = {"type": name}
-            except (ValueError, SyntaxError):
-                # Fallback
+            except (json.JSONDecodeError, TypeError):
                 if name:
                     attrs = {"type": name}
         elif t.name:
@@ -113,32 +109,20 @@ def hif_to_discopy(H):
         attrs_copy = attrs.copy() if attrs else {}
         attrs_copy["_hif_id"] = n
 
-        # Serialize attributes to Python literal string (repr) to preserve tuples
+        # Serialize attributes to JSON string
         try:
-            # repr gives a string representation that literal_eval can read
-            # We sort keys in repr? No, dict order is preserved in py3.7+.
-            # But to be safe for deterministic output, maybe sort?
-            # ast.literal_eval handles standard dict syntax.
-            # repr(dict) is standard syntax.
-            # But let's check if we need deterministic sorting.
-            # If we just do repr(attrs_copy), order depends on insertion.
-            # attrs_copy is a new dict.
-            # Let's hope it's fine or sort it?
-            # Cannot sort dict directly.
-            # But Ty equality compares string names.
-            # If string representation varies, Ty will differ.
-            # So we SHOULD ensure deterministic repr.
-            # Convert to list of tuples, sort, then reconstruct dict?
-            # Or just rely on repr?
-            # For roundtrip, as long as we recover the dict, it's fine.
-            # But for `test_roundtrip...` we check `encoded == encoded_prime`.
-            # That checks the *attributes dict* equality, not Ty name equality.
-            # So `discopy_to_hif` recovering the dict is enough.
-            # Ty equality matters for `assert h_prime == h`, but we skipped strict equality there for attributes.
-
-            s_val = repr(attrs_copy)
-            spider_types_list.append(Ty(Ob(s_val)))
-        except Exception:
+            # Sort keys for deterministic JSON
+            # Default to string conversion for non-serializable objects (like tuples becoming lists implicitly handled?)
+            # json.dumps handles list/dict/str/int/float/bool/None.
+            # If we have tuples, they become lists.
+            # If we have other types, default=str ensures it doesn't crash?
+            # But converting to str makes it unparsable as JSON structure?
+            # No, default=str just stringifies values.
+            # But if we want to restore them...
+            # For roundtrip YAML -> YAML, list vs tuple doesn't matter for YAML output usually.
+            json_str = json.dumps(attrs_copy, sort_keys=True, default=str)
+            spider_types_list.append(Ty(Ob(json_str)))
+        except TypeError:
             name = str(attrs_copy.get("type", ""))
             spider_types_list.append(Ty(name))
 
