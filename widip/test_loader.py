@@ -1,6 +1,6 @@
-from discopy.closed import Box, Ty, Diagram, Spider, Id, Spider
+from discopy.closed import Box, Ty, Diagram, Id
 
-from .loader import compose_all
+from .loader import repl_read as compose_all
 
 
 id_box = lambda i: Box("!", Ty(i), Ty(i))
@@ -38,12 +38,3 @@ def test_bool():
     t = compose_all(open("src/data/bool.yaml"))
     with Diagram.hypergraph_equality:
         assert t == d
-
-# u = Ty("unit")
-# m = Ty("monoid")
-
-# def test_monoid():
-#     d = Box(u.name, Ty(), m) @ Box("product", m @ m, m)
-#     t = compose_all(open("src/data/monoid.yaml"))
-#     with Diagram.hypergraph_equality:
-#         assert t == d

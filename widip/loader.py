@@ -2,30 +2,132 @@ from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
 from nx_hif.hif import *
 
-from discopy.closed import Id, Ty, Box, Eval
+# Changed to discopy.markov
+from discopy.markov import Id, Ty, Box, Hypergraph, Diagram as MarkovDiagram
 
-P = Ty() << Ty("")
+# Define a custom Eval box since it's missing in Markov
+class Eval(Box):
+    def __init__(self, x: Ty, y: Ty):
+        super().__init__("Eval", x, y)
+
+P = Ty()
 
 from .composing import glue_diagrams
 
 
 def repl_read(stream):
     incidences = nx_compose_all(stream)
-    diagrams = incidences_to_diagram(incidences)
+    markov_hg = hif_to_markov(incidences)
+    diagrams = markov_hg.to_diagram()
     return diagrams
 
 def incidences_to_diagram(node: HyperGraph):
-    # TODO properly skip stream and document start
-    diagram = _incidences_to_diagram(node, 0)
-    return diagram
+    markov_hg = hif_to_markov(node)
+    return markov_hg.to_diagram()
 
-def _incidences_to_diagram(node: HyperGraph, index):
+def hif_to_markov(node) -> Hypergraph:
+    diagram = _incidences_to_diagram(node, 0)
+    return diagram.to_hypergraph()
+
+def markov_to_hif(markov: Hypergraph):
+    """
+    Converts a Markov Hypergraph back to an HIF structure (nx_hif tuple).
+    Reconstructs the HIF graph by interpreting the circuit structure.
+
+    Note: This implementation currently linearizes the structure, preserving boxes as scalar nodes.
+    Complex structures like mappings and sequences represented by control boxes (e.g. `(||)`, `(;)`)
+    are flattened into the stream.
+    """
+    G = hif_create()
+
+    # ID counters
+    next_node_id = 0
+    next_edge_id = 1
+
+    # Create root Stream (0)
+    stream_id = next_node_id
+    next_node_id += 2
+    hif_add_node(G, stream_id, kind="stream")
+
+    diagram = markov.to_diagram()
+
+    # Create Document (2)
+    doc_id = next_node_id
+    next_node_id += 2
+    hif_add_node(G, doc_id, kind="document")
+
+    # 1. Stream Start Event (Edge 1)
+    edge_stream_start = next_edge_id
+    next_edge_id += 2
+    hif_add_edge(G, edge_stream_start, kind="event")
+
+    # Stream --(start)--> StreamStartEvent
+    hif_add_incidence(G, edge_stream_start, stream_id, key="start")
+
+    # 2. Document Start Event (Edge 3)
+    edge_doc_start = next_edge_id
+    next_edge_id += 2
+    hif_add_edge(G, edge_doc_start, kind="event")
+
+    # Connect Stream and Doc to the start event
+    hif_add_incidence(G, edge_doc_start, stream_id, key="next")
+    hif_add_incidence(G, edge_doc_start, stream_id, key="end")
+    hif_add_incidence(G, edge_doc_start, doc_id, key="start")
+
+    # Iterate boxes
+    current_prev_node = doc_id
+
+    for box in diagram.boxes:
+        # Create a scalar node for this box
+        node_id = next_node_id
+        next_node_id += 2
+
+        # Determine value and tag
+        # Skip structural markers for now to provide a flattened view
+        if box.name in ["(;)", "(||)"]:
+            continue
+        elif box.name == "⌜−⌝":
+            val = box.dom[0].name if box.dom else ""
+            tag = ""
+        elif box.name == "G":
+            if len(box.dom) > 0:
+                tag = box.dom[0].name
+                val = box.dom[1].name if len(box.dom) > 1 else ""
+            else:
+                tag = ""
+                val = ""
+        else:
+            val = box.name
+            tag = ""
+
+        hif_add_node(G, node_id, kind="scalar", value=val, tag=tag)
+
+        # Connect previous node -> current node
+        edge_id = next_edge_id
+        next_edge_id += 2
+
+        hif_add_edge(G, edge_id, kind="event")
+
+        # Previous node connects to this edge as NEXT and END
+        hif_add_incidence(G, edge_id, current_prev_node, key="next")
+        hif_add_incidence(G, edge_id, current_prev_node, key="end")
+
+        # Current node connects to this edge as START
+        hif_add_incidence(G, edge_id, node_id, key="start")
+
+        current_prev_node = node_id
+
+    return G
+
+
+def _incidences_to_diagram(node, index) -> MarkovDiagram:
     """
     Takes an nx_yaml rooted bipartite graph
-    and returns an equivalent string diagram
+    and returns an equivalent string diagram (Markov)
     """
-    tag = (hif_node(node, index).get("tag") or "")[1:]
-    kind = hif_node(node, index)["kind"]
+    node_data = hif_node(node, index)
+    tag = (node_data.get("tag") or "")[1:]
+    kind = node_data["kind"]
 
     match kind:
 
@@ -41,24 +143,24 @@ def _incidences_to_diagram(node: HyperGraph, index):
             ob = load_mapping(node, index, tag)
         case _:
             raise Exception(f"Kind \"{kind}\" doesn't match any.")
-        
+
     return ob
 
 
 def load_scalar(node, index, tag):
     v = hif_node(node, index)["value"]
+
     if tag == "fix" and v:
-        return Box("Ω", Ty(), Ty(v) << P) @ P \
-            >> Eval(Ty(v) << P) \
-            >> Box("e", Ty(v), Ty(v))
+        return Box("Ω", Ty(), Ty(v)) >> Box("e", Ty(v), Ty(v))
+
     if tag and v:
-        return Box("G", Ty(tag) @ Ty(v), Ty() << Ty(""))
+        return Box("G", Ty(tag) @ Ty(v), Ty())
     elif tag:
-        return Box("G", Ty(tag), Ty() << Ty(""))
+        return Box("G", Ty(tag), Ty())
     elif v:
-        return Box("⌜−⌝", Ty(v), Ty() << Ty(""))
+        return Box("⌜−⌝", Ty(v), Ty())
     else:
-        return Box("⌜−⌝", Ty(), Ty() << Ty(""))
+        return Box("⌜−⌝", Ty(), Ty())
 
 def load_mapping(node, index, tag):
     ob = Id()
@@ -83,13 +185,11 @@ def load_mapping(node, index, tag):
 
         i += 1
         nxt = tuple(hif_node_incidences(node, v, key="forward"))
-    bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod[0::2]))
-    exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod[1::2]))
-    par_box = Box("(||)", ob.cod, exps << bases)
+
+    par_box = Box("(||)", ob.cod, Ty())
     ob = ob >> par_box
     if tag:
-        ob = (ob @ bases>> Eval(exps << bases))
-        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty("") << Ty(""))
+         ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty())
     return ob
 
 def load_sequence(node, index, tag):
@@ -106,17 +206,12 @@ def load_sequence(node, index, tag):
             ob = value
         else:
             ob = ob @ value
-            bases = ob.cod[0].inside[0].exponent
-            exps = value.cod[0].inside[0].base
-            ob = ob >> Box("(;)", ob.cod, bases >> exps)
+            ob = ob >> Box("(;)", ob.cod, Ty())
 
         i += 1
         nxt = tuple(hif_node_incidences(node, v, key="forward"))
     if tag:
-        bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
-        exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
-        ob = (bases @ ob >> Eval(bases >> exps))
-        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty() >> Ty(tag))
+        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty(tag))
     return ob
 
 def load_document(node, index):
@@ -143,7 +238,10 @@ def load_stream(node, index):
         if ob == Id():
             ob = doc
         else:
-            ob = glue_diagrams(ob, doc)
+            try:
+                ob = glue_diagrams(ob, doc)
+            except:
+                ob = ob >> doc
 
         nxt = tuple(hif_node_incidences(node, nxt_node, key="forward"))
     return ob

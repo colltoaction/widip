@@ -1,6 +1,6 @@
 from discopy.closed import Box, Ty, Diagram, Id
 
-from .files import stream_diagram
+from .loader import repl_read as stream_diagram
 
 
 def test_single_wires():
