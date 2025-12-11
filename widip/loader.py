@@ -1,12 +1,40 @@
 from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
-from nx_hif.hif import *
+from nx_hif.hif import (
+    hif_node, hif_node_incidences, hif_edge_incidences,
+    HyperGraph as HIFHyperGraph
+)
 
-from discopy.closed import Id, Ty, Box, Eval
+from discopy.closed import Ty as ClosedTy
+from discopy.markov import Hypergraph, Box, Ty as MarkovTy
 
-P = Ty() << Ty("")
+# Keep P using ClosedTy for internal type structure
+P = ClosedTy() << ClosedTy("")
 
-from .composing import glue_diagrams
+class Eval(Box):
+    """
+    Custom Eval box for Markov Hypergraphs that mimics discopy.closed.Eval behavior.
+    """
+    def __init__(self, x):
+        """
+        x: The type to evaluate. Expected to be a ClosedTy (Over or Under).
+           If x is (a << b), then dom = (a << b) @ b, cod = a.
+        """
+        if hasattr(x, 'inside') and len(x.inside) > 0:
+            obj = x.inside[0]
+            if hasattr(obj, 'base') and hasattr(obj, 'exponent'):
+                 self.base = obj.base
+                 self.exponent = obj.exponent
+                 dom = x @ self.exponent
+                 cod = self.base
+            else:
+                 dom = x
+                 cod = x
+        else:
+             dom = x
+             cod = x
+
+        super().__init__("Eval", dom, cod)
 
 
 def repl_read(stream):
@@ -14,15 +42,15 @@ def repl_read(stream):
     diagrams = incidences_to_diagram(incidences)
     return diagrams
 
-def incidences_to_diagram(node: HyperGraph):
+def incidences_to_diagram(node: HIFHyperGraph):
     # TODO properly skip stream and document start
     diagram = _incidences_to_diagram(node, 0)
     return diagram
 
-def _incidences_to_diagram(node: HyperGraph, index):
+def _incidences_to_diagram(node: HIFHyperGraph, index):
     """
     Takes an nx_yaml rooted bipartite graph
-    and returns an equivalent string diagram
+    and returns an equivalent string diagram (as a Hypergraph)
     """
     tag = (hif_node(node, index).get("tag") or "")[1:]
     kind = hif_node(node, index)["kind"]
@@ -41,27 +69,38 @@ def _incidences_to_diagram(node: HyperGraph, index):
             ob = load_mapping(node, index, tag)
         case _:
             raise Exception(f"Kind \"{kind}\" doesn't match any.")
-        
+
     return ob
 
 
 def load_scalar(node, index, tag):
     v = hif_node(node, index)["value"]
     if tag == "fix" and v:
-        return Box("Ω", Ty(), Ty(v) << P) @ P \
-            >> Eval(Ty(v) << P) \
-            >> Box("e", Ty(v), Ty(v))
+        ty_v = ClosedTy(v)
+        ty_v_P = ty_v << P
+
+        b1 = Hypergraph.from_box(Box("Ω", ClosedTy(), ty_v_P))
+        p_wire = Hypergraph.id(P)
+
+        step1 = b1 @ p_wire
+
+        ev = Hypergraph.from_box(Eval(ty_v_P))
+
+        b_e = Hypergraph.from_box(Box("e", ty_v, ty_v))
+
+        return step1 >> ev >> b_e
+
     if tag and v:
-        return Box("G", Ty(tag) @ Ty(v), Ty() << Ty(""))
+        return Hypergraph.from_box(Box("G", ClosedTy(tag) @ ClosedTy(v), ClosedTy() << ClosedTy("")))
     elif tag:
-        return Box("G", Ty(tag), Ty() << Ty(""))
+        return Hypergraph.from_box(Box("G", ClosedTy(tag), ClosedTy() << ClosedTy("")))
     elif v:
-        return Box("⌜−⌝", Ty(v), Ty() << Ty(""))
+        return Hypergraph.from_box(Box("⌜−⌝", ClosedTy(v), ClosedTy() << ClosedTy("")))
     else:
-        return Box("⌜−⌝", Ty(), Ty() << Ty(""))
+        return Hypergraph.from_box(Box("⌜−⌝", ClosedTy(), ClosedTy() << ClosedTy("")))
 
 def load_mapping(node, index, tag):
-    ob = Id()
+    ob = Hypergraph.id(ClosedTy()) # Id()
     i = 0
     nxt = tuple(hif_node_incidences(node, index, key="next"))
     while True:
@@ -83,17 +122,32 @@ def load_mapping(node, index, tag):
 
         i += 1
         nxt = tuple(hif_node_incidences(node, v, key="forward"))
-    bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod[0::2]))
-    exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod[1::2]))
-    par_box = Box("(||)", ob.cod, exps << bases)
+
+    bases_objs = [x.inside[0].base for x in ob.cod[0::2]]
+    exps_objs = [x.inside[0].exponent for x in ob.cod[1::2]]
+
+    bases = ClosedTy(*bases_objs) if bases_objs else ClosedTy()
+    exps = ClosedTy(*exps_objs) if exps_objs else ClosedTy()
+
+    par_box = Hypergraph.from_box(Box("(||)", ob.cod, exps << bases))
     ob = ob >> par_box
+
     if tag:
-        ob = (ob @ bases>> Eval(exps << bases))
-        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty("") << Ty(""))
+        step1 = ob @ Hypergraph.id(bases)
+        ev = Hypergraph.from_box(Eval(exps << bases))
+        ob = step1 >> ev
+
+        tag_wire = Hypergraph.id(ClosedTy(tag))
+        step2 = tag_wire @ ob
+
+        final_box = Hypergraph.from_box(Box("G", ClosedTy(tag) @ ob.cod, ClosedTy("") << ClosedTy("")))
+
+        ob = step2 >> final_box
+
     return ob
 
 def load_sequence(node, index, tag):
-    ob = Id()
+    ob = Hypergraph.id(ClosedTy())
     i = 0
     nxt = tuple(hif_node_incidences(node, index, key="next"))
     while True:
@@ -106,22 +160,41 @@ def load_sequence(node, index, tag):
             ob = value
         else:
             ob = ob @ value
-            bases = ob.cod[0].inside[0].exponent
-            exps = value.cod[0].inside[0].base
-            ob = ob >> Box("(;)", ob.cod, bases >> exps)
+
+            base_obj = ob.cod[0].inside[0].exponent
+            exp_obj = value.cod[0].inside[0].base
+
+            bases = ClosedTy(base_obj)
+            exps = ClosedTy(exp_obj)
+
+            seq_box = Hypergraph.from_box(Box("(;)", ob.cod, bases >> exps))
+            ob = ob >> seq_box
 
         i += 1
         nxt = tuple(hif_node_incidences(node, v, key="forward"))
+
     if tag:
-        bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
-        exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
-        ob = (bases @ ob >> Eval(bases >> exps))
-        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty() >> Ty(tag))
+        bases_objs = [x.inside[0].exponent for x in ob.cod]
+        exps_objs = [x.inside[0].base for x in ob.cod]
+
+        bases = ClosedTy(*bases_objs) if bases_objs else ClosedTy()
+        exps = ClosedTy(*exps_objs) if exps_objs else ClosedTy()
+
+        step1 = Hypergraph.id(bases) @ ob
+        ev = Hypergraph.from_box(Eval(bases >> exps))
+        ob = step1 >> ev
+
+        tag_wire = Hypergraph.id(ClosedTy(tag))
+        step2 = tag_wire @ ob
+
+        final_box = Hypergraph.from_box(Box("G", ClosedTy(tag) @ ob.cod, ClosedTy() >> ClosedTy(tag)))
+        ob = step2 >> final_box
+
     return ob
 
 def load_document(node, index):
     nxt = tuple(hif_node_incidences(node, index, key="next"))
-    ob = Id()
+    ob = Hypergraph.id(ClosedTy())
     if nxt:
         ((root_e, _, _, _), ) = nxt
         ((_, root, _, _), ) = hif_edge_incidences(node, root_e, key="start")
@@ -129,7 +202,7 @@ def load_document(node, index):
     return ob
 
 def load_stream(node, index):
-    ob = Id()
+    ob = Hypergraph.id(ClosedTy())
     nxt = tuple(hif_node_incidences(node, index, key="next"))
     while True:
         if not nxt:
@@ -140,10 +213,15 @@ def load_stream(node, index):
             break
         ((_, nxt_node, _, _), ) = starts
         doc = _incidences_to_diagram(node, nxt_node)
-        if ob == Id():
-            ob = doc
+
+        # If ob is empty (Id(Ty())), just take doc
+        if len(ob.boxes) == 0 and len(ob.dom) == 0 and len(ob.cod) == 0:
+             ob = doc
         else:
-            ob = glue_diagrams(ob, doc)
+            if ob.cod == doc.dom:
+                ob = ob >> doc
+            else:
+                ob = ob @ doc
 
         nxt = tuple(hif_node_incidences(node, nxt_node, key="forward"))
     return ob
