@@ -12,6 +12,7 @@ def discopy_to_hif(diagram: Hypergraph):
     Convert a discopy.markov.Hypergraph to an nx_hif structure.
     Does NOT encode diagram boundary (dom/cod) as attributes.
     Preserves original HIF IDs if present in attributes (stored in Ob name via JSON).
+    Ensures 'kind' attribute exists for nx_yaml serialization.
     """
     H = hif_create()
 
@@ -25,6 +26,8 @@ def discopy_to_hif(diagram: Hypergraph):
         hif_id = i # Default ID
 
         # Try to parse attributes from Ty name (JSON)
+        # Ty might be composite, but we expect atomic Ob for attributes.
+        # Assuming one Ob per spider.
         if len(t.inside) == 1:
             name = t.inside[0].name
             try:
@@ -32,6 +35,7 @@ def discopy_to_hif(diagram: Hypergraph):
                 if not isinstance(attrs, dict):
                     attrs = {"type": name}
             except (json.JSONDecodeError, TypeError):
+                # Fallback: treat name as simple string type/value
                 if name:
                     attrs = {"type": name}
         elif t.name:
@@ -40,6 +44,13 @@ def discopy_to_hif(diagram: Hypergraph):
         # Restore original ID
         if "_hif_id" in attrs:
             hif_id = attrs.pop("_hif_id")
+
+        # Ensure 'kind' attribute for nx_yaml
+        if "kind" not in attrs:
+            attrs["kind"] = "scalar"
+            # Scalar needs 'value'. Use 'type' or empty string.
+            if "value" not in attrs:
+                attrs["value"] = attrs.get("type", "")
 
         spider_to_hif_id[i] = hif_id
         hif_add_node(H, hif_id, **attrs)
@@ -60,6 +71,27 @@ def discopy_to_hif(diagram: Hypergraph):
                 attrs["dom"] = box.dom.name
             if box.cod.name:
                 attrs["cod"] = box.cod.name
+
+        # Ensure kind for edges? nx_yaml edges (events) have kind?
+        # nx_yaml serializer emits edges as events?
+        # Actually nx_yaml uses edge attributes for event kind?
+        # Let's check `emit_between_edges`.
+        # `k = hif_edge(node, edge).get("kind")`.
+        # If missing, it defaults? Or crashes?
+        # `nx_yaml` serializer usually infers or expects 'event' kind?
+        # `inspect_yaml_correct.py` showed `Edge 1: {'kind': 'event'}`.
+        # So we probably should default edges to `kind="event"` if missing?
+        # Or `kind="call"`?
+        # If I don't set it, `emit_node` calls `emit_between` calls `emit_between_edges`.
+        # `emit_between_edges` checks `k = hif_edge(node, edge).get("kind")`.
+        # If `k` is None?
+        # `nx_yaml` code: `if k == "event": ... elif k == "kv": ...`.
+        # If unknown, it might ignore or fail?
+        # The serializer traceback showed `emit_node` failing on *node* kind.
+        # But let's be safe and set edge kind if missing.
+        # Default for a box is likely an operation/event.
+        if "kind" not in attrs:
+            attrs["kind"] = "event"
 
         hif_add_edge(H, edge_id, **attrs)
 
@@ -111,15 +143,6 @@ def hif_to_discopy(H):
 
         # Serialize attributes to JSON string
         try:
-            # Sort keys for deterministic JSON
-            # Default to string conversion for non-serializable objects (like tuples becoming lists implicitly handled?)
-            # json.dumps handles list/dict/str/int/float/bool/None.
-            # If we have tuples, they become lists.
-            # If we have other types, default=str ensures it doesn't crash?
-            # But converting to str makes it unparsable as JSON structure?
-            # No, default=str just stringifies values.
-            # But if we want to restore them...
-            # For roundtrip YAML -> YAML, list vs tuple doesn't matter for YAML output usually.
             json_str = json.dumps(attrs_copy, sort_keys=True, default=str)
             spider_types_list.append(Ty(Ob(json_str)))
         except TypeError:
