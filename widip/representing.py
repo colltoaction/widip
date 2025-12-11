@@ -20,6 +20,8 @@ class HIFOb(Ob):
 
     def __eq__(self, other):
         if isinstance(other, HIFOb):
+            # Ignore _hif_id for equality check of the object content?
+            # Or include it? If we want strict roundtrip, include it.
             return self.name == other.name and self.data == other.data
         return super().__eq__(other)
 
@@ -28,58 +30,54 @@ class HIFOb(Ob):
 
     def __hash__(self):
         # Make hashable for Ty
-        return hash((self.name, tuple(sorted(self.data.items()))))
+        # Dict is not hashable. Convert to sorted tuple of items.
+        return hash((self.name, tuple(sorted((k, str(v)) for k, v in self.data.items()))))
 
 def discopy_to_hif(diagram: Hypergraph):
     """
     Convert a discopy.markov.Hypergraph to an nx_hif structure.
-    Does NOT add explicit 'dom'/'cod' edges for the boundary.
-    Instead, marks boundary spiders with attributes.
+    Does NOT encode diagram boundary (dom/cod) as attributes.
+    Preserves original HIF IDs if present in attributes.
     """
     H = hif_create()
 
-    # Map spider indices to node IDs (integers)
-    # diagram.spider_types is a tuple.
+    # Map spider indices to HIF Node IDs
+    # If _hif_id is preserved, use it. Otherwise map spider i -> i.
+    spider_to_hif_id = {}
+
     for i in range(diagram.n_spiders):
         t = diagram.spider_types[i] if i < len(diagram.spider_types) else Ty()
 
-        # Extract attributes
         attrs = {}
-        # Check if t contains HIFOb. t.inside is the tuple of objects.
+        hif_id = i # Default ID
+
         if len(t.inside) == 1 and isinstance(t.inside[0], HIFOb):
              attrs = t.inside[0].data.copy()
-             # Ensure 'type' is set if needed
              if "type" not in attrs and t.inside[0].name:
                  attrs["type"] = t.inside[0].name
+
+             # Restore original ID
+             if "_hif_id" in attrs:
+                 hif_id = attrs.pop("_hif_id")
         else:
-             # Standard Ty
              if t.name:
                  attrs["type"] = t.name
 
-        # Check boundary
-        # wires[0] is list of spider indices connected to dom
-        indices_dom = [idx for idx, s in enumerate(diagram.wires[0]) if s == i]
-        if indices_dom:
-             attrs["dom_ports"] = indices_dom
-
-        indices_cod = [idx for idx, s in enumerate(diagram.wires[2]) if s == i]
-        if indices_cod:
-             attrs["cod_ports"] = indices_cod
-
-        hif_add_node(H, i, **attrs)
+        spider_to_hif_id[i] = hif_id
+        hif_add_node(H, hif_id, **attrs)
 
     # Add edges for boxes
-    # wires[1] is list of (dom_wires, cod_wires) for each box.
     for i, (box, (dom_wires, cod_wires)) in enumerate(zip(diagram.boxes, diagram.wires[1])):
+        # Default edge ID
         edge_id = f"box_{i}"
 
-        # Attributes
         attrs = {}
-        # If box.data contains 'attributes', use them (roundtrip from HIF)
         if isinstance(box.data, dict) and "attributes" in box.data:
-            attrs.update(box.data["attributes"])
+            attrs = box.data["attributes"].copy()
+            # Restore original edge ID
+            if "_hif_id" in attrs:
+                edge_id = attrs.pop("_hif_id")
         else:
-            # Reconstruct attributes from standard box
             if box.name:
                 attrs["name"] = box.name
             if box.dom.name:
@@ -89,8 +87,6 @@ def discopy_to_hif(diagram: Hypergraph):
 
         hif_add_edge(H, edge_id, **attrs)
 
-        # Incidences
-        # If we have stored incidence metadata, use it to restore keys/roles.
         inc_meta = []
         if isinstance(box.data, dict) and "incidences" in box.data:
             inc_meta = box.data["incidences"]
@@ -101,27 +97,25 @@ def discopy_to_hif(diagram: Hypergraph):
                     return m
             return None
 
-        # Dom wires (inputs)
-        for j, spider_idx in enumerate(dom_wires):
-            meta = get_meta("dom", j)
-            if meta:
-                meta_attrs = meta.get('attrs', {}).copy()
-                # Remove role from attrs if present, as we pass it explicitly
-                meta_attrs.pop('role', None)
-                hif_add_incidence(H, edge_id, spider_idx, key=meta.get('key'), role=meta.get('role'), **meta_attrs)
-            else:
-                # Default behavior
-                hif_add_incidence(H, edge_id, spider_idx, role="dom", index=j)
+        # Helper to add incidence with mapped spider ID
+        def add_inc(spider_idx, role, index):
+            # hif_add_incidence takes the NODE ID (from H), not spider index.
+            # So we must map spider_idx -> hif_id.
+            hif_node_id = spider_to_hif_id[spider_idx]
 
-        # Cod wires (outputs)
-        for j, spider_idx in enumerate(cod_wires):
-            meta = get_meta("cod", j)
+            meta = get_meta(role, index)
             if meta:
                 meta_attrs = meta.get('attrs', {}).copy()
                 meta_attrs.pop('role', None)
-                hif_add_incidence(H, edge_id, spider_idx, key=meta.get('key'), role=meta.get('role'), **meta_attrs)
+                hif_add_incidence(H, edge_id, hif_node_id, key=meta.get('key'), role=meta.get('role'), **meta_attrs)
             else:
-                hif_add_incidence(H, edge_id, spider_idx, role="cod", index=j)
+                hif_add_incidence(H, edge_id, hif_node_id, role=role, index=index)
+
+        for j, spider_idx in enumerate(dom_wires):
+            add_inc(spider_idx, "dom", j)
+
+        for j, spider_idx in enumerate(cod_wires):
+            add_inc(spider_idx, "cod", j)
 
     return H
 
@@ -132,68 +126,46 @@ def hif_to_discopy(H):
     all_nodes = list(hif_nodes(H))
     all_edges = list(hif_edges(H))
 
-    # Sort nodes
+    # Sort nodes to ensure deterministic mapping to spiders 0..N-1
+    # Note: hif_nodes can be ints, strings, tuples. str(x) sort is safe.
     sorted_nodes = sorted(all_nodes, key=lambda x: str(x))
     node_to_idx = {n: i for i, n in enumerate(sorted_nodes)}
 
     spider_types_list = []
-    dom_ports_map = {} # port_index -> spider_idx
-    cod_ports_map = {} # port_index -> spider_idx
 
     for i, n in enumerate(sorted_nodes):
         attrs = hif_node(H, n)
-        # Wrap attrs in HIFOb
-        name = str(attrs.get("type", ""))
-        spider_types_list.append(Ty(HIFOb(name, attrs)))
+        # Store original ID in attributes for roundtrip preservation
+        # attrs comes from nx_hif which returns a dict reference?
+        # hif_node returns the attribute dictionary. Modifying it modifies the graph?
+        # Likely. So copy it.
+        attrs_copy = attrs.copy() if attrs else {}
+        attrs_copy["_hif_id"] = n
 
-        if "dom_ports" in attrs:
-            for p_idx in attrs["dom_ports"]:
-                dom_ports_map[p_idx] = i
-        if "cod_ports" in attrs:
-            for p_idx in attrs["cod_ports"]:
-                cod_ports_map[p_idx] = i
+        name = str(attrs_copy.get("type", ""))
+        spider_types_list.append(Ty(HIFOb(name, attrs_copy)))
 
     spider_types = tuple(spider_types_list)
 
-    # Construct Dom/Cod wires
-    dom_wires = []
-    if dom_ports_map:
-        max_dom = max(dom_ports_map.keys())
-        dom_wires = [dom_ports_map.get(k, 0) for k in range(max_dom + 1)]
-
-    cod_wires = []
-    if cod_ports_map:
-        max_cod = max(cod_ports_map.keys())
-        cod_wires = [cod_ports_map.get(k, 0) for k in range(max_cod + 1)]
-
-    # Dom/Cod Types
     dom = Ty()
-    for s in dom_wires:
-        dom = dom @ spider_types[s]
-
     cod = Ty()
-    for s in cod_wires:
-        cod = cod @ spider_types[s]
+    dom_wires = []
+    cod_wires = []
 
-    # Pre-process incidences from H[2] (incidence graph)
-    incidences_by_edge = {} # edge_id -> list of (node_id, key, attrs)
+    incidences_by_edge = {}
 
     I = H[2]
-    # Check if we have edges in I
     if hasattr(I, "edges"):
         for u, v, key, data in I.edges(data=True, keys=True):
             edge_id = None
             node_id = None
 
-            # Check u
             if u in node_to_idx: node_id = u
             elif u in all_edges: edge_id = u
             elif isinstance(u, tuple) and len(u) == 2:
-                # Assuming (id, 1) is edge, (id, 0) is node
                 if u[1] == 1: edge_id = u[0]
                 elif u[1] == 0: node_id = u[0]
 
-            # Check v
             if v in node_to_idx: node_id = v
             elif v in all_edges: edge_id = v
             elif isinstance(v, tuple) and len(v) == 2:
@@ -212,17 +184,16 @@ def hif_to_discopy(H):
 
     for e in sorted_edges:
         attrs = hif_edge(H, e)
+        attrs_copy = attrs.copy() if attrs else {}
+        attrs_copy["_hif_id"] = e
 
-        # Get incidences for this edge
         incs = []
         if e in incidences_by_edge:
             for node, key, data in incidences_by_edge[e]:
                 incs.append((e, node, key, data))
         else:
-             # Try standard accessor as fallback
              incs = list(hif_edge_incidences(H, e))
 
-        # Sort incidences
         def sort_key(inc):
             role = inc[3].get("role", "")
             key = str(inc[2])
@@ -273,7 +244,7 @@ def hif_to_discopy(H):
         name = attrs.get("name") or attrs.get("kind") or str(e)
 
         box_data = {
-            "attributes": attrs,
+            "attributes": attrs_copy,
             "incidences": inc_metadata
         }
 
