@@ -79,6 +79,10 @@ def test_roundtrip_simple_box():
     assert h_prime.n_spiders == h.n_spiders
     assert h_prime.wires == h.wires
 
+    # TODO
+    nx_h_prime = encode_hif_data(h_prime)
+
+
 def test_roundtrip_composition():
     x, y, z = Ty('x'), Ty('y'), Ty('z')
     f = Box('f', x, y)
@@ -93,6 +97,9 @@ def test_roundtrip_composition():
     assert len(h_prime.boxes) == 2
     assert h_prime.wires == h.wires
 
+    # TODO
+    nx_h_prime = encode_hif_data(h_prime)
+
 def test_roundtrip_tensor():
     x, y = Ty('x'), Ty('y')
     f = Box('f', x, x)
@@ -106,3 +113,6 @@ def test_roundtrip_tensor():
     assert h_prime.cod == h.cod
     assert len(h_prime.boxes) == 2
     assert h_prime.wires == h.wires
+
+    # TODO
+    nx_h_prime = encode_hif_data(h_prime)
