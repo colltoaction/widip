@@ -1,77 +1,66 @@
 from discopy.markov import Ty, Box, Hypergraph
-from nx_hif.hif import hif_nodes, hif_edges, hif_edge_incidences
+from .represent import encode_hif_data, read_hif_data
 
-from .represent import to_hif
-
-def test_simple_box():
+def test_roundtrip_simple_box():
     x, y = Ty('x'), Ty('y')
     f = Box('f', x, y)
 
-    # Use from_box as permitted now
+    # h = f.to_hypergraph()
     h = Hypergraph.from_box(f)
 
-    nx_h = to_hif(h)
+    nx_h = encode_hif_data(h)
+    h_prime = read_hif_data(nx_h)
 
-    # Check nodes (spiders)
-    nodes = list(hif_nodes(nx_h))
-    assert 0 in nodes
-    assert 1 in nodes
+    # Assert equality
+    # We might need to check attributes because equality of Hypergraphs depends on internal order.
+    # But read_hif_data attempts to preserve order.
 
-    # Check edges
-    edges = list(hif_edges(nx_h))
-    assert "dom" in edges
-    assert "cod" in edges
-    # box name format
-    box_edge = [e for e in edges if str(e).startswith("box_0_f")][0]
+    assert h_prime.dom == h.dom
+    assert h_prime.cod == h.cod
+    assert len(h_prime.boxes) == len(h.boxes)
+    assert h_prime.boxes[0].name == h.boxes[0].name
+    assert h_prime.boxes[0].dom == h.boxes[0].dom
+    assert h_prime.boxes[0].cod == h.boxes[0].cod
 
-    # Check incidences
-    # dom -> 0 (cod role)
-    dom_incs = list(hif_edge_incidences(nx_h, "dom"))
-    assert len(dom_incs) == 1
-    # Structure is (edge, node, key, attrs)
-    assert dom_incs[0][1] == 0
+    assert h_prime.n_spiders == h.n_spiders
+    assert h_prime.wires == h.wires
 
-    # box f -> 0 (dom role), 1 (cod role)
-    box_incs = list(hif_edge_incidences(nx_h, box_edge))
-    assert len(box_incs) == 2
-
-    # cod -> 1 (dom role)
-    cod_incs = list(hif_edge_incidences(nx_h, "cod"))
-    assert len(cod_incs) == 1
-    assert cod_incs[0][1] == 1
-
-def test_composition():
-    # x -> f -> y -> g -> z
+def test_roundtrip_composition():
     x, y, z = Ty('x'), Ty('y'), Ty('z')
     f = Box('f', x, y)
     g = Box('g', y, z)
 
-    # Use from_box and composition
     h = Hypergraph.from_box(f) >> Hypergraph.from_box(g)
 
-    nx_h = to_hif(h)
+    nx_h = encode_hif_data(h)
+    h_prime = read_hif_data(nx_h)
 
-    nodes = list(hif_nodes(nx_h))
-    # Spiders 0, 1, 2
-    assert 0 in nodes
-    assert 1 in nodes
-    assert 2 in nodes
+    assert h_prime.dom == h.dom
+    assert h_prime.cod == h.cod
+    assert len(h_prime.boxes) == len(h.boxes)
+    assert h_prime.boxes[0].name == f.name
+    assert h_prime.boxes[1].name == g.name
 
-    edges = list(hif_edges(nx_h))
-    # dom, cod, f, g should be present
-    assert "dom" in edges
-    assert "cod" in edges
+    assert h_prime.n_spiders == h.n_spiders
+    assert h_prime.wires == h.wires
 
-    f_edge = [e for e in edges if "box_0_f" in str(e)][0]
-    g_edge = [e for e in edges if "box_1_g" in str(e)][0]
+def test_roundtrip_tensor():
+    x, y = Ty('x'), Ty('y')
+    f = Box('f', x, x)
+    g = Box('g', y, y)
 
-    # Check shared spider 1
-    f_incs = list(hif_edge_incidences(nx_h, f_edge))
-    g_incs = list(hif_edge_incidences(nx_h, g_edge))
+    h = Hypergraph.from_box(f) @ Hypergraph.from_box(g)
 
-    # Filter by role in attrs (index 3)
-    f_cod = [inc for inc in f_incs if inc[3]["role"] == "cod"][0]
-    g_dom = [inc for inc in g_incs if inc[3]["role"] == "dom"][0]
+    nx_h = encode_hif_data(h)
+    h_prime = read_hif_data(nx_h)
 
-    assert f_cod[1] == 1
-    assert g_dom[1] == 1
+    assert h_prime.dom == h.dom
+    assert h_prime.cod == h.cod
+    assert len(h_prime.boxes) == 2
+
+    # Order of boxes in parallel composition might be preserved or not depending on implementation,
+    # but Hypergraph usually preserves it.
+    assert h_prime.boxes[0].name == f.name
+    assert h_prime.boxes[1].name == g.name
+
+    assert h_prime.wires == h.wires
