@@ -4,7 +4,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from yaml import YAMLError
 
-from discopy.closed import Id, Ty, Box
+from discopy.frobenius import Id, Ty, Box
 from discopy.utils import tuplify, untuplify
 
 from .loader import repl_read
@@ -74,7 +74,13 @@ def widish_main(file_name, *shell_program_args: str):
     path = Path(file_name)
     diagram_draw(path, fd)
     constants = tuple(x.name for x in fd.dom)
-    runner = SHELL_RUNNER(fd)(*constants)
-    # TODO pass stdin
-    run_res = runner and runner("")
-    print(*(tuple(x.rstrip() for x in tuplify(untuplify(run_res)) if x)), sep="\n")
+
+    # print(f"DEBUG: Diagram boxes: {fd.boxes}")
+    runner = SHELL_RUNNER(fd)
+
+    run_res = runner(*constants)
+
+    if run_res is None:
+        return
+
+    print(*(tuple(x.rstrip() for x in tuplify(untuplify(run_res)) if x and isinstance(x, str))), sep="\n")
