@@ -4,7 +4,11 @@ from nx_hif.hif import *
 
 from discopy.closed import Id, Ty, Box, Eval
 
-P = Ty() << Ty("")
+# Revert P to an exponential type to preserve logic in load_sequence/mapping.
+# Using Ty("Output") as the exponent to give it a label.
+# P = Ty() << Ty("Output")
+# Original was Ty() << Ty("").
+P = Ty() << Ty("Output")
 
 
 def repl_read(stream):
@@ -39,7 +43,7 @@ def _incidences_to_diagram(node: HyperGraph, index):
             ob = load_mapping(node, index, tag)
         case _:
             raise Exception(f"Kind \"{kind}\" doesn't match any.")
-        
+
     return ob
 
 
@@ -49,14 +53,21 @@ def load_scalar(node, index, tag):
         return Box("Ω", Ty(), Ty(v) << P) @ P \
             >> Eval(Ty(v) << P) \
             >> Box("e", Ty(v), Ty(v))
+
     if tag and v:
-        return Box("G", Ty(tag) @ Ty(v), Ty() << Ty(""))
+        # Separate the value into its own box providing an input
+        # Use "String" type for the scalar value wire
+        val_box = Box(f"Value: '{v}'", Ty(), Ty("String"))
+        # The command box takes the String and produces Output (P)
+        cmd_box = Box(f"command: {tag}", Ty("String"), P)
+        return val_box >> cmd_box
+
     elif tag:
-        return Box("G", Ty(tag), Ty() << Ty(""))
+        return Box(f"command: {tag}", Ty(), P)
     elif v:
-        return Box("⌜−⌝", Ty(v), Ty() << Ty(""))
+        return Box(f"Value: '{v}'", Ty(), P)
     else:
-        return Box("⌜−⌝", Ty(), Ty() << Ty(""))
+        return Box("⌜−⌝", Ty(), P)
 
 def load_mapping(node, index, tag):
     ob = Id()
@@ -87,7 +98,8 @@ def load_mapping(node, index, tag):
     ob = ob >> par_box
     if tag:
         ob = (ob @ bases>> Eval(exps << bases))
-        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty("") << Ty(""))
+        # Assuming mapping implies some structure input
+        ob = Ty(tag) @ ob >> Box(f"command: {tag}", Ty(tag) @ ob.cod, P)
     return ob
 
 def load_sequence(node, index, tag):
@@ -114,7 +126,7 @@ def load_sequence(node, index, tag):
         bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
         exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
         ob = (bases @ ob >> Eval(bases >> exps))
-        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty() >> Ty(tag))
+        ob = Ty(tag) @ ob >> Box(f"command: {tag}", Ty(tag) @ ob.cod, Ty() >> Ty(tag))
     return ob
 
 def load_document(node, index):
