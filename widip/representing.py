@@ -1,5 +1,5 @@
 import json
-from discopy.markov import Hypergraph, Ty, Box
+from discopy.markov import Diagram, Hypergraph, Ty, Box
 from discopy.cat import Ob
 from nx_hif.hif import (
     hif_create, hif_add_node, hif_add_edge, hif_add_incidence,
@@ -7,16 +7,17 @@ from nx_hif.hif import (
 )
 
 
-def discopy_to_hif(diagram: Hypergraph):
+def discopy_to_hif(diagram: Diagram):
     """
-    Convert a discopy.markov.Hypergraph to an nx_hif structure.
+    Convert a discopy.markov.Diagram to an nx_hif structure.
     """
     H = hif_create()
+    hyp = diagram.to_hypergraph()
     spider_to_hif_id = {}
 
     # 1. Process Spiders (Nodes)
-    for i in range(diagram.n_spiders):
-        spider_type = diagram.spider_types[i] if i < len(diagram.spider_types) else Ty()
+    for i in range(hyp.n_spiders):
+        spider_type = hyp.spider_types[i] if i < len(hyp.spider_types) else Ty()
         attrs = _extract_spider_attrs(spider_type)
 
         # Restore original ID if present, otherwise use index
@@ -32,7 +33,11 @@ def discopy_to_hif(diagram: Hypergraph):
         hif_add_node(H, hif_id, **attrs)
 
     # 2. Process Boxes (Edges)
-    for i, (box, (dom_wires, cod_wires)) in enumerate(zip(diagram.boxes, diagram.wires[1])):
+    # hyp.wires format is (dom_wires, box_wires, cod_wires)
+    # box_wires is a list of (dom_wires, cod_wires) tuples for each box
+    box_wires_list = hyp.wires[1]
+
+    for i, (box, (dom_wires, cod_wires)) in enumerate(zip(hyp.boxes, box_wires_list)):
         edge_attrs = _extract_box_attrs(box)
         edge_id = edge_attrs.pop("_hif_id", f"box_{i}")
 
@@ -57,9 +62,9 @@ def discopy_to_hif(diagram: Hypergraph):
     return H
 
 
-def hif_to_discopy(H):
+def hif_to_discopy(H) -> Diagram:
     """
-    Convert an nx_hif structure to a discopy.markov.Hypergraph.
+    Convert an nx_hif structure to a discopy.markov.Diagram.
     """
     # 1. Process Nodes (Spiders)
     # Sort for deterministic order
@@ -144,9 +149,10 @@ def hif_to_discopy(H):
         boxes.append(Box(name, b_dom, b_cod, data=box_data))
         box_wires_list.append((tuple(dom_indices), tuple(cod_indices)))
 
-    # 4. Construct Hypergraph
-    # Assumes no boundary wires for the Hypergraph itself
-    return Hypergraph(Ty(), Ty(), tuple(boxes), ((), tuple(box_wires_list), ()), tuple(spider_types))
+    # 4. Construct Hypergraph and convert to Diagram
+    # Assumes no boundary wires for the Hypergraph itself (closed diagram)
+    hyp = Hypergraph(Ty(), Ty(), tuple(boxes), ((), tuple(box_wires_list), ()), tuple(spider_types))
+    return hyp.to_diagram()
 
 
 # --- Helper Functions ---
