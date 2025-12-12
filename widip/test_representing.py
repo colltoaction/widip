@@ -2,8 +2,14 @@ from discopy.markov import Ty, Box, Hypergraph
 from nx_yaml import nx_serialize_all, nx_compose_all
 import os
 import pytest
+import sys
 
-from .representing import discopy_to_hif, hif_to_discopy
+# Ensure local widip is used
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from widip.representing import discopy_to_hif, hif_to_discopy
+
+print(f"DEBUG: Using discopy_to_hif from {discopy_to_hif.__code__.co_filename}")
 
 def test_simple_box():
     x, y = Ty('x'), Ty('y')
@@ -37,8 +43,14 @@ def test_roundtrip_simple_box():
     nx_h = discopy_to_hif(h)
     h_prime = hif_to_discopy(nx_h)
 
-    assert len(h_prime.dom) == 0
-    assert len(h_prime.cod) == 0
+    # Now we expect dom and cod to be preserved
+    assert h_prime.dom == h.dom
+    assert h_prime.cod == h.cod
+
+    # Check that wires match (dom_wires and cod_wires)
+    assert h_prime.wires[0] == h.wires[0]
+    assert h_prime.wires[2] == h.wires[2]
+
     assert len(h_prime.boxes) == len(h.boxes)
     assert h_prime.boxes[0].name == h.boxes[0].name
 
@@ -54,8 +66,11 @@ def test_roundtrip_composition():
     nx_h = discopy_to_hif(h)
     h_prime = hif_to_discopy(nx_h)
 
-    assert len(h_prime.dom) == 0
-    assert len(h_prime.cod) == 0
+    assert h_prime.dom == h.dom
+    assert h_prime.cod == h.cod
+    assert h_prime.wires[0] == h.wires[0]
+    assert h_prime.wires[2] == h.wires[2]
+
     assert len(h_prime.boxes) == 2
     assert h_prime.wires[1] == h.wires[1]
 
@@ -68,19 +83,26 @@ def test_roundtrip_tensor():
     nx_h = discopy_to_hif(h)
     h_prime = hif_to_discopy(nx_h)
 
-    assert len(h_prime.dom) == 0
-    assert len(h_prime.cod) == 0
+    assert h_prime.dom == h.dom
+    assert h_prime.cod == h.cod
+    assert h_prime.wires[0] == h.wires[0]
+    assert h_prime.wires[2] == h.wires[2]
+
     assert len(h_prime.boxes) == 2
 
 def test_roundtrip_identity():
     x = Ty('x')
+    # Identity: wires[0] (dom) == wires[2] (cod) == (0,)
     h = Hypergraph(x, x, [], ((0,), (), (0,)), (x,))
 
     nx_h = discopy_to_hif(h)
     h_prime = hif_to_discopy(nx_h)
 
-    assert len(h_prime.dom) == 0
-    assert len(h_prime.cod) == 0
+    assert h_prime.dom == h.dom
+    assert h_prime.cod == h.cod
+    assert h_prime.wires[0] == h.wires[0]
+    assert h_prime.wires[2] == h.wires[2]
+
     assert len(h_prime.boxes) == 0
     assert h_prime.wires[1] == h.wires[1]
 
@@ -101,6 +123,11 @@ def test_src_yaml_files(yaml_file):
     print(f"Testing {yaml_file}")
     with open(yaml_file, "r") as f:
         nx_h = nx_compose_all(f)
+
+    # Note: hif_to_discopy might now look for _boundary.
+    # If the file doesn't have it, dom/cod will be empty.
+    # discopy_to_hif will then see empty wires and NOT add _boundary.
+    # So roundtrip should still be stable.
 
     h_prime = hif_to_discopy(nx_h)
     nx_h_prime = discopy_to_hif(h_prime)

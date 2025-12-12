@@ -10,8 +10,7 @@ import json
 def discopy_to_hif(diagram: Hypergraph):
     """
     Convert a discopy.markov.Hypergraph to an nx_hif structure.
-    TODO parsing should't be used and original IDs not preserved
-    Preserves original HIF IDs if present in attributes (stored in Ob name via JSON).
+    Preserves original HIF IDs if present in attributes.
     """
     H = hif_create()
 
@@ -24,10 +23,7 @@ def discopy_to_hif(diagram: Hypergraph):
         attrs = {}
         hif_id = i # Default ID
 
-        # TODO parsing should't be used
         # Try to parse attributes from Ty name (JSON)
-        # Ty might be composite, but we expect atomic Ob for attributes.
-        # Assuming one Ob per spider.
         if len(t.inside) == 1:
             name = t.inside[0].name
             try:
@@ -35,7 +31,6 @@ def discopy_to_hif(diagram: Hypergraph):
                 if not isinstance(attrs, dict):
                     attrs = {"type": name}
             except (json.JSONDecodeError, TypeError):
-                # Fallback: treat name as simple string type/value
                 if name:
                     attrs = {"type": name}
         elif t.name:
@@ -48,12 +43,35 @@ def discopy_to_hif(diagram: Hypergraph):
         # Ensure 'kind' attribute for nx_yaml
         if "kind" not in attrs:
             attrs["kind"] = "scalar"
-            # Scalar needs 'value'. Use 'type' or empty string.
             if "value" not in attrs:
                 attrs["value"] = attrs.get("type", "")
 
         spider_to_hif_id[i] = hif_id
         hif_add_node(H, hif_id, **attrs)
+
+    # Helper to add incidences
+    # We need to track keys per edge to avoid overwriting
+    next_key = {}
+
+    def add_inc(edge_id, spider_idx, role, index, meta_override=None):
+        hif_node_id = spider_to_hif_id[spider_idx]
+
+        # Determine key
+        k = None
+        if meta_override and 'key' in meta_override:
+            k = meta_override['key']
+        else:
+            if edge_id not in next_key:
+                next_key[edge_id] = 0
+            k = next_key[edge_id]
+            next_key[edge_id] += 1
+
+        if meta_override:
+            meta_attrs = meta_override.get('attrs', {}).copy()
+            meta_attrs.pop('role', None)
+            hif_add_incidence(H, edge_id, hif_node_id, key=k, role=meta_override.get('role'), **meta_attrs)
+        else:
+            hif_add_incidence(H, edge_id, hif_node_id, key=k, role=role, index=index)
 
     # Add edges for boxes
     for i, (box, (dom_wires, cod_wires)) in enumerate(zip(diagram.boxes, diagram.wires[1])):
@@ -87,22 +105,28 @@ def discopy_to_hif(diagram: Hypergraph):
                     return m
             return None
 
-        def add_inc(spider_idx, role, index):
-            hif_node_id = spider_to_hif_id[spider_idx]
-
-            meta = get_meta(role, index)
-            if meta:
-                meta_attrs = meta.get('attrs', {}).copy()
-                meta_attrs.pop('role', None)
-                hif_add_incidence(H, edge_id, hif_node_id, key=meta.get('key'), role=meta.get('role'), **meta_attrs)
-            else:
-                hif_add_incidence(H, edge_id, hif_node_id, role=role, index=index)
-
         for j, spider_idx in enumerate(dom_wires):
-            add_inc(spider_idx, "dom", j)
+            add_inc(edge_id, spider_idx, "dom", j, get_meta("dom", j))
 
         for j, spider_idx in enumerate(cod_wires):
-            add_inc(spider_idx, "cod", j)
+            add_inc(edge_id, spider_idx, "cod", j, get_meta("cod", j))
+
+    # Add global boundary edge if there are open wires
+    if len(diagram.wires[0]) > 0 or len(diagram.wires[2]) > 0:
+        boundary_id = "_boundary"
+        attrs = {"kind": "boundary"}
+        if diagram.dom.name:
+            attrs["dom"] = diagram.dom.name
+        if diagram.cod.name:
+            attrs["cod"] = diagram.cod.name
+
+        hif_add_edge(H, boundary_id, **attrs)
+
+        for j, spider_idx in enumerate(diagram.wires[0]):
+            add_inc(boundary_id, spider_idx, "dom", j)
+
+        for j, spider_idx in enumerate(diagram.wires[2]):
+            add_inc(boundary_id, spider_idx, "cod", j)
 
     return H
 
@@ -123,14 +147,23 @@ def hif_to_discopy(H):
         attrs_copy = attrs.copy() if attrs else {}
         attrs_copy["_hif_id"] = n
 
-        # Serialize attributes to JSON string
-        try:
-            json_str = json.dumps(attrs_copy, sort_keys=True, default=str)
-            spider_types_list.append(Ty(Ob(json_str)))
-        except TypeError:
-            # TODO check for kind
-            name = str(attrs_copy.get("type", ""))
-            spider_types_list.append(Ty(name))
+        type_name = attrs_copy.get("type", "")
+
+        is_simple = True
+        for k in attrs_copy:
+            if k not in ["kind", "value", "type", "_hif_id"]:
+                is_simple = False
+                break
+
+        if is_simple and attrs_copy.get("kind") == "scalar" and attrs_copy.get("value") == type_name:
+            spider_types_list.append(Ty(type_name))
+        else:
+            try:
+                json_str = json.dumps(attrs_copy, sort_keys=True, default=str)
+                spider_types_list.append(Ty(Ob(json_str)))
+            except TypeError:
+                name = str(type_name)
+                spider_types_list.append(Ty(name))
 
     spider_types = tuple(spider_types_list)
 
@@ -147,47 +180,72 @@ def hif_to_discopy(H):
             edge_id = None
             node_id = None
 
-            if u in node_to_idx: node_id = u
-            elif u in all_edges: edge_id = u
-            elif isinstance(u, tuple) and len(u) == 2:
-                if u[1] == 1: edge_id = u[0]
-                elif u[1] == 0: node_id = u[0]
+            e_idx = H[1].graph.get("incidence_pair_index", 1)
+            v_idx = H[0].graph.get("incidence_pair_index", 0)
 
-            if v in node_to_idx: node_id = v
-            elif v in all_edges: edge_id = v
-            elif isinstance(v, tuple) and len(v) == 2:
-                if v[1] == 1: edge_id = v[0]
-                elif v[1] == 0: node_id = v[0]
+            def is_edge(x): return isinstance(x, tuple) and len(x)==2 and x[1] == e_idx
+            def is_node(x): return isinstance(x, tuple) and len(x)==2 and x[1] == v_idx
 
-            if edge_id is not None and node_id is not None:
-                if edge_id not in incidences_by_edge:
-                    incidences_by_edge[edge_id] = []
-                incidences_by_edge[edge_id].append((node_id, key, data))
+            real_edge_id = None
+            real_node_id = None
+
+            if is_edge(u): real_edge_id = u[0]
+            if is_node(u): real_node_id = u[0]
+            if is_edge(v): real_edge_id = v[0]
+            if is_node(v): real_node_id = v[0]
+
+            if real_edge_id is None:
+                if u in all_edges: real_edge_id = u
+                elif v in all_edges: real_edge_id = v
+            if real_node_id is None:
+                if u in node_to_idx: real_node_id = u
+                elif v in node_to_idx: real_node_id = v
+
+            if real_edge_id is not None and real_node_id is not None:
+                if real_edge_id not in incidences_by_edge:
+                    incidences_by_edge[real_edge_id] = []
+                incidences_by_edge[real_edge_id].append((real_node_id, key, data))
 
     boxes = []
     box_wires_list = []
 
     sorted_edges = sorted(all_edges, key=lambda x: str(x))
 
+    boundary_edge_id = None
     for e in sorted_edges:
+        attrs = hif_edge(H, e)
+        if attrs.get("kind") == "boundary" or str(e) == "_boundary":
+            boundary_edge_id = e
+            break
+
+    for e in sorted_edges:
+        if e == boundary_edge_id:
+            continue
+
         attrs = hif_edge(H, e)
         attrs_copy = attrs.copy() if attrs else {}
         attrs_copy["_hif_id"] = e
 
-        incs = []
-        if e in incidences_by_edge:
-            for node, key, data in incidences_by_edge[e]:
-                incs.append((e, node, key, data))
-        else:
+        incs = incidences_by_edge.get(e, [])
+        if not incs:
              incs = list(hif_edge_incidences(H, e))
 
         def sort_key(inc):
-            role = inc[3].get("role", "")
-            key = str(inc[2])
-            n_idx = node_to_idx.get(inc[1], -1)
-            idx_attr = inc[3].get("index", -1)
+            if len(inc) == 4:
+                data = inc[3]
+                key = inc[2]
+                node_id = inc[1]
+            else:
+                data = inc[2]
+                key = inc[1]
+                node_id = inc[0]
+
+            role = data.get("role", "")
+            key_str = str(key)
+            n_idx = node_to_idx.get(node_id, -1)
+            idx_attr = data.get("index", -1)
             role_prio = 0 if role == 'dom' else 1 if role == 'cod' else 2
-            return (role_prio, idx_attr, key, n_idx)
+            return (role_prio, idx_attr, key_str, n_idx)
 
         sorted_incs = sorted(incs, key=sort_key)
 
@@ -196,16 +254,25 @@ def hif_to_discopy(H):
         inc_metadata = []
 
         for i, inc in enumerate(sorted_incs):
-            role = inc[3].get("role")
-            node_id = inc[1]
+            if len(inc) == 4:
+                node_id = inc[1]
+                data = inc[3]
+                key = inc[2]
+            else:
+                node_id = inc[0]
+                data = inc[2]
+                key = inc[1]
+
             if node_id not in node_to_idx:
                 continue
 
             node_idx = node_to_idx[node_id]
+            role = data.get("role")
+
             meta = {
                 'role': role,
-                'key': inc[2],
-                'attrs': inc[3],
+                'key': key,
+                'attrs': data,
             }
 
             if role == "dom":
@@ -238,6 +305,53 @@ def hif_to_discopy(H):
         box = Box(name, b_dom, b_cod, data=box_data)
         boxes.append(box)
         box_wires_list.append((tuple(b_dom_wires), tuple(b_cod_wires)))
+
+    if boundary_edge_id is not None:
+        incs = incidences_by_edge.get(boundary_edge_id, [])
+        if not incs:
+             incs = list(hif_edge_incidences(H, boundary_edge_id))
+
+        def sort_key_boundary(inc):
+            if len(inc) == 4:
+                data = inc[3]
+                key = inc[2]
+                node_id = inc[1]
+            else:
+                data = inc[2]
+                key = inc[1]
+                node_id = inc[0]
+            role = data.get("role", "")
+            idx_attr = data.get("index", -1)
+            key_str = str(key)
+            n_idx = node_to_idx.get(node_id, -1)
+            role_prio = 0 if role == 'dom' else 1 if role == 'cod' else 2
+            return (role_prio, idx_attr, key_str, n_idx)
+
+        sorted_incs = sorted(incs, key=sort_key_boundary)
+
+        for inc in sorted_incs:
+            if len(inc) == 4:
+                node_id = inc[1]
+                data = inc[3]
+            else:
+                node_id = inc[0]
+                data = inc[2]
+
+            if node_id not in node_to_idx:
+                continue
+
+            node_idx = node_to_idx[node_id]
+            role = data.get("role")
+
+            if role == "dom":
+                dom_wires.append(node_idx)
+            elif role == "cod":
+                cod_wires.append(node_idx)
+
+        for s in dom_wires:
+            dom = dom @ spider_types[s]
+        for s in cod_wires:
+            cod = cod @ spider_types[s]
 
     wires = (tuple(dom_wires), tuple(box_wires_list), tuple(cod_wires))
 
