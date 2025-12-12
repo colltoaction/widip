@@ -25,7 +25,7 @@ def file_diagram(file_name) -> Diagram:
 
 def diagram_draw(path, fd):
     fd.draw(path=str(path.with_suffix(".jpg")),
-            textpad=(0.3, 0.1),
+            textpad=(0.3, 0.3),
             fontsize=12,
             fontsize_types=8)
 

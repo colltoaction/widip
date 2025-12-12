@@ -32,15 +32,55 @@ def run_native_subprocess(ar, *b):
         return res
     def run_native_subprocess_inside(*params):
         try:
-            io_result = run(
-                b,
-                check=True, text=True, capture_output=True,
-                input="\n".join(params) if params else None,
-                )
-            res = io_result.stdout.rstrip("\n")
-            return res
+            # construct command from b (inputs) and params (stdin/program inputs)
+            # b contains arguments from input wires (e.g. filename)
+            # params contains arguments from program flow (stdin)
+            cmd_args = list(b)
+            # Filter empty strings (from unused/default S inputs)
+            cmd_args = [x for x in cmd_args if x != ""]
+
+            if ar.name.startswith("command: "):
+                cmd = ar.name[9:]
+                full_cmd = [cmd] + [str(x) for x in cmd_args]
+
+                input_str = "\n".join(str(p) for p in params) if params else None
+
+                io_result = run(
+                    full_cmd,
+                    check=True, text=True, capture_output=True,
+                    input=input_str,
+                    )
+                res = io_result.stdout.rstrip("\n")
+                return res
+            return ""
         except CalledProcessError as e:
             return e.stderr
+
+    if ar.name.startswith("Value: "):
+        val = ar.name[7:]
+        # Check if codomain involves "Over" (is a Program-like type)
+        # Note: ar.cod might be "Ty(String)" or "Ty() << Ty(Output)".
+        # We need to distinguish "Atomic String output" from "Program output".
+        is_over = False
+        try:
+            if hasattr(ar.cod, "is_over") and ar.cod.is_over:
+                is_over = True
+            elif len(ar.cod) > 0 and hasattr(ar.cod[0], "is_over") and ar.cod[0].is_over:
+                is_over = True
+        except AttributeError:
+            pass
+
+        if is_over:
+             if val == "None":
+                 return lambda x: x
+             return lambda *args: val
+
+        # If not Over, return value directly.
+        return val
+
+    if ar.name.startswith("command: "):
+        return run_native_subprocess_inside
+
     if ar.name == "⌜−⌝":
         return run_native_subprocess_constant
     if ar.name == "(||)":
@@ -54,7 +94,7 @@ def run_native_subprocess(ar, *b):
         return run_native_subprocess_inside
 
 SHELL_RUNNER = Functor(
-    lambda ob: str,
+    lambda ob: object,
     lambda ar: partial(run_native_subprocess, ar),
     cod=Category(python.Ty, python.Function))
 
