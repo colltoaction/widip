@@ -30,28 +30,84 @@ def run_native_subprocess(ar, *b):
         b0 = b[0](*untuplify(params))
         res = untuplify(b[1](*tuplify(b0)))
         return res
+    def run_native_subprocess_eval(*params):
+        f, x = params
+        return f(x)
+
     def run_native_subprocess_inside(*params):
+        # Determine command to run
+        cmd = b if b else (ar.name,)
+
+        # If the command is empty (shouldn't happen with ar.name fallback), return empty
+        if not cmd:
+            return ""
+
+        # Strip "command: " prefix if present
+        clean_cmd = []
+        for c in cmd:
+            if isinstance(c, str) and c.startswith("command: "):
+                clean_cmd.append(c[9:])
+            else:
+                clean_cmd.append(c)
+        cmd = tuple(clean_cmd)
+
+        # Construct arguments: command + inputs
+        full_cmd = list(cmd) + list(params)
+
+        # Ensure all elements are strings
+        if not all(isinstance(x, str) for x in full_cmd):
+            # If we have non-string arguments, we can't run subprocess.
+            # This might happen if 'b' contains functions (e.g. from Eval or unhandled boxes).
+            # We return a placeholder or empty string to avoid crashing the visualization flow.
+            # print(f"Warning: Skipping execution of non-string command: {full_cmd}", file=sys.stderr)
+            return ""
+
         try:
             io_result = run(
-                b,
+                full_cmd,
                 check=True, text=True, capture_output=True,
-                input="\n".join(params) if params else None,
                 )
             res = io_result.stdout.rstrip("\n")
             return res
         except CalledProcessError as e:
             return e.stderr
+        except FileNotFoundError:
+             return f"Command not found: {cmd}"
+        except TypeError as e:
+            raise e
+
+    # Check for known control boxes
     if ar.name == "⌜−⌝":
         return run_native_subprocess_constant
     if ar.name == "(||)":
         return run_native_subprocess_map
     if ar.name == "(;)":
         return run_native_subprocess_seq
+    if isinstance(ar, Eval) or ar.name == "Eval":
+        return run_native_subprocess_eval
     if ar.name == "g":
         res = run_native_subprocess_inside(*b)
         return res
-    if ar.name == "G":
-        return run_native_subprocess_inside
+
+    # Handle scalar values (single quotes check)
+    if ar.name.startswith("'") and ar.name.endswith("'"):
+        # It's a scalar value like 'Hello world!'
+        # Return a function that returns the value (without quotes)
+        val = ar.name[1:-1]
+        def return_val(*params):
+            return val
+        return return_val
+
+    # Handle labelled values (Value: '...')
+    if ar.name.startswith("Value: '") and ar.name.endswith("'"):
+        val = ar.name[8:-1]
+        def return_val(*params):
+            return val
+        return return_val
+
+    # Default to running as a subprocess command
+    # This covers "G" and now specific tags like "echo"
+    return run_native_subprocess_inside
 
 SHELL_RUNNER = Functor(
     lambda ob: str,
