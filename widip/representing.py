@@ -143,6 +143,12 @@ def discopy_to_hif(diagram):
                 if k_idx == len(keys) - 1:
                     hif_add_incidence(hif_g, e_spider, box_id, key="end")
 
+        elif kind == "sequence":
+            # For now, sequence is empty.
+            e_dummy = hif_new_edge(hif_g, kind="event")
+            hif_add_incidence(hif_g, e_dummy, box_id, key="next")
+            hif_add_incidence(hif_g, e_dummy, box_id, key="end")
+
     if last_seq_edge:
         hif_add_incidence(hif_g, last_seq_edge, seq_id, key="end")
     else:
