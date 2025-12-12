@@ -24,10 +24,12 @@ def file_diagram(file_name) -> Diagram:
     return fd
 
 def diagram_draw(path, fd):
-    # Increased fontsize and changed textpad slightly for better layout
+    # Drastic increase in figsize and margins
     fd.draw(path=str(path.with_suffix(".jpg")),
-            textpad=(0.3, 0.3), # Increased padding
-            fontsize=16, # Increased font size
-            fontsize_types=12) # Increased type font size
+            figsize=(12, 8), # Increased figure size
+            textpad=(0.7, 0.7),
+            margins=(1.0, 0.5),
+            fontsize=16,
+            fontsize_types=12)
 
 files_f = Functor(lambda x: Ty(""), files_ar)
