@@ -9,54 +9,66 @@ from discopy import python
 
 io_ty = Ty("io")
 
-def run_native_subprocess(ar, *b):
-    def run_native_subprocess_constant(*params):
-        if not params:
-            return "" if ar.dom == Ty() else ar.dom.name
-        return untuplify(params)
-    def run_native_subprocess_map(*params):
-        # TODO cat then copy to two
-        # but formal is to pass through
-        mapped = []
-        start = 0
-        for (dk, k), (dv, v) in batched(zip(ar.dom, b), 2):
-            # note that the key cod and value dom might be different
-            b0 = k(*tuplify(params))
-            res = untuplify(v(*tuplify(b0)))
-            mapped.append(untuplify(res))
-        
-        return untuplify(tuple(mapped))
-    def run_native_subprocess_seq(*params):
-        b0 = b[0](*untuplify(params))
-        res = untuplify(b[1](*tuplify(b0)))
-        return res
-    def run_native_subprocess_inside(*params):
+
+class IO(python.Function):
+    """ IO class to handle shell execution logic """
+    @staticmethod
+    def runner(cmd, input_str):
         try:
             io_result = run(
-                b,
+                cmd,
                 check=True, text=True, capture_output=True,
-                input="\n".join(params) if params else None,
-                )
-            res = io_result.stdout.rstrip("\n")
-            return res
+                input=input_str or None,
+            )
+            return io_result.stdout.rstrip("\n")
         except CalledProcessError as e:
             return e.stderr
+
+
+def run_native_subprocess(ar):
+    dom, cod = tuple(str for _ in ar.dom), tuple(str for _ in ar.cod)
+
     if ar.name == "⌜−⌝":
-        return run_native_subprocess_constant
+        def func(*params):
+            if not params:
+                return "" if ar.dom == Ty() else ar.dom.name
+            return untuplify(params)
+        return IO(func, dom, cod)
+
     if ar.name == "(||)":
-        return run_native_subprocess_map
+        def func(*params):
+            def inner_runner(*args):
+                input_val = untuplify(args)
+                mapped = []
+                for (dk, k), (dv, v) in batched(zip(ar.dom, params), 2):
+                    b0 = k(input_val)
+                    res = v(b0)
+                    mapped.append(res)
+                return untuplify(tuple(mapped))
+            return IO(inner_runner, (str,), (str,))
+        return IO(func, dom, cod)
+
     if ar.name == "(;)":
-        return run_native_subprocess_seq
+        def func(*params):
+            return params[0] >> params[1]
+        return IO(func, dom, cod)
+
     if ar.name == "g":
-        res = run_native_subprocess_inside(*b)
-        return res
+        def func(*params):
+            return IO.runner(params, None)
+        return IO(func, dom, cod)
+
     if ar.name == "G":
-        return run_native_subprocess_inside
+        def func(*params):
+            return IO(lambda *args: IO.runner(params, untuplify(args)), (str,), (str,))
+        return IO(func, dom, cod)
+
+    return IO(lambda *args: args, dom, cod)
 
 SHELL_RUNNER = Functor(
     lambda ob: str,
-    lambda ar: partial(run_native_subprocess, ar),
-    cod=Category(python.Ty, python.Function))
+    lambda ar: run_native_subprocess(ar),
+    cod=Category(python.Ty, IO))
 
 
 SHELL_COMPILER = Functor(
