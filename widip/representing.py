@@ -4,6 +4,18 @@ from discopy.closed import Diagram as ClosedDiagram
 from discopy.monoidal import Box, Layer
 import itertools
 
+def hif_new_edge(G, **attr):
+    _, E, _ = G
+    edge = E.number_of_nodes()
+    hif_add_edge(G, edge, **attr)
+    return edge
+
+def hif_new_node(G, **attr):
+    V, _, _ = G
+    node = V.number_of_nodes()
+    hif_add_node(G, node, **attr)
+    return node
+
 def convert_to_markov(diagram):
     def convert_ty(ty):
         return MarkovTy(*[str(x) for x in ty])
@@ -42,44 +54,22 @@ def discopy_to_hif(diagram):
     hg = diagram.to_hypergraph()
     hif_g = hif_create()
 
-    id_counter = itertools.count()
-
-    def next_id():
-        return next(id_counter)
-
-    # We construct a stream -> document -> sequence -> [boxes...]
-    # But wait, if "box names use kinds as names", maybe the top-level structure is also boxes?
-    # No, nx_yaml requires root to be Stream.
-    # So we must wrap the diagram in Stream -> Document -> Sequence (or whatever the diagram represents).
-
-    # Or maybe the diagram *is* the document content?
-
-    # Let's keep the wrapper structure but use box names as kinds for the content.
-
-    stream_id = next_id() # 0
-    e_stream = next_id()  # 1
-    hif_add_node(hif_g, stream_id, kind="stream")
-    hif_add_edge(hif_g, e_stream, kind="event")
+    # 0: Stream
+    stream_id = hif_new_node(hif_g, kind="stream")
+    e_stream = hif_new_edge(hif_g, kind="event")
     hif_add_incidence(hif_g, e_stream, stream_id, key="start")
 
-    doc_id = next_id() # 2
-    e_doc = next_id()  # 3
-    hif_add_node(hif_g, doc_id, kind="document")
-    hif_add_edge(hif_g, e_doc, kind="event")
+    # 1: Document
+    doc_id = hif_new_node(hif_g, kind="document")
+    e_doc = hif_new_edge(hif_g, kind="event")
     hif_add_incidence(hif_g, e_doc, doc_id, key="start")
 
     hif_add_incidence(hif_g, e_doc, stream_id, key="next")
     hif_add_incidence(hif_g, e_doc, stream_id, key="end")
 
-    # Should we wrap in a Sequence?
-    # If the diagram is a list of boxes, Sequence is appropriate.
-    # If the diagram contains a single box "mapping", then Sequence might be redundant?
-    # But hg.boxes is a list.
-
-    seq_id = next_id() # 4
-    e_seq_node = next_id() # 5
-    hif_add_node(hif_g, seq_id, kind="sequence")
-    hif_add_edge(hif_g, e_seq_node, kind="event")
+    # 2: Sequence
+    seq_id = hif_new_node(hif_g, kind="sequence")
+    e_seq_node = hif_new_edge(hif_g, kind="event")
     hif_add_incidence(hif_g, e_seq_node, seq_id, key="start")
 
     hif_add_incidence(hif_g, e_seq_node, doc_id, key="next")
@@ -89,13 +79,8 @@ def discopy_to_hif(diagram):
 
     def get_spider(idx):
         if idx not in spider_map:
-            sid = next_id()
-            eid = next_id()
-            # Spiders are wires. Should they have a kind?
-            # "scalar" is generic.
-            # Maybe use "scalar" for wires.
-            hif_add_node(hif_g, sid, kind="scalar", value=None, tag=f"!wire_{idx}", anchor=f"wire_{idx}")
-            hif_add_edge(hif_g, eid, kind="event")
+            sid = hif_new_node(hif_g, kind="scalar", value=None, tag=f"!wire_{idx}", anchor=f"wire_{idx}")
+            eid = hif_new_edge(hif_g, kind="event")
             hif_add_incidence(hif_g, eid, sid, key="start")
             spider_map[idx] = (sid, eid)
         return spider_map[idx]
@@ -105,23 +90,13 @@ def discopy_to_hif(diagram):
     last_seq_edge = None
 
     for i, (box, (box_dom_spiders, box_cod_spiders)) in enumerate(zip(hg.boxes, boxes_wires)):
-        box_id = next_id()
-        e_box = next_id()
-
-        # USE BOX NAME AS KIND
         kind = box.name
-        # Note: If box.name is not valid kind, serialization will fail.
-
-        # Tags/Values?
-        # If kind is "scalar", it needs a value?
-        # If kind is "mapping", it needs keys.
-
         attributes = {"kind": kind}
         if hasattr(box, "data") and isinstance(box.data, dict):
             attributes.update(box.data)
 
-        hif_add_node(hif_g, box_id, **attributes)
-        hif_add_edge(hif_g, e_box, kind="event")
+        box_id = hif_new_node(hif_g, **attributes)
+        e_box = hif_new_edge(hif_g, kind="event")
         hif_add_incidence(hif_g, e_box, box_id, key="start")
 
         last_seq_edge = e_box
@@ -129,22 +104,11 @@ def discopy_to_hif(diagram):
         if i == 0:
             hif_add_incidence(hif_g, e_box, seq_id, key="next")
         else:
-            hif_add_incidence(hif_g, e_box, prev_node, key="forward") # sequence connection
+            hif_add_incidence(hif_g, e_box, prev_node, key="forward")
 
         prev_node = box_id
 
-        # Handle connectivity.
-        # If kind="mapping", we expect keys.
-        # If kind="scalar", we expect value (in attributes).
-        # If kind="sequence", we expect items.
-
-        # How to map wires?
-        # If the user diagram is AST, maybe wires are implicit or represented differently?
-        # But we have `dom_wires` and `cod_wires`.
-
-        # If kind="mapping", we can map inputs/outputs as keys?
         if kind == "mapping":
-            # Add inputs/outputs as keys
             keys = []
             for j, spider_idx in enumerate(box_dom_spiders):
                 keys.append((f"dom_{j}", spider_idx))
@@ -155,18 +119,13 @@ def discopy_to_hif(diagram):
             last_key_edge = None
 
             if not keys:
-                 # Empty mapping handling
-                 e_dummy = next_id()
-                 hif_add_edge(hif_g, e_dummy, kind="event")
+                 e_dummy = hif_new_edge(hif_g, kind="event")
                  hif_add_incidence(hif_g, e_dummy, box_id, key="next")
                  hif_add_incidence(hif_g, e_dummy, box_id, key="end")
 
             for k_idx, (k_name, sp_idx) in enumerate(keys):
-                key_id = next_id()
-                e_key = next_id()
-
-                hif_add_node(hif_g, key_id, kind="scalar", value=k_name)
-                hif_add_edge(hif_g, e_key, kind="event")
+                key_id = hif_new_node(hif_g, kind="scalar", value=k_name)
+                e_key = hif_new_edge(hif_g, kind="event")
                 hif_add_incidence(hif_g, e_key, key_id, key="start")
 
                 last_key_edge = e_key
@@ -184,15 +143,14 @@ def discopy_to_hif(diagram):
                 if k_idx == len(keys) - 1:
                     hif_add_incidence(hif_g, e_spider, box_id, key="end")
 
-        # If kind="scalar", we just emit it. (Assuming value is in attributes)
-        # If kind="sequence", we would need to emit items?
-
     if last_seq_edge:
         hif_add_incidence(hif_g, last_seq_edge, seq_id, key="end")
     else:
-        e_dummy = next_id()
-        hif_add_edge(hif_g, e_dummy, kind="event")
+        e_dummy = hif_new_edge(hif_g, kind="event")
         hif_add_incidence(hif_g, e_dummy, seq_id, key="next")
         hif_add_incidence(hif_g, e_dummy, seq_id, key="end")
+
+    # Dummy edge at the end to satisfy nx_yaml peeking
+    hif_new_edge(hif_g, kind="dummy")
 
     return hif_g
