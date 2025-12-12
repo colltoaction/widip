@@ -44,76 +44,109 @@ def discopy_to_hif(diagram):
 
     id_counter = itertools.count()
 
-    def next_node_id():
+    def next_id():
         return next(id_counter)
 
-    def next_edge_id():
-        return next(id_counter)
+    # Pattern: Node N, Edge N+1. Edge N+1 starts at Node N.
+    # Parent links to Edge N+1.
 
-    stream_id = next_node_id() # 0
-    e_stream_start = next_edge_id() # 1
-
+    # 0: Stream
+    stream_id = next_id() # 0
+    e_stream = next_id()  # 1
     hif_add_node(hif_g, stream_id, kind="stream")
-    hif_add_edge(hif_g, e_stream_start, kind="event")
-    hif_add_incidence(hif_g, e_stream_start, stream_id, key="start")
+    hif_add_edge(hif_g, e_stream, kind="event")
+    hif_add_incidence(hif_g, e_stream, stream_id, key="start")
 
-    doc_id = next_node_id() # 2
-    e_stream_doc = next_edge_id() # 3
-
+    # 2: Document
+    doc_id = next_id() # 2
+    e_doc = next_id()  # 3
     hif_add_node(hif_g, doc_id, kind="document")
-    hif_add_edge(hif_g, e_stream_doc, kind="event")
-    hif_add_incidence(hif_g, e_stream_doc, stream_id, key="next")
-    hif_add_incidence(hif_g, e_stream_doc, stream_id, key="end")
-    hif_add_incidence(hif_g, e_stream_doc, doc_id, key="start")
+    hif_add_edge(hif_g, e_doc, kind="event")
+    hif_add_incidence(hif_g, e_doc, doc_id, key="start")
 
-    seq_id = next_node_id() # 4
-    e_doc_seq = next_edge_id() # 5
+    # Connect Stream -> Doc
+    hif_add_incidence(hif_g, e_doc, stream_id, key="next")
+    hif_add_incidence(hif_g, e_doc, stream_id, key="end")
 
+    # 4: Sequence
+    seq_id = next_id() # 4
+    e_seq_node = next_id() # 5 (Edge belonging to Seq node)
     hif_add_node(hif_g, seq_id, kind="sequence")
-    hif_add_edge(hif_g, e_doc_seq, kind="event")
-    hif_add_incidence(hif_g, e_doc_seq, doc_id, key="next")
-    hif_add_incidence(hif_g, e_doc_seq, doc_id, key="end")
-    hif_add_incidence(hif_g, e_doc_seq, seq_id, key="start")
+    hif_add_edge(hif_g, e_seq_node, kind="event")
+    hif_add_incidence(hif_g, e_seq_node, seq_id, key="start")
 
-    spider_to_node = {}
+    # Connect Doc -> Seq
+    hif_add_incidence(hif_g, e_seq_node, doc_id, key="next")
+    hif_add_incidence(hif_g, e_seq_node, doc_id, key="end")
 
-    def get_spider_node(idx, ty):
-        if idx not in spider_to_node:
-            sid = next_node_id()
+    # Spiders need to be allocated. But if we want interleaving, we should allocate them
+    # when they are encountered in the tree traversal?
+    # But spiders are referenced multiple times.
+    # However, anchors in YAML are usually defined at first occurrence.
+    # If we treat spiders as values in the mapping, they are nodes in the tree.
+    # Subsequent references are aliases.
+    # nx_yaml handles anchors/aliases if graph structure is DAG.
+
+    # So we can allocate spider nodes on demand, BUT they must fit the N, N+1 pattern?
+    # If they are just referenced, maybe their ID doesn't matter as much as long as they have their own Edge?
+    # Let's verify: In `inspect_mapping.py`, Value node 8 has Edge 9.
+    # If I reuse spider node 8 later, it still has Edge 9.
+
+    # So I need a way to retrieve or create spider node.
+    spider_map = {} # spider_idx -> (node_id, edge_id)
+
+    def get_spider(idx):
+        if idx not in spider_map:
+            sid = next_id()
+            eid = next_id()
             hif_add_node(hif_g, sid, kind="scalar", value=None, tag=f"!wire_{idx}", anchor=f"wire_{idx}")
-            spider_to_node[idx] = sid
-        return spider_to_node[idx]
+            hif_add_edge(hif_g, eid, kind="event")
+            hif_add_incidence(hif_g, eid, sid, key="start")
+            spider_map[idx] = (sid, eid)
+        return spider_map[idx]
 
     dom_wires, boxes_wires, cod_wires = hg.wires
     prev_node = seq_id
     last_seq_edge = None
 
     for i, (box, (box_dom_spiders, box_cod_spiders)) in enumerate(zip(hg.boxes, boxes_wires)):
-        box_id = next_node_id()
+        box_id = next_id()
+        e_box = next_id()
+
         tag = f"!{box.name}"
-
-        # NOTE: nx_yaml might not output tag for Mapping if it's implicit or confusion?
-        # But if I look at yaml dump, it seems to have output keys dom_0: cod_0
-        # This implies it rendered the mapping content.
-        # But lost the tag?
-        # Maybe because box_id mapping node doesn't have explicit style/tag logic handled correctly?
-        # Or maybe I should check if tag is set correctly.
-
         hif_add_node(hif_g, box_id, kind="mapping", tag=tag)
+        hif_add_edge(hif_g, e_box, kind="event")
+        hif_add_incidence(hif_g, e_box, box_id, key="start")
 
-        e_seq = next_edge_id()
-        hif_add_edge(hif_g, e_seq, kind="event")
-        last_seq_edge = e_seq
+        last_seq_edge = e_box
 
         if i == 0:
-            hif_add_incidence(hif_g, e_seq, seq_id, key="next")
+            hif_add_incidence(hif_g, e_box, seq_id, key="next")
         else:
-            hif_add_incidence(hif_g, e_seq, prev_node, key="forward")
+            hif_add_incidence(hif_g, e_box, prev_node, key="forward") # Connect to previous box ID?
+            # Wait, in sequence, items are linked.
+            # Item 1 -> forward -> Edge 2 -> Item 2
+            # But here `e_box` belongs to `box_id`.
+            # So `prev_node` should link to `e_box`.
+            # But `prev_node` is a Node.
 
-        hif_add_incidence(hif_g, e_seq, box_id, key="start")
+            # Inspect sequence in `inspect_hif.py` (hello-world was !echo, just a scalar).
+            # Shell.yaml has sequence.
+            # I can't check shell.yaml structure easily now without running script.
+
+            # But based on mapping logic:
+            # Key -> forward -> Edge -> Value.
+            # So Sequence:
+            # Item 1 -> forward -> Edge -> Item 2.
+            pass
+
+        hif_add_incidence(hif_g, e_box, prev_node, key="forward" if i > 0 else "next")
+        # Wait, if i=0: seq_id -> next -> e_box. Correct.
+        # If i>0: prev_node -> forward -> e_box. Correct.
+
         prev_node = box_id
 
-        # Handle mapping keys
+        # Keys
         keys = []
         for j, spider_idx in enumerate(box_dom_spiders):
             keys.append((f"dom_{j}", spider_idx))
@@ -124,48 +157,57 @@ def discopy_to_hif(diagram):
         last_key_edge = None
 
         if not keys:
-             e_dummy = next_edge_id()
-             hif_add_edge(hif_g, e_dummy, kind="event")
-             hif_add_incidence(hif_g, e_dummy, box_id, key="next")
-             hif_add_incidence(hif_g, e_dummy, box_id, key="end")
+             # Empty mapping requires next/end pointing to something?
+             # Or maybe just NO next/end edges means empty?
+             # But hello-world mapping had end on edge 9.
+             # If empty, maybe I need a dummy edge.
+             pass
 
         for k_idx, (k_name, sp_idx) in enumerate(keys):
-            key_id = next_node_id()
-            hif_add_node(hif_g, key_id, kind="scalar", value=k_name)
+            key_id = next_id()
+            e_key = next_id()
 
-            e_key = next_edge_id()
+            hif_add_node(hif_g, key_id, kind="scalar", value=k_name)
             hif_add_edge(hif_g, e_key, kind="event")
+            hif_add_incidence(hif_g, e_key, key_id, key="start")
+
             last_key_edge = e_key
 
             if k_idx == 0:
                 hif_add_incidence(hif_g, e_key, box_id, key="next")
             else:
+                # Previous Value Node -> forward -> e_key
                 hif_add_incidence(hif_g, e_key, prev_key_node, key="forward")
 
-            hif_add_incidence(hif_g, e_key, key_id, key="start")
+            # Value
+            spider_node, e_spider = get_spider(sp_idx)
 
-            # Value (Spider)
-            spider_node = get_spider_node(sp_idx, None)
+            # Key -> forward -> Edge -> Value
+            # But Edge must be `e_spider`?
+            # `e_spider` is the edge belonging to `spider_node`.
+            # So we link Key -> forward -> e_spider.
 
-            e_val = next_edge_id()
-            hif_add_edge(hif_g, e_val, kind="event")
-            hif_add_incidence(hif_g, e_val, key_id, key="next")
-            hif_add_incidence(hif_g, e_val, key_id, key="end")
-            hif_add_incidence(hif_g, e_val, spider_node, key="start")
+            hif_add_incidence(hif_g, e_spider, key_id, key="forward")
 
-            prev_key_node = key_id
+            # Update prev_key_node to be the Value node
+            prev_key_node = spider_node
 
-        if last_key_edge:
-             hif_add_incidence(hif_g, last_key_edge, box_id, key="end")
+            # Also, the last item in mapping needs 'end' from Mapping node?
+            # In `inspect_mapping`: Edge 9 (Value Edge) has 'end' from Mapping (4).
+
+            # So `e_spider` needs 'end' from `box_id` IF it is the last value?
+            # Yes.
+
+            if k_idx == len(keys) - 1:
+                hif_add_incidence(hif_g, e_spider, box_id, key="end")
 
     if last_seq_edge:
         hif_add_incidence(hif_g, last_seq_edge, seq_id, key="end")
     else:
-        # Empty sequence: need 'next' and 'end' pointing to empty?
-        # Create dummy edge
-        e_dummy = next_edge_id()
-        hif_add_edge(hif_g, e_dummy, kind="event")
-        hif_add_incidence(hif_g, e_dummy, seq_id, key="next")
-        hif_add_incidence(hif_g, e_dummy, seq_id, key="end")
+        # Empty sequence
+        # Create a dummy edge?
+        # But dummy edge needs a node?
+        # If I create a dummy node.
+        pass
 
     return hif_g
