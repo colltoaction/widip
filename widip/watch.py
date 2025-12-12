@@ -69,10 +69,14 @@ def shell_main(file_name):
         print("⌁")
         exit(0)
 
-def widish_main(file_name, *shell_program_args: str):
+def widish_draw(file_name):
     fd = file_diagram(file_name)
     path = Path(file_name)
     diagram_draw(path, fd)
+
+def widish_main(file_name, *shell_program_args: str):
+    widish_draw(file_name)
+    fd = file_diagram(file_name)
     constants = tuple(x.name for x in fd.dom)
     runner = SHELL_RUNNER(fd)(*constants)
     # TODO pass stdin
