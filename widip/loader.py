@@ -57,15 +57,16 @@ def load_scalar(node, index, tag):
     if tag and v:
         # Separate the value into its own box providing an input
         # Use "String" type for the scalar value wire
-        val_box = Box(f"Value: '{v}'", Ty(), Ty("String"))
+        # Reverted prefixes as per feedback to preserve signature
+        val_box = Box(f"'{v}'", Ty(), Ty("String"))
         # The command box takes the String and produces Output (P)
-        cmd_box = Box(f"command: {tag}", Ty("String"), P)
+        cmd_box = Box(tag, Ty("String"), P)
         return val_box >> cmd_box
 
     elif tag:
-        return Box(f"command: {tag}", Ty(), P)
+        return Box(tag, Ty(), P)
     elif v:
-        return Box(f"Value: '{v}'", Ty(), P)
+        return Box(f"'{v}'", Ty(), P)
     else:
         return Box("⌜−⌝", Ty(), P)
 
@@ -99,7 +100,7 @@ def load_mapping(node, index, tag):
     if tag:
         ob = (ob @ bases>> Eval(exps << bases))
         # Assuming mapping implies some structure input
-        ob = Ty(tag) @ ob >> Box(f"command: {tag}", Ty(tag) @ ob.cod, P)
+        ob = Ty(tag) @ ob >> Box(tag, Ty(tag) @ ob.cod, P)
     return ob
 
 def load_sequence(node, index, tag):
@@ -126,7 +127,7 @@ def load_sequence(node, index, tag):
         bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
         exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
         ob = (bases @ ob >> Eval(bases >> exps))
-        ob = Ty(tag) @ ob >> Box(f"command: {tag}", Ty(tag) @ ob.cod, Ty() >> Ty(tag))
+        ob = Ty(tag) @ ob >> Box(tag, Ty(tag) @ ob.cod, Ty() >> Ty(tag))
     return ob
 
 def load_document(node, index):

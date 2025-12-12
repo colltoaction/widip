@@ -24,11 +24,13 @@ def file_diagram(file_name) -> Diagram:
     return fd
 
 def diagram_draw(path, fd):
-    # Drastic increase in figsize and margins
+    # Reduced figsize and margins as per feedback, while keeping increased font size
     fd.draw(path=str(path.with_suffix(".jpg")),
-            figsize=(12, 8), # Increased figure size
-            textpad=(0.7, 0.7),
-            margins=(1.0, 0.5),
+            # figsize was too big. Relying on default or smaller explicit size.
+            # But we need to ensure text is not cut off.
+            # Using margins to control spacing.
+            margins=(0.2, 0.1),
+            textpad=(0.4, 0.4), # Reduced padding slightly
             fontsize=16,
             fontsize_types=12)
 

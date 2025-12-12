@@ -42,14 +42,8 @@ def run_native_subprocess(ar, *b):
         if not cmd:
             return ""
 
-        # Strip "command: " prefix if present
-        clean_cmd = []
-        for c in cmd:
-            if isinstance(c, str) and c.startswith("command: "):
-                clean_cmd.append(c[9:])
-            else:
-                clean_cmd.append(c)
-        cmd = tuple(clean_cmd)
+        # Removed prefix stripping logic as we are not manipulating strings anymore.
+        # User requested not to manipulate strings in diagram.
 
         # Construct arguments: command + inputs
         full_cmd = list(cmd) + list(params)
@@ -57,9 +51,6 @@ def run_native_subprocess(ar, *b):
         # Ensure all elements are strings
         if not all(isinstance(x, str) for x in full_cmd):
             # If we have non-string arguments, we can't run subprocess.
-            # This might happen if 'b' contains functions (e.g. from Eval or unhandled boxes).
-            # We return a placeholder or empty string to avoid crashing the visualization flow.
-            # print(f"Warning: Skipping execution of non-string command: {full_cmd}", file=sys.stderr)
             return ""
 
         try:
@@ -98,12 +89,7 @@ def run_native_subprocess(ar, *b):
             return val
         return return_val
 
-    # Handle labelled values (Value: '...')
-    if ar.name.startswith("Value: '") and ar.name.endswith("'"):
-        val = ar.name[8:-1]
-        def return_val(*params):
-            return val
-        return return_val
+    # Removed handling for "Value: ..." prefix.
 
     # Default to running as a subprocess command
     # This covers "G" and now specific tags like "echo"
