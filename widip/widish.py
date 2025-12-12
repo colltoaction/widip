@@ -27,6 +27,10 @@ def run_native_subprocess(ar, *b):
         p_in = untuplify(params)
         if isinstance(p_in, Popen):
             try:
+                # We use communicate() here because p_in is an input pipe to US.
+                # If p_in's stdin was closed by previous step, communicate is fine.
+                # But if p_in is a process we are reading from, we read stdout.
+                # communicate reads stdout.
                 out, _ = p_in.communicate()
                 if isinstance(out, bytes):
                     input_data = out.decode()
@@ -41,91 +45,53 @@ def run_native_subprocess(ar, *b):
 
         mapped = []
         futures = []
+        ignored_futures = []
 
         # Launch all processes
-        for (dk, k), (dv, v) in batched(zip(ar.dom, b), 2):
-            # In mapping, k is the key (constant), v is the value (command).
-            # The structure from load_mapping is (Key @ Value).
-            # We want to run Value with the shared input.
-            # But what about Key? Key usually ignores input and returns name.
+        for batch in batched(zip(ar.dom, b), 2):
+            if len(batch) < 2:
+                continue
+            (dk, k), (dv, v) = batch
 
-            # Execute key runner
-            # It seems Key doesn't need stdin usually.
             if input_data is not None:
-                # If we pass input to key runner, it might just return it if it's constant runner logic
                 k_res = k(input_data)
             else:
                 k_res = k()
 
-            # Execute value runner
-            # Value runner (command) definitely needs the input.
             if input_data is not None:
                 v_res = v(input_data)
             else:
                 v_res = v()
 
             futures.append(v_res)
-            # We assume mapping returns only values?
-            # Or does it return pairs?
-            # Original code: mapped.append(untuplify(res)) where res = v(...)
-            # Original code ignored k_res for the result list?
-            # No: b0 = k(...); res = v(b0); mapped.append(res).
-            # Original code chained k output to v input!
 
-            # This is crucial.
-            # If `k` is "cat1", `v` is `!cat`.
-            # `k` returns "cat1".
-            # `v` runs `cat` with input "cat1".
-            # Result is "cat1".
-
-            # If so, `input_data` (stdin from outside) is LOST in original code unless `k` preserves it.
-            # `run_native_subprocess_constant` returns `params` if params is not empty.
-            # So if `params` (stdin) is provided, `k` returns stdin.
-            # Then `v` gets stdin.
-            # So the chaining IS how stdin is propagated.
-
-            # So my change to call `v(input_data)` directly is correct IF `k` is just a pass-through for input.
-            # But what if `k` does something else?
-            # `k` is a runner.
-            # If `k` is a constant box `⌜−⌝`, `run_native_subprocess_constant` logic:
-            # `if not params: return name`.
-            # `return params`.
-            # So if `input_data` is provided, `k` returns `input_data`.
-
-            # So calling `v(input_data)` is equivalent to `v(k(input_data))` for constants.
-            # So the logic holds.
-
-            # However, I am appending `v_res` to futures.
-            # But original code returned `untuplify(tuple(mapped))`.
-            # Where `mapped` contained results of `v`.
-            # So I should only append `v_res`?
-            # But wait, does `(||)` return just values or key-values?
-            # `load_mapping` uses `Box("(||)", ob.cod, exps << bases)`.
-            # `exps` comes from values. `bases` comes from keys.
-            # It seems it returns both? Or just one?
-            # `exps << bases`. This is function type.
-            # The *codomain* of the box determines the output type of the function.
-            # If `exps << bases` corresponds to `B << A`, function returns `B`.
-            # `bases` are inputs (from keys?). `exps` are outputs (from values?).
-            # So the function returns results corresponding to `exps`.
-            # So yes, only `v` outputs are returned.
+            if isinstance(k_res, Popen):
+                ignored_futures.append(k_res)
 
         # Collect results
         for res in futures:
             if isinstance(res, Popen):
-                try:
-                    out, _ = res.communicate()
-                    if out is None:
-                         out = ""
-                    mapped.append(out.rstrip("\n"))
-                except ValueError:
-                    mapped.append("")
+                # Avoid communicate() because stdin might be closed by thread
+                out = res.stdout.read() if res.stdout else ""
+                # We could also read stderr here
+                res.wait()
+                if out:
+                     mapped.append(out.rstrip("\n"))
+                else:
+                     mapped.append("")
             else:
                 mapped.append(res)
+
+        # Cleanup ignored futures
+        for proc in ignored_futures:
+            if proc.stdout:
+                proc.stdout.read() # Consume to avoid buffer filling
+            proc.wait()
         
         return untuplify(tuple(mapped))
 
     def run_native_subprocess_seq(*params):
+        # Sequential: b[0] >> b[1]
         p1_input = untuplify(params)
 
         if p1_input is not None:

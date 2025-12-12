@@ -6,6 +6,7 @@ from yaml import YAMLError
 
 from discopy.closed import Id, Ty, Box
 from discopy.utils import tuplify, untuplify
+from discopy.markov import Hypergraph
 
 from .loader import repl_read
 from .files import diagram_draw, file_diagram
@@ -75,6 +76,24 @@ def widish_main(file_name, *shell_program_args: str):
     diagram_draw(path, fd)
     constants = tuple(x.name for x in fd.dom)
     runner = SHELL_RUNNER(fd)(*constants)
-    # TODO pass stdin
-    run_res = runner and runner("")
-    print(*(tuple(x.rstrip() for x in tuplify(untuplify(run_res)) if x)), sep="\n")
+
+    input_data = ""
+    # Check if stdin has data or is not a tty
+    if not sys.stdin.isatty():
+        input_data = sys.stdin.read()
+
+    run_res = runner and runner(input_data)
+
+    from subprocess import Popen
+
+    if isinstance(run_res, Popen):
+        # Avoid communicate() which might flush closed stdin
+        out = run_res.stdout.read() if run_res.stdout else ""
+        # Also read stderr?
+        # err = run_res.stderr.read() if run_res.stderr else ""
+        run_res.wait()
+
+        if out:
+            print(out.rstrip())
+    else:
+        print(*(tuple(x.rstrip() for x in tuplify(untuplify(run_res)) if isinstance(x, str) and x)), sep="\n")
