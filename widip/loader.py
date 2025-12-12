@@ -4,13 +4,15 @@ from nx_hif.hif import *
 
 from discopy.closed import Id, Ty, Box, Eval
 
-P = Ty() << Ty("")
+P = Ty("stdout") << Ty("stdin")
 
 
 def repl_read(stream):
     incidences = nx_compose_all(stream)
     diagrams = incidences_to_diagram(incidences)
-    return diagrams
+    # Append Discard to the root diagram to satisfy Markov/Termination
+    discard = Box("⏚", diagrams.cod, Ty(), color="black")
+    return diagrams >> discard
 
 def incidences_to_diagram(node: HyperGraph):
     # TODO properly skip stream and document start
@@ -39,7 +41,7 @@ def _incidences_to_diagram(node: HyperGraph, index):
             ob = load_mapping(node, index, tag)
         case _:
             raise Exception(f"Kind \"{kind}\" doesn't match any.")
-        
+
     return ob
 
 
@@ -50,9 +52,15 @@ def load_scalar(node, index, tag):
             >> Eval(Ty(v) << P) \
             >> Box("e", Ty(v), Ty(v))
     if tag and v:
-        return Box("G", Ty(tag) @ Ty(v), Ty() << Ty(""))
+        # Red constant spider
+        val_box = Box(v, Ty(), Ty("String"), color="red", draw_as_spider=True)
+        # Process box
+        process_box = Box(tag, Ty("String"), P)
+        return val_box >> process_box
     elif tag:
-        return Box("G", Ty(tag), Ty() << Ty(""))
+        # Scalar with only tag (e.g. !ls)
+        process_box = Box(tag, Ty(), P)
+        return process_box
     elif v:
         return Box("⌜−⌝", Ty(v), Ty() << Ty(""))
     else:

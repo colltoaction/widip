@@ -27,6 +27,7 @@ def diagram_draw(path, fd):
     fd.draw(path=str(path.with_suffix(".jpg")),
             textpad=(0.3, 0.1),
             fontsize=12,
-            fontsize_types=8)
+            fontsize_types=8,
+            margins=(0.2, 0.2))
 
 files_f = Functor(lambda x: Ty(""), files_ar)
