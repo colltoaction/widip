@@ -4,7 +4,8 @@ from nx_hif.hif import *
 
 from discopy.closed import Id, Ty, Box, Eval
 
-P = Ty() << Ty("")
+P = Ty() << Ty("Output")
+S = Ty("String")
 
 
 def repl_read(stream):
@@ -39,7 +40,7 @@ def _incidences_to_diagram(node: HyperGraph, index):
             ob = load_mapping(node, index, tag)
         case _:
             raise Exception(f"Kind \"{kind}\" doesn't match any.")
-        
+
     return ob
 
 
@@ -49,14 +50,13 @@ def load_scalar(node, index, tag):
         return Box("Ω", Ty(), Ty(v) << P) @ P \
             >> Eval(Ty(v) << P) \
             >> Box("e", Ty(v), Ty(v))
-    if tag and v:
-        return Box("G", Ty(tag) @ Ty(v), Ty() << Ty(""))
-    elif tag:
-        return Box("G", Ty(tag), Ty() << Ty(""))
+    if tag:
+        val = v if v is not None else ""
+        return Box(f"Value: {val}", Ty(), S) >> Box(f"command: {tag}", S, P)
     elif v:
-        return Box("⌜−⌝", Ty(v), Ty() << Ty(""))
+        return Box(f"Value: {v}", Ty(), P)
     else:
-        return Box("⌜−⌝", Ty(), Ty() << Ty(""))
+        return Box("Value: None", Ty(), P)
 
 def load_mapping(node, index, tag):
     ob = Id()
@@ -87,7 +87,10 @@ def load_mapping(node, index, tag):
     ob = ob >> par_box
     if tag:
         ob = (ob @ bases>> Eval(exps << bases))
-        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty("") << Ty(""))
+        # For mapping tag, we still use old logic because value embedding is tricky for generic mapping result
+        # Assuming tag on mapping acts as filter taking mapping result?
+        # Using S input for command args if needed.
+        ob = S @ ob >> Box(f"command: {tag}", S @ ob.cod, P)
     return ob
 
 def load_sequence(node, index, tag):
@@ -114,7 +117,7 @@ def load_sequence(node, index, tag):
         bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
         exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
         ob = (bases @ ob >> Eval(bases >> exps))
-        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty() >> Ty(tag))
+        ob = S @ ob >> Box(f"command: {tag}", S @ ob.cod, Ty() >> S)
     return ob
 
 def load_document(node, index):
