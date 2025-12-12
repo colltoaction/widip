@@ -1,4 +1,3 @@
-import json
 from discopy.markov import Diagram, Hypergraph, Ty, Box
 from discopy.cat import Ob
 from nx_hif.hif import (
@@ -27,6 +26,7 @@ def discopy_to_hif(diagram: Diagram):
         if "kind" not in attrs:
             attrs["kind"] = "scalar"
             if "value" not in attrs:
+                # Use 'type' as value if available, or name if it was used as type
                 attrs["value"] = attrs.get("type", "")
 
         spider_to_hif_id[i] = hif_id
@@ -74,17 +74,19 @@ def hif_to_discopy(H) -> Diagram:
     spider_types = []
     for n in sorted_node_ids:
         attrs = hif_node(H, n) or {}
-        # Preserve ID
-        attrs_with_id = attrs.copy()
-        attrs_with_id["_hif_id"] = n
+        attrs = attrs.copy()
 
-        try:
-            # Serialize all attributes to JSON to store in Ty name
-            json_str = json.dumps(attrs_with_id, sort_keys=True, default=str)
-            spider_types.append(Ty(Ob(json_str)))
-        except TypeError:
-            name = str(attrs.get("type", ""))
-            spider_types.append(Ty(name))
+        # Extract name/type for the Ob name
+        name = str(attrs.get("type", ""))
+
+        # Create Ob and attach all attributes
+        ob = Ob(name)
+        ob.__dict__.update(attrs)
+
+        # Explicitly preserve ID
+        ob._hif_id = n
+
+        spider_types.append(Ty(ob))
 
     # 2. Collect Incidences by Edge
     incidences_by_edge = _collect_incidences(H, node_to_idx)
@@ -158,27 +160,42 @@ def hif_to_discopy(H) -> Diagram:
 # --- Helper Functions ---
 
 def _extract_spider_attrs(t: Ty):
+    """
+    Extract attributes from a Ty object.
+    We assume the Ty contains a single Ob, and we extract its __dict__.
+    """
     attrs = {}
     if len(t.inside) == 1:
-        name = t.inside[0].name
-        try:
-            parsed = json.loads(name)
-            if isinstance(parsed, dict):
-                attrs = parsed
-            else:
-                attrs = {"type": name}
-        except (json.JSONDecodeError, TypeError):
-             if name:
-                attrs = {"type": name}
+        ob = t.inside[0]
+        # Copy attributes from __dict__
+        attrs = ob.__dict__.copy()
+        # Remove internal or default attributes if necessary (e.g. 'name' which is handled separately)
+        if 'name' in attrs:
+            # We treat 'name' as 'type' if not present?
+            # In Ob, 'name' is the main identifier.
+            # But we want to export it as 'type' or just keep it as name if useful.
+            # Usually Ob.name corresponds to HIF type/value.
+            # hif_to_discopy sets 'type' -> name.
+            pass
+
+        # If no explicit 'type' in attrs, use Ob name
+        if "type" not in attrs and ob.name:
+            attrs["type"] = ob.name
+
     elif t.name:
         attrs = {"type": t.name}
     return attrs
 
 def _extract_box_attrs(box: Box):
+    """
+    Extract attributes from a Box object.
+    We look for 'attributes' dict in box.data.
+    """
     attrs = {}
     if isinstance(box.data, dict) and "attributes" in box.data:
         attrs = box.data["attributes"].copy()
     else:
+        # Fallback for boxes created without specific data structure
         if box.name:
             attrs["name"] = box.name
         if hasattr(box, 'dom') and box.dom.name:

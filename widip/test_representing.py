@@ -1,5 +1,7 @@
 from discopy.markov import Ty, Box, Hypergraph, Diagram
+from discopy.cat import Ob
 from nx_yaml import nx_serialize_all, nx_compose_all
+from nx_hif.hif import hif_nodes, hif_node
 import os
 import pytest
 import json
@@ -108,6 +110,45 @@ def test_roundtrip_identity():
     h_hyp = h.to_hypergraph()
 
     check_hypergraph_structure_equality(h_prime_hyp, h_hyp)
+
+def test_spider_attribute_persistence():
+    # Verify that attributes on Spiders (Ob objects) are preserved via direct object injection
+    # Create an Ob with custom attributes
+    o = Ob('x')
+    o.custom_attr = "custom_value"
+    t = Ty(o)
+
+    # Create a diagram with this spider
+    # Using Identity box just to have the wire
+    d = Diagram.id(t)
+
+    # Check that hif conversion keeps it
+    nx_h = discopy_to_hif(d)
+
+    # Find the node corresponding to this wire
+    # Diagram.id(t) has 1 wire. to_hypergraph() has 1 spider.
+    hif_nodes_list = list(hif_nodes(nx_h))
+    assert len(hif_nodes_list) == 1
+
+    node_id = hif_nodes_list[0]
+    node_attrs = hif_node(nx_h, node_id)
+
+    assert "custom_attr" in node_attrs
+    assert node_attrs["custom_attr"] == "custom_value"
+
+    # Check roundtrip
+    d_prime = hif_to_discopy(nx_h)
+    h_prime = d_prime.to_hypergraph()
+
+    assert h_prime.n_spiders == 1
+    spider_type = h_prime.spider_types[0]
+
+    assert len(spider_type.inside) == 1
+    ob_prime = spider_type.inside[0]
+
+    assert hasattr(ob_prime, "custom_attr")
+    assert ob_prime.custom_attr == "custom_value"
+
 
 def find_yaml_files():
     files = []
