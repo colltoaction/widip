@@ -6,8 +6,6 @@ from discopy.closed import Id, Ty, Box, Eval
 
 P = Ty() << Ty("")
 
-from .composing import glue_diagrams
-
 
 def repl_read(stream):
     incidences = nx_compose_all(stream)
@@ -143,7 +141,7 @@ def load_stream(node, index):
         if ob == Id():
             ob = doc
         else:
-            ob = glue_diagrams(ob, doc)
+            ob = ob @ doc
 
         nxt = tuple(hif_node_incidences(node, nxt_node, key="forward"))
     return ob
