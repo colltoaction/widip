@@ -57,8 +57,8 @@ def shell_main(file_name):
                 #     >> source_d \
                 #     >> Spider(len(source_d.cod), 1, Ty("io"))
                 # diagram_draw(path, source_d)
-                result_ev = SHELL_RUNNER(source_d)()
-                print(result_ev)
+                # result_ev = SHELL_RUNNER(source_d)()
+                # print(result_ev)
             except KeyboardInterrupt:
                 print()
             except YAMLError as e:
