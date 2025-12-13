@@ -2,9 +2,9 @@ from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
 from nx_hif.hif import *
 
-from discopy.closed import Id, Ty, Box, Eval
+from discopy.frobenius import Id, Ty, Box, Swap
 
-P = Ty() << Ty("")
+S = Ty("s")
 
 
 def repl_read(stream):
@@ -13,15 +13,10 @@ def repl_read(stream):
     return diagrams
 
 def incidences_to_diagram(node: HyperGraph):
-    # TODO properly skip stream and document start
     diagram = _incidences_to_diagram(node, 0)
     return diagram
 
 def _incidences_to_diagram(node: HyperGraph, index):
-    """
-    Takes an nx_yaml rooted bipartite graph
-    and returns an equivalent string diagram
-    """
     tag = (hif_node(node, index).get("tag") or "")[1:]
     kind = hif_node(node, index)["kind"]
 
@@ -39,24 +34,29 @@ def _incidences_to_diagram(node: HyperGraph, index):
             ob = load_mapping(node, index, tag)
         case _:
             raise Exception(f"Kind \"{kind}\" doesn't match any.")
-        
+
     return ob
 
 
 def load_scalar(node, index, tag):
     v = hif_node(node, index)["value"]
+
     if tag == "fix" and v:
-        return Box("Ω", Ty(), Ty(v) << P) @ P \
-            >> Eval(Ty(v) << P) \
-            >> Box("e", Ty(v), Ty(v))
-    if tag and v:
-        return Box("G", Ty(tag) @ Ty(v), Ty() << Ty(""))
-    elif tag:
-        return Box("G", Ty(tag), Ty() << Ty(""))
-    elif v:
-        return Box("⌜−⌝", Ty(v), Ty() << Ty(""))
-    else:
-        return Box("⌜−⌝", Ty(), Ty() << Ty(""))
+         return Box("Ω", Ty(), S) >> Box("e", S, S)
+
+    if not tag and not v:
+        # Return a Box that produces the identity function
+        return Box("id", Ty(), S)
+
+    dom = Ty()
+    if tag:
+        dom = dom @ Ty(tag)
+    if v:
+        dom = dom @ Ty(v)
+
+    name = "G" if tag else "⌜−⌝"
+
+    return Box(name, dom, S)
 
 def load_mapping(node, index, tag):
     ob = Id()
@@ -69,6 +69,7 @@ def load_mapping(node, index, tag):
         ((_, k, _, _), ) = hif_edge_incidences(node, k_edge, key="start")
         ((v_edge, _, _, _), ) = hif_node_incidences(node, k, key="forward")
         ((_, v, _, _), ) = hif_edge_incidences(node, v_edge, key="start")
+
         key = _incidences_to_diagram(node, k)
         value = _incidences_to_diagram(node, v)
 
@@ -81,13 +82,13 @@ def load_mapping(node, index, tag):
 
         i += 1
         nxt = tuple(hif_node_incidences(node, v, key="forward"))
-    bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod[0::2]))
-    exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod[1::2]))
-    par_box = Box("(||)", ob.cod, exps << bases)
+
+    par_box = Box("(||)", ob.cod, S)
     ob = ob >> par_box
+
     if tag:
-        ob = (ob @ bases>> Eval(exps << bases))
-        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty("") << Ty(""))
+        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ S, S)
+
     return ob
 
 def load_sequence(node, index, tag):
@@ -103,18 +104,14 @@ def load_sequence(node, index, tag):
         if i==0:
             ob = value
         else:
-            ob = ob @ value
-            bases = ob.cod[0].inside[0].exponent
-            exps = value.cod[0].inside[0].base
-            ob = ob >> Box("(;)", ob.cod, bases >> exps)
+            ob = ob @ value >> Box("(;)", S @ S, S)
 
         i += 1
         nxt = tuple(hif_node_incidences(node, v, key="forward"))
+
     if tag:
-        bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
-        exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
-        ob = (bases @ ob >> Eval(bases >> exps))
-        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty() >> Ty(tag))
+        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ S, S)
+
     return ob
 
 def load_document(node, index):

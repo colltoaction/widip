@@ -1,8 +1,8 @@
 import pathlib
 
-from discopy.closed import Ty, Diagram, Box, Id, Functor
+from discopy.frobenius import Ty, Diagram, Box, Id, Functor
 
-from .loader import repl_read
+from .loader import repl_read, S
 
 
 def files_ar(ar: Box) -> Diagram:
@@ -29,4 +29,4 @@ def diagram_draw(path, fd):
             fontsize=12,
             fontsize_types=8)
 
-files_f = Functor(lambda x: Ty(""), files_ar)
+files_f = Functor(lambda x: x, files_ar)
