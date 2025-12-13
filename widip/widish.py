@@ -2,78 +2,89 @@ from functools import partial
 from itertools import batched
 from subprocess import CalledProcessError, run
 
-from discopy.closed import Category, Functor, Ty, Box, Eval
+from discopy.frobenius import Category, Functor, Ty, Box
 from discopy.utils import tuplify, untuplify
 from discopy import python
 
 
-io_ty = Ty("io")
+def run_native_subprocess(ar, *args):
+    """
+    Executes a shell command for the given box `ar` with input arguments `args`.
+    """
+    params = untuplify(args) if args else None
 
-def run_native_subprocess(ar, *b):
-    def run_native_subprocess_constant(*params):
-        if not params:
-            return "" if ar.dom == Ty() else ar.dom.name
-        return untuplify(params)
-    def run_native_subprocess_map(*params):
-        # TODO cat then copy to two
-        # but formal is to pass through
-        mapped = []
-        start = 0
-        for (dk, k), (dv, v) in batched(zip(ar.dom, b), 2):
-            # note that the key cod and value dom might be different
-            b0 = k(*tuplify(params))
-            res = untuplify(v(*tuplify(b0)))
-            mapped.append(untuplify(res))
+    # If the box is a literal (Ty() -> S), we expect no args.
+    if ar.dom == Ty() and ar.cod == Ty("s"):
+        return ar.name
+
+    # If the box is a command, we run it.
+    # Command usually takes input (stdin) and produces output (stdout).
+    # S -> S or S -> Ty()
+
+    input_str = None
+    if isinstance(params, str):
+        input_str = params
+    elif isinstance(params, tuple):
+        # Join tuple arguments with newline? Or handle as multiple args?
+        # For now, assume string data flow.
+        input_str = "\n".join(str(p) for p in params)
+
+    cmd_name = ar.name
+    # Handle "echo" explicitly if needed, but subprocess echo works too.
+    # The user wanted echo to be S -> Ty() (Unit).
+
+    if cmd_name == "echo":
+        # We print and return Unit
+        if input_str is not None:
+            print(input_str)
+        return ()
+
+    # Generic command execution
+    try:
+        # If ar.dom is Ty(), we run without input?
+        # If ar.cod is Ty(), we discard output?
+
+        io_result = run(
+            [cmd_name],
+            check=True, text=True, capture_output=True,
+            input=input_str,
+        )
+        output = io_result.stdout.rstrip("\n")
+
+        if ar.cod == Ty():
+            # Discard output, return Unit
+            # Maybe print it if it's an effect?
+            # User said "echo ... maps to terminal object".
+            # For other commands, if they return Unit, maybe we just discard.
+            return ()
+
+        return output
         
-        return untuplify(tuple(mapped))
-    def run_native_subprocess_seq(*params):
-        b0 = b[0](*untuplify(params))
-        res = untuplify(b[1](*tuplify(b0)))
-        return res
-    def run_native_subprocess_inside(*params):
-        try:
-            io_result = run(
-                b,
-                check=True, text=True, capture_output=True,
-                input="\n".join(params) if params else None,
-                )
-            res = io_result.stdout.rstrip("\n")
-            return res
-        except CalledProcessError as e:
-            return e.stderr
-    if ar.name == "⌜−⌝":
-        return run_native_subprocess_constant
-    if ar.name == "(||)":
-        return run_native_subprocess_map
-    if ar.name == "(;)":
-        return run_native_subprocess_seq
-    if ar.name == "g":
-        res = run_native_subprocess_inside(*b)
-        return res
-    if ar.name == "G":
-        return run_native_subprocess_inside
+    except FileNotFoundError:
+        # If command not found, maybe it's a generator or special box?
+        # Or just return arguments if identity?
+        return params
+    except CalledProcessError as e:
+        return e.stderr
+
+def shell_ob_map(ob):
+    if ob.name == "s":
+        return str
+    return str
+
+def shell_ar_map(ar):
+    return partial(run_native_subprocess, ar)
 
 SHELL_RUNNER = Functor(
-    lambda ob: str,
-    lambda ar: partial(run_native_subprocess, ar),
-    cod=Category(python.Ty, python.Function))
-
+    ob=lambda x: str,
+    ar=shell_ar_map,
+    cod=Category(python.Ty, python.Function)
+)
 
 SHELL_COMPILER = Functor(
-    # lambda ob: Ty() if ob == Ty("io") else ob,
     lambda ob: ob,
-    lambda ar: {
-        # "ls": ar.curry().uncurry()
-    }.get(ar.name, ar),)
-    # TODO remove .inside[0] workaround
-    # lambda ar: ar)
-
+    lambda ar: ar
+)
 
 def compile_shell_program(diagram):
-    """
-    close input parameters (constants)
-    drop outputs matching input parameters
-    all boxes are io->[io]"""
-    # TODO compile sequences and parallels to evals
-    diagram = SHELL_COMPILER(diagram)
-    return diagram
+    return SHELL_COMPILER(diagram)
