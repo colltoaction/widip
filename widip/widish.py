@@ -103,7 +103,10 @@ def discard_print(*args):
         if callable(arg):
             try:
                 res = arg("")
-                printed.append(res)
+                if isinstance(res, tuple):
+                    printed.extend(res)
+                else:
+                    printed.append(res)
             except Exception as e:
                 printed.append(f"<Error executing: {e}>")
         else:
