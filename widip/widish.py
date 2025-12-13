@@ -1,3 +1,4 @@
+import sys
 from functools import partial
 from itertools import batched
 from subprocess import CalledProcessError, run
@@ -34,13 +35,14 @@ def run_native_subprocess(ar, *b):
         try:
             io_result = run(
                 b,
-                check=True, text=True, capture_output=True,
+                check=True, text=True,
+                stdout=sys.stdout,
+                stderr=sys.stderr,
                 input="\n".join(params) if params else None,
                 )
-            res = io_result.stdout.rstrip("\n")
-            return res
+            return ""
         except CalledProcessError as e:
-            return e.stderr
+            return ""
     if ar.name == "⌜−⌝":
         return run_native_subprocess_constant
     if ar.name == "(||)":
