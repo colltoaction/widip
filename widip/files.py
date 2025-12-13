@@ -4,6 +4,7 @@ from discopy.frobenius import Ty, Diagram, Box, Id, Functor
 
 from .loader import repl_read, S
 
+stream_diagram = repl_read
 
 def files_ar(ar: Box) -> Diagram:
     """Uses IO to read a file or dir with the box name as path"""

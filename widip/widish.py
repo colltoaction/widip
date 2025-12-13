@@ -8,7 +8,7 @@ from discopy.utils import tuplify, untuplify
 from discopy import python
 
 
-io_ty = Ty("s")
+io_ty = Ty("")
 
 def run_native_subprocess(ar, *b):
     if ar.name == "id":
@@ -53,36 +53,74 @@ def run_native_subprocess(ar, *b):
     if ar.name == "g":
         pass
 
-    if ar.name == "G":
+    if ar.name not in ["id", "⌜−⌝", "(||)", "(;)"]:
         def func(stdin):
-            if not b:
-                return ""
-            cmd = b[0]
-            rest = b[1:]
+            # b contains inputs (from wires in domain).
+            # The command is ar.name.
+            # We must execute the command.
+            # But wait, SHELL_RUNNER returns a Python Function.
+            # If the diagram is `Box("echo", S, S)`, it returns a function `object -> object`.
+            # This function takes the input on `S` wire.
+            # The input on `S` wire is the "previous output" (e.g. from `⌜−⌝`).
+            # `⌜−⌝` returns a function `str->str`.
+            # So `b[0]` is a function `input_func`.
 
-            input_str = stdin
-            if len(rest) > 0 and callable(rest[0]):
-                f_prev = rest[0]
-                input_str = f_prev(stdin)
-                params = rest[1:]
-            else:
-                params = rest
+            # The command execution logic:
+            cmd = ar.name
 
-            cmd_args = [cmd]
-            for p in params:
-                if not callable(p):
-                    cmd_args.append(str(p))
+            # The function returned by this box:
+            def execution_logic(upstream_data):
+                # upstream_data is passed from the previous box in the chain if composed?
+                # No, SHELL_RUNNER composition:
+                # Box1 ; Box2.
+                # Runner(Box1) -> f1. Runner(Box2) -> f2.
+                # Runner(Box1 ; Box2) -> f2(f1(x)).
+                # Here `x` is the input to the whole diagram.
+                # In `widish_main`, we call `runner("")`.
+                # So `upstream_data` starts as "".
 
-            try:
-                io_result = run(
-                    cmd_args,
-                    check=True, text=True, capture_output=True,
-                    input=input_str if input_str else None,
-                )
-                res = io_result.stdout.rstrip("\n")
-                return res
-            except CalledProcessError as e:
-                return ""
+                # Wait! `run_native_subprocess` is called with `b`.
+                # `b` corresponds to the input wires of the Box.
+                # If `Box` is `Box("echo", S, S)`.
+                # `b` contains the result of the previous box on wire `S`.
+                # So `b` IS the function f1 (or whatever is on the wire).
+
+                input_func = b[0] if b else None
+
+                # Now we need to determine the input string for the command.
+                # The input string comes from executing `input_func`.
+                # But `input_func` needs an argument!
+                # What argument?
+                # The argument passed to the whole chain?
+                # Yes, `upstream_data`.
+                # Wait, if `input_func` is already a result of `partial` application?
+                # No, the wires carry VALUES.
+                # The values in this category are FUNCTIONS `str->str`.
+                # So `input_func` is a function `str->str`.
+                # We call `input_func(upstream_data)` to get the string.
+
+                input_str = ""
+                if input_func:
+                    if callable(input_func):
+                        input_str = input_func(upstream_data)
+                    else:
+                        input_str = str(input_func)
+
+                # Execute command
+                cmd_args = [cmd]
+                try:
+                    io_result = run(
+                        cmd_args,
+                        check=True, text=True, capture_output=True,
+                        input=input_str if input_str else None,
+                    )
+                    res = io_result.stdout.rstrip("\n")
+                    return res
+                except CalledProcessError as e:
+                    return ""
+
+            return execution_logic
+
         return func
 
     return lambda s: ""

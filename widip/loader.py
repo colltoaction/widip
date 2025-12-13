@@ -4,7 +4,7 @@ from nx_hif.hif import *
 
 from discopy.frobenius import Id, Ty, Box, Swap
 
-S = Ty("s")
+S = Ty("")
 
 
 def repl_read(stream):
@@ -49,12 +49,18 @@ def load_scalar(node, index, tag):
         return Box("id", Ty(), S)
 
     dom = Ty()
-    if tag:
-        dom = dom @ Ty(tag)
+    # Note: tag is now used as name, so we don't add it to domain
+    # If explicit value v exists, we add it to domain
     if v:
         dom = dom @ Ty(v)
 
-    name = "G" if tag else "⌜−⌝"
+    name = tag if tag else ("G" if tag else "⌜−⌝") # If tag, use tag. Else if v?
+    # Original logic: if tag -> G. if v -> ⌜−⌝.
+    # If we want generic tags to be box names:
+    if tag:
+        name = tag
+    else:
+        name = "⌜−⌝"
 
     return Box(name, dom, S)
 
@@ -83,11 +89,16 @@ def load_mapping(node, index, tag):
         i += 1
         nxt = tuple(hif_node_incidences(node, v, key="forward"))
 
-    par_box = Box("(||)", ob.cod, S)
-    ob = ob >> par_box
+    if i == 0:
+        # Empty mapping acts as identity source
+        ob = Box("id", Ty(), S)
+    else:
+        par_box = Box("(||)", ob.cod, S)
+        ob = ob >> par_box
 
     if tag:
-        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ S, S)
+        # Use tag as name, consume output of ob
+        ob = ob >> Box(tag, S, S)
 
     return ob
 
@@ -110,7 +121,7 @@ def load_sequence(node, index, tag):
         nxt = tuple(hif_node_incidences(node, v, key="forward"))
 
     if tag:
-        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ S, S)
+        ob = ob >> Box(tag, S, S)
 
     return ob
 
