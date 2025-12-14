@@ -2,7 +2,7 @@ from functools import partial
 from itertools import batched
 from subprocess import CalledProcessError, run
 
-from discopy.closed import Category, Functor, Ty, Box, Eval
+from discopy.symmetric import Category, Functor, Ty, Box
 from discopy.utils import tuplify, untuplify
 from discopy import python
 
@@ -75,5 +75,7 @@ def compile_shell_program(diagram):
     drop outputs matching input parameters
     all boxes are io->[io]"""
     # TODO compile sequences and parallels to evals
+    if hasattr(diagram, "to_diagram"):
+        diagram = diagram.to_diagram()
     diagram = SHELL_COMPILER(diagram)
     return diagram

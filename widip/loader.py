@@ -2,9 +2,18 @@ from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
 from nx_hif.hif import *
 
-from discopy.closed import Id, Ty, Box, Eval
+from discopy.symmetric import Ty, Box, Diagram, Category
+from discopy.hypergraph import Hypergraph
 
-P = Ty() << Ty("")
+class WidipHypergraph(Hypergraph):
+    """
+    Hypergraph for Widip.
+    Uses symmetric types (strings).
+    """
+    category = Category
+    pass
+
+IO = Ty("io")
 
 
 def repl_read(stream):
@@ -12,15 +21,15 @@ def repl_read(stream):
     diagrams = incidences_to_diagram(incidences)
     return diagrams
 
-def incidences_to_diagram(node: HyperGraph):
+def incidences_to_diagram(node: WidipHypergraph):
     # TODO properly skip stream and document start
     diagram = _incidences_to_diagram(node, 0)
     return diagram
 
-def _incidences_to_diagram(node: HyperGraph, index):
+def _incidences_to_diagram(node: WidipHypergraph, index):
     """
     Takes an nx_yaml rooted bipartite graph
-    and returns an equivalent string diagram
+    and returns an equivalent hypergraph
     """
     tag = (hif_node(node, index).get("tag") or "")[1:]
     kind = hif_node(node, index)["kind"]
@@ -39,27 +48,36 @@ def _incidences_to_diagram(node: HyperGraph, index):
             ob = load_mapping(node, index, tag)
         case _:
             raise Exception(f"Kind \"{kind}\" doesn't match any.")
-        
+
     return ob
 
 
 def load_scalar(node, index, tag):
     v = hif_node(node, index)["value"]
+    # We use the domain of the box to store the scalar value if it exists.
+    # The codomain is IO to indicate it produces an output in the flow.
+    # "fix" tag seems to be special, originally used Eval.
+    # For now, map to a box.
     if tag == "fix" and v:
-        return Box("Ω", Ty(), Ty(v) << P) @ P \
-            >> Eval(Ty(v) << P) \
-            >> Box("e", Ty(v), Ty(v))
+        # e = Box(v, IO, IO)
+        # copy = Spider(1, 2, IO)
+        # trace(e >> copy)
+        e = WidipHypergraph.from_box(Box(v, IO, IO))
+        copy = WidipHypergraph.spiders(1, 2, IO)
+        return (e >> copy).trace()
+
     if tag and v:
-        return Box("G", Ty(tag) @ Ty(v), Ty() << Ty(""))
+        return WidipHypergraph.from_box(Box("G", Ty(tag) @ Ty(v), IO))
     elif tag:
-        return Box("G", Ty(tag), Ty() << Ty(""))
+        return WidipHypergraph.from_box(Box("G", Ty(tag), IO))
     elif v:
-        return Box("⌜−⌝", Ty(v), Ty() << Ty(""))
+        # Store v in domain type as in original loader
+        return WidipHypergraph.from_box(Box("⌜−⌝", Ty(v), IO))
     else:
-        return Box("⌜−⌝", Ty(), Ty() << Ty(""))
+        return WidipHypergraph.from_box(Box("⌜−⌝", Ty(), IO))
 
 def load_mapping(node, index, tag):
-    ob = Id()
+    ob = None
     i = 0
     nxt = tuple(hif_node_incidences(node, index, key="next"))
     while True:
@@ -74,24 +92,31 @@ def load_mapping(node, index, tag):
 
         kv = key @ value
 
-        if i==0:
+        if ob is None:
             ob = kv
         else:
             ob = ob @ kv
 
         i += 1
         nxt = tuple(hif_node_incidences(node, v, key="forward"))
-    bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod[0::2]))
-    exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod[1::2]))
-    par_box = Box("(||)", ob.cod, exps << bases)
+
+    if ob is None:
+        ob = WidipHypergraph.id(Ty())
+
+    # Map box takes all inputs and produces IO
+    par_box = WidipHypergraph.from_box(Box("(||)", ob.cod, IO))
     ob = ob >> par_box
+
     if tag:
-        ob = (ob @ bases>> Eval(exps << bases))
-        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty("") << Ty(""))
+        # tag box
+        # Original: (ob @ id >> eval) ...
+        # Here we just chain.
+        # Box G takes Ty(tag) and the output of the map.
+        ob = WidipHypergraph.id(Ty(tag)) @ ob >> WidipHypergraph.from_box(Box("G", Ty(tag) @ ob.cod, IO))
     return ob
 
 def load_sequence(node, index, tag):
-    ob = Id()
+    ob = None
     i = 0
     nxt = tuple(hif_node_incidences(node, index, key="next"))
     while True:
@@ -100,26 +125,44 @@ def load_sequence(node, index, tag):
         ((v_edge, _, _, _), ) = nxt
         ((_, v, _, _), ) = hif_edge_incidences(node, v_edge, key="start")
         value = _incidences_to_diagram(node, v)
-        if i==0:
+        if ob is None:
             ob = value
         else:
             ob = ob @ value
-            bases = ob.cod[0].inside[0].exponent
-            exps = value.cod[0].inside[0].base
-            ob = ob >> Box("(;)", ob.cod, bases >> exps)
+            # Original inserted (;) box between elements?
+            # "ob = ob @ value ... ob = ob >> Box((;), ...)"
+            # It seems it was combining cumulative result with new value?
+            # Let's just collect all values and then apply (;) at the end?
+            # Wait, the original code loop:
+            # ob = value (first)
+            # loop:
+            #   ob = ob @ value
+            #   ob = ob >> Box("(;)", ...)
+            # This looks like fold?
+            # But the box signature was ob.cod (which is prev_cod @ new_cod) -> bases >> exps.
+            # bases=prev, exps=new.
+            # So it was reducing pair to single output.
+
+            # Here we can do the same structure.
+            # ob has codomain IO (from previous step).
+            # value has codomain IO.
+            # ob @ value has codomain IO @ IO.
+            # (;) box takes IO @ IO -> IO.
+            ob = ob >> WidipHypergraph.from_box(Box("(;)", ob.cod, IO))
 
         i += 1
         nxt = tuple(hif_node_incidences(node, v, key="forward"))
+
+    if ob is None:
+        ob = WidipHypergraph.id(Ty())
+
     if tag:
-        bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
-        exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
-        ob = (bases @ ob >> Eval(bases >> exps))
-        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty() >> Ty(tag))
+        ob = WidipHypergraph.id(Ty(tag)) @ ob >> WidipHypergraph.from_box(Box("G", Ty(tag) @ ob.cod, IO))
     return ob
 
 def load_document(node, index):
     nxt = tuple(hif_node_incidences(node, index, key="next"))
-    ob = Id()
+    ob = WidipHypergraph.id(Ty())
     if nxt:
         ((root_e, _, _, _), ) = nxt
         ((_, root, _, _), ) = hif_edge_incidences(node, root_e, key="start")
@@ -127,7 +170,7 @@ def load_document(node, index):
     return ob
 
 def load_stream(node, index):
-    ob = Id()
+    ob = None
     nxt = tuple(hif_node_incidences(node, index, key="next"))
     while True:
         if not nxt:
@@ -138,10 +181,13 @@ def load_stream(node, index):
             break
         ((_, nxt_node, _, _), ) = starts
         doc = _incidences_to_diagram(node, nxt_node)
-        if ob == Id():
+        if ob is None:
             ob = doc
         else:
             ob = ob @ doc
 
         nxt = tuple(hif_node_incidences(node, nxt_node, key="forward"))
+
+    if ob is None:
+        ob = WidipHypergraph.id(Ty())
     return ob

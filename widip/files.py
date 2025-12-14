@@ -1,6 +1,6 @@
 import pathlib
 
-from discopy.closed import Ty, Diagram, Box, Id, Functor
+from discopy.symmetric import Ty, Diagram, Box, Id, Functor
 
 from .loader import repl_read
 
