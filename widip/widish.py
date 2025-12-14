@@ -11,11 +11,11 @@ from discopy import python
 io_ty = Ty("io")
 
 def run_native_subprocess(ar, *b):
-    def run_native_subprocess_constant(*params, **kwargs):
+    def run_native_subprocess_constant(*params, capture=False, **kwargs):
         if not params:
             return "" if ar.dom == Ty() else ar.dom.name
         return untuplify(params)
-    def run_native_subprocess_map(*params, **kwargs):
+    def run_native_subprocess_map(*params, capture=False, **kwargs):
         # TODO cat then copy to two
         # but formal is to pass through
         mapped = []
@@ -28,21 +28,20 @@ def run_native_subprocess(ar, *b):
             mapped.append(untuplify(res))
         
         return untuplify(tuple(mapped))
-    def run_native_subprocess_seq(*params, **kwargs):
-        capture = kwargs.get("capture", False)
+    def run_native_subprocess_seq(*params, capture=False, **kwargs):
         # Sequence: First element must capture to pass to second.
         # Second element respects our capture request.
         b0 = b[0](*untuplify(params), capture=True)
         res = untuplify(b[1](*tuplify(b0), capture=capture))
         return res
-    def run_native_subprocess_inside(*params, **kwargs):
-        capture = kwargs.get("capture", False)
+    def run_native_subprocess_inside(*params, capture=False, **kwargs):
         try:
             io_result = run(
                 b,
                 check=True, text=True,
                 stdout=PIPE if capture else sys.stdout,
                 stderr=sys.stderr,
+                stdin=sys.stdin if not params else None,
                 input="\n".join(params) if params else None,
                 )
             if capture:
