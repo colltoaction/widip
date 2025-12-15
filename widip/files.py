@@ -24,6 +24,14 @@ def file_diagram(file_name) -> Diagram:
     return fd
 
 def diagram_draw(path, fd):
+    if hasattr(fd, "to_diagram"):
+        try:
+            fd = fd.to_diagram()
+        except Exception as e:
+            print(f"Failed to convert to diagram for drawing: {e}")
+            # Fallback to drawing the hypergraph (graph layout)
+            pass
+
     fd.draw(path=str(path.with_suffix(".jpg")),
             textpad=(0.3, 0.1),
             fontsize=12,
