@@ -1,7 +1,7 @@
 import sys
 from functools import partial
 from itertools import batched
-from subprocess import CalledProcessError, run, PIPE
+from subprocess import Popen, PIPE
 
 from discopy.closed import Category, Functor, Ty, Box, Eval
 from discopy.utils import tuplify, untuplify
@@ -36,18 +36,34 @@ def run_native_subprocess(ar, *b):
         return res
     def run_native_subprocess_inside(*params, capture=False, **kwargs):
         try:
-            io_result = run(
+            with Popen(
                 b,
-                check=True, text=True,
+                text=True,
                 stdout=PIPE if capture else sys.stdout,
                 stderr=sys.stderr,
-                stdin=sys.stdin if not params else None,
-                input="\n".join(params) if params else None,
-                )
+                stdin=PIPE if params else sys.stdin
+            ) as process:
+                if params:
+                    try:
+                        for p in params:
+                            process.stdin.write(p + "\n")
+                    except BrokenPipeError:
+                        pass
+                    process.stdin.close()
+
+                if capture:
+                    stdout_data = process.stdout.read()
+                else:
+                    stdout_data = ""
+                process.wait()
+
+            if process.returncode != 0:
+                return ""
+
             if capture:
-                return io_result.stdout.rstrip("\n")
+                return stdout_data.rstrip("\n")
             return ""
-        except CalledProcessError as e:
+        except Exception:
             return ""
 
     if ar.name == "⌜−⌝":
