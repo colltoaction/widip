@@ -11,58 +11,60 @@ from discopy import python
 io_ty = Ty("io")
 
 def run_native_subprocess(ar, *b):
-    def run_native_subprocess_constant(*params, capture=False):
+    def run_native_subprocess_constant(*params):
         if not params:
             return "" if ar.dom == Ty() else ar.dom.name
         return untuplify(params)
-    def run_native_subprocess_map(*params, capture=False):
+
+    def run_native_subprocess_map(*params, stdin=None):
         mapped = []
         for (dk, k), (dv, v) in batched(zip(ar.dom, b), 2):
-            key_res = k(*tuplify(params), capture=True)
-            kv_res = untuplify(v(*tuplify(key_res), capture=True))
-            mapped.append(untuplify(kv_res))
+            def chain(stdin=stdin, k=k, v=v):
+                p_k = k(*tuplify(params), stdin=stdin)
+                p_v = v(stdin=p_k.stdout)
+                p_k.stdout.close()
+                return p_v
+            mapped.append(chain)
+        return tuple(mapped)
 
-        if capture:
-            return "\n".join(mapped)
-        print("\n".join(mapped))
+    def run_native_subprocess_seq(*params, stdin=None):
+        def lazy_seq(stdin=stdin):
+            p1 = b[0](stdin=stdin)
+            p2 = b[1](stdin=p1.stdout)
+            p1.stdout.close()
+            return p2
+        return lazy_seq
 
-    def run_native_subprocess_seq(*params, capture=False):
-        # Sequence: First element must capture to pass to second.
-        # Second element respects our capture request.
-        b0 = b[0](*untuplify(params), capture=True)
-        res = untuplify(b[1](*tuplify(b0), capture=capture))
-        return res
-    def run_native_subprocess_inside(*params, capture=False):
-        with Popen(
-            b,
-            text=True,
-            stdout=PIPE if capture else sys.stdout,
-            stderr=sys.stderr,
-            stdin=PIPE if params else sys.stdin
-        ) as process:
-            for p in params:
-                process.stdin.write(p + "\n")
-            if params:
+    def run_native_subprocess_inside(*params, stdin=None):
+        def lazy_popen(stdin=stdin):
+            process = Popen(
+                b,
+                text=True,
+                stdout=PIPE,
+                stderr=sys.stderr,
+                stdin=stdin or PIPE
+            )
+            if params and process.stdin:
+                for p in params:
+                    process.stdin.write(p + "\n")
                 process.stdin.close()
-
-            if capture:
-                return process.stdout.read().rstrip("\n")
-            return ""
+                process.stdin = None
+            return process
+        return lazy_popen
 
     if ar.name == "⌜−⌝":
         return run_native_subprocess_constant
     if ar.name == "(||)":
-        return run_native_subprocess_map
+        return run_native_subprocess_map()
     if ar.name == "(;)":
-        return run_native_subprocess_seq
+        return run_native_subprocess_seq()
     if ar.name == "g":
-        res = run_native_subprocess_inside(*b)
-        return res
+        return run_native_subprocess_inside(*b)
     if ar.name == "G":
-        return run_native_subprocess_inside
+        return run_native_subprocess_inside(*b)
 
 SHELL_RUNNER = Functor(
-    lambda ob: str,
+    lambda ob: Popen if ob == io_ty else str,
     lambda ar: partial(run_native_subprocess, ar),
     cod=Category(python.Ty, python.Function))
 
