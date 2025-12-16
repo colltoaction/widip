@@ -1,4 +1,6 @@
 import sys
+import os
+import threading
 from functools import partial
 from itertools import batched
 from subprocess import Popen, PIPE
@@ -12,12 +14,78 @@ from discopy import python
 
 io_ty = Ty("io")
 
+def pump(input_f, output_fs, close_input=False):
+    try:
+        while True:
+            chunk = input_f.read(1024)
+            if not chunk:
+                break
+            for f in output_fs:
+                try:
+                    f.write(chunk)
+                    f.flush()
+                except (IOError, ValueError):
+                    pass
+    except (IOError, ValueError):
+        pass
+    finally:
+        for f in output_fs:
+            try:
+                f.close()
+            except (IOError, ValueError):
+                pass
+        if close_input:
+            try:
+                input_f.close()
+            except (IOError, ValueError):
+                pass
+
 class ProcessGroup:
     def __init__(self, processes):
         self.processes = processes
 
     def __call__(self, stdin=None):
-        return tuple(p(stdin=stdin) for p in self.processes)
+        if stdin is None or len(self.processes) <= 1:
+            return tuple(p(stdin=stdin) for p in self.processes)
+
+        children = []
+        for p_factory in self.processes:
+            children.append(p_factory(stdin=PIPE))
+
+        output_fs = []
+        for c in children:
+            if hasattr(c, "stdin") and c.stdin:
+                output_fs.append(c.stdin)
+            elif isinstance(c, (list, tuple)):
+                for item in c:
+                    if hasattr(item, "stdin") and item.stdin:
+                        output_fs.append(item.stdin)
+                        break
+        # Detach stdin from children so communicate() doesn't close them
+        for c in children:
+            if hasattr(c, "stdin"):
+                c.stdin = None
+            elif isinstance(c, (list, tuple)):
+                for item in c:
+                    if hasattr(item, "stdin"):
+                        item.stdin = None
+
+        # Duplicate stdin for the thread
+        input_f = stdin
+        close_input = False
+        try:
+            fd = os.dup(stdin.fileno())
+            input_f = os.fdopen(fd, "r")
+            close_input = True
+        except (ValueError, OSError):
+            # Fallback if stdin is not a real file
+            pass
+
+        t = threading.Thread(target=pump, args=(input_f, output_fs, close_input))
+        t.daemon = True
+        t.start()
+
+        return tuple(children)
 
 class WidishFunctor(MonoidalFunctor):
     def __call__(self, other):
@@ -49,8 +117,14 @@ def run_native_subprocess(ar, *b):
 
                 if hasattr(p_k, "stdout") and p_k.stdout:
                     p_k.stdout.close()
+                    p_k.stdout = None
 
-                res = detached_k + [p_v]
+                res = []
+                if isinstance(p_k, (list, tuple)):
+                    res.extend(p_k)
+                elif hasattr(p_k, "stdin"):
+                    res.append(p_k)
+                res.append(p_v)
                 return tuple(res)
             mapped.append(chain)
         return ProcessGroup(tuple(mapped))
