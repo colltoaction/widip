@@ -75,6 +75,8 @@ def widish_main(file_name, *shell_program_args: str):
     diagram_draw(path, fd)
     constants = tuple(x.name for x in fd.dom)
     runner = SHELL_RUNNER(fd)(*constants)
+    runner()
     # TODO pass stdin
-    run_res = runner and runner("")
-    print(*(tuple(x.rstrip() for x in tuplify(untuplify(run_res)) if x)), sep="\n")
+    # run_res = runner and runner("")
+    # print(run_res)
+    # print(*(tuple(x.rstrip() for x in tuplify(untuplify(run_res)) if x)), sep="\n")
