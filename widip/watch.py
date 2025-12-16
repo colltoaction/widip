@@ -9,7 +9,7 @@ from discopy.utils import tuplify, untuplify
 
 from .loader import repl_read
 from .files import diagram_draw, file_diagram
-from .widish import SHELL_RUNNER, compile_shell_program
+from .widish import SHELL_RUNNER, compile_shell_program, ProcessGroup
 
 
 # TODO watch functor ??
@@ -75,12 +75,24 @@ def widish_main(file_name, *shell_program_args: str):
     diagram_draw(path, fd)
     constants = tuple(x.name for x in fd.dom)
     runner = SHELL_RUNNER(fd)(*constants)
-    if isinstance(runner, tuple):
+    if isinstance(runner, ProcessGroup):
+        process = tuple(r() for r in runner.processes)
+    elif isinstance(runner, tuple):
         process = tuple(r() for r in runner)
     else:
         process = runner()
-    for p in tuplify(process):
+
+    def recursive_communicate(p):
         if hasattr(p, "communicate"):
-            p.communicate()
+            out, err = p.communicate()
+            if out:
+                print(out, end="")
+            if err:
+                print(err, file=sys.stderr, end="")
+        elif isinstance(p, (list, tuple)):
+            for item in p:
+                recursive_communicate(item)
         else:
             print(p)
+
+    recursive_communicate(process)

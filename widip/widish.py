@@ -2,16 +2,31 @@ import sys
 from functools import partial
 from itertools import batched
 from subprocess import Popen, PIPE
+from collections.abc import Callable
 
-from discopy.closed import Category, Functor, Ty, Box, Eval
+from discopy.closed import Category, Functor, Ty, Box, Eval, Exp
+from discopy.monoidal import Functor as MonoidalFunctor
 from discopy.utils import tuplify, untuplify
 from discopy import python
 
 
 io_ty = Ty("io")
 
+class ProcessGroup:
+    def __init__(self, processes):
+        self.processes = processes
+
+    def __call__(self, stdin=None):
+        return tuple(p(stdin=stdin) for p in self.processes)
+
+class WidishFunctor(MonoidalFunctor):
+    def __call__(self, other):
+        if isinstance(other, Exp):
+            return self.cod.ob((self.ob[other],))
+        return super().__call__(other)
+
 def run_native_subprocess(ar, *b):
-    def run_native_subprocess_constant(*params):
+    def run_native_subprocess_constant(*params, **kwargs):
         if not params:
             return "" if ar.dom == Ty() else ar.dom.name
         return untuplify(params)
@@ -21,11 +36,24 @@ def run_native_subprocess(ar, *b):
         for (dk, k), (dv, v) in batched(zip(ar.dom, b), 2):
             def chain(stdin=stdin, k=k, v=v):
                 p_k = k(*tuplify(params), stdin=stdin)
-                p_v = v(stdin=p_k.stdout)
-                p_k.stdout.close()
-                return p_v
+
+                stdin_v = None
+                detached_k = []
+
+                if hasattr(p_k, "stdout") and p_k.stdout:
+                    stdin_v = p_k.stdout
+                elif isinstance(p_k, (list, tuple)):
+                    detached_k = list(p_k)
+
+                p_v = v(stdin=stdin_v)
+
+                if hasattr(p_k, "stdout") and p_k.stdout:
+                    p_k.stdout.close()
+
+                res = detached_k + [p_v]
+                return tuple(res)
             mapped.append(chain)
-        return tuple(mapped)
+        return ProcessGroup(tuple(mapped))
 
     def run_native_subprocess_seq(*params, stdin=None):
         def lazy_seq(stdin=stdin):
@@ -63,8 +91,8 @@ def run_native_subprocess(ar, *b):
     if ar.name == "G":
         return run_native_subprocess_inside(*b)
 
-SHELL_RUNNER = Functor(
-    lambda ob: Popen if ob == io_ty else str,
+SHELL_RUNNER = WidishFunctor(
+    lambda ob: object,
     lambda ar: partial(run_native_subprocess, ar),
     cod=Category(python.Ty, python.Function))
 
