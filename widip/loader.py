@@ -45,9 +45,9 @@ def _incidences_to_diagram(node: HyperGraph, index):
 def load_scalar(node, index, tag):
     v = hif_node(node, index)["value"]
     if tag and v:
-        return Box("G", Ty(tag) @ Ty(v), Ty() << Ty(""))
+        return Box(tag, Ty(v), Ty() << Ty(""))
     elif tag:
-        return Box("G", Ty(tag), Ty() << Ty(""))
+        return Box(tag, Ty(), Ty() << Ty(""))
     elif v:
         return Box("⌜−⌝", Ty(v), Ty() << Ty(""))
     else:
@@ -82,7 +82,7 @@ def load_mapping(node, index, tag):
     ob = ob >> par_box
     if tag:
         ob = (ob @ bases>> Eval(exps << bases))
-        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty("") << Ty(""))
+        ob = ob >> Box(tag, ob.cod, Ty("") << Ty(""))
     return ob
 
 def load_sequence(node, index, tag):
@@ -109,7 +109,7 @@ def load_sequence(node, index, tag):
         bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
         exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
         ob = (bases @ ob >> Eval(bases >> exps))
-        ob = Ty(tag) @ ob >> Box("G", Ty(tag) @ ob.cod, Ty() >> Ty(tag))
+        ob = ob >> Box(tag, ob.cod, Ty() >> Ty(tag))
     return ob
 
 def load_document(node, index):

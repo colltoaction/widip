@@ -33,7 +33,7 @@ def run_native_subprocess(ar, *b):
     def run_native_subprocess_inside(*params):
         try:
             io_result = run(
-                b,
+                (ar.name,) + b,
                 check=True, text=True, capture_output=True,
                 input="\n".join(params) if params else None,
                 )
@@ -50,8 +50,8 @@ def run_native_subprocess(ar, *b):
     if ar.name == "g":
         res = run_native_subprocess_inside(*b)
         return res
-    if ar.name == "G":
-        return run_native_subprocess_inside
+
+    return run_native_subprocess_inside
 
 SHELL_RUNNER = Functor(
     lambda ob: str,
