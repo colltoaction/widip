@@ -15,21 +15,15 @@ def run_native_subprocess(ar, *b):
             return "" if ar.dom == Ty() else ar.dom.name
         return untuplify(params)
     def run_native_subprocess_map(*params):
-        # TODO cat then copy to two
-        # but formal is to pass through
         mapped = []
-        start = 0
-        for (dk, k), (dv, v) in batched(zip(ar.dom, b), 2):
-            # note that the key cod and value dom might be different
-            b0 = k(*tuplify(params))
-            res = untuplify(v(*tuplify(b0)))
+        for kv in b:
+            res = kv(*tuplify(params))
             mapped.append(untuplify(res))
-        
         return untuplify(tuple(mapped))
     def run_native_subprocess_seq(*params):
-        b0 = b[0](*untuplify(params))
-        res = untuplify(b[1](*tuplify(b0)))
-        return res
+        b0 = b[0](*tuplify(params))
+        b1 = b[1](*tuplify(b0))
+        return untuplify(b1)
     def run_native_subprocess_inside(*params):
         try:
             io_result = run(

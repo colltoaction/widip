@@ -50,13 +50,19 @@ def load_scalar(node, index, tag):
             >> Eval(Ty(v) << P) \
             >> Box("e", Ty(v), Ty(v))
     if tag and v:
-        return Box(tag, Ty(v), Ty() << Ty(""))
+        return Box(tag, Ty(v), Ty(tag) >> Ty(tag))
+        return Box("run", Ty(tag) @ Ty(v), Ty(tag)).curry(left=False)
     elif tag:
+        return Box(tag, Ty(v), Ty(tag) >> Ty(tag))
+        return Box("run", Ty(tag), Ty(tag)).curry(left=False)
         return Box(tag, Ty(), Ty() << Ty(""))
     elif v:
+        return Box("⌜−⌝", Ty(v), Ty() >> Ty(v))
+        return Box("⌜−⌝", Ty(v), Ty(tag)).curry(0, left=False)
         return Box("⌜−⌝", Ty(v), Ty() << Ty(""))
     else:
-        return Box("⌜−⌝", Ty(), Ty() << Ty(""))
+        return Box("⌜−⌝", Ty(), Ty() >> Ty(v))
+        return Box("⌜−⌝", Ty(), Ty(tag)).curry(0, left=False)
 
 def load_mapping(node, index, tag):
     ob = Id()
@@ -72,7 +78,10 @@ def load_mapping(node, index, tag):
         key = _incidences_to_diagram(node, k)
         value = _incidences_to_diagram(node, v)
 
-        kv = key @ value
+        exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, key.cod))
+        bases = Ty().tensor(*map(lambda x: x.inside[0].base, value.cod))
+        kv_box = Box("(;)", key.cod @ value.cod, exps >> bases)
+        kv = key @ value >> kv_box
 
         if i==0:
             ob = kv
@@ -81,13 +90,15 @@ def load_mapping(node, index, tag):
 
         i += 1
         nxt = tuple(hif_node_incidences(node, v, key="forward"))
-    bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod[0::2]))
-    exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod[1::2]))
-    par_box = Box("(||)", ob.cod, exps << bases)
+    exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
+    bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
+    par_box = Box("(||)", ob.cod, exps >> bases)
     ob = ob >> par_box
     if tag:
-        ob = (ob @ bases>> Eval(exps << bases))
-        ob = ob >> Box(tag, ob.cod, Ty("") << Ty(""))
+        ob = (ob @ exps >> Eval(exps >> bases))
+        box = Box(tag, ob.cod, Ty(tag) >> Ty(tag))
+        # box = Box("run", Ty(tag) @ ob.cod, Ty(tag)).curry(left=False)
+        ob = ob >> box
     return ob
 
 def load_sequence(node, index, tag):
