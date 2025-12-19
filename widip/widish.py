@@ -1,8 +1,7 @@
 from functools import partial
-from itertools import batched
 from subprocess import CalledProcessError, run
 
-from discopy.closed import Category, Functor, Ty, Box, Eval
+from discopy.frobenius import Category, Functor, Ty
 from discopy.utils import tuplify, untuplify
 from discopy import python
 

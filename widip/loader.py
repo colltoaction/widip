@@ -1,8 +1,8 @@
-from itertools import batched
-from nx_yaml import nx_compose_all, nx_serialize_all
+from nx_yaml import nx_compose_all
 from nx_hif.hif import *
 
-from discopy.closed import Id, Ty, Box, Eval
+from discopy.frobenius import Id, Ty, Box
+from discopy.closed import Eval
 
 P = Ty() << Ty("")
 

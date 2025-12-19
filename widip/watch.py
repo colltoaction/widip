@@ -4,7 +4,6 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from yaml import YAMLError
 
-from discopy.closed import Id, Ty, Box
 from discopy.utils import tuplify, untuplify
 
 from .loader import repl_read
@@ -73,8 +72,17 @@ def widish_main(file_name, *shell_program_args: str):
     fd = file_diagram(file_name)
     path = Path(file_name)
     diagram_draw(path, fd)
-    constants = tuple(x.name for x in fd.dom)
-    runner = SHELL_RUNNER(fd)(*constants)
+
+    if len(shell_program_args) > len(fd.dom):
+        print(f"Unexpected parameters:", *shell_program_args[len(fd.dom):])
+        return
+
+    if len(shell_program_args) < len(fd.dom):
+        # print(f"Missing parameters:", *(x.name for x in fd.dom[len(shell_program_args):]), sep=", ")
+        # return
+        shell_program_args += tuple(x.name for x in fd.dom[len(shell_program_args):])
+
+    runner = SHELL_RUNNER(fd)(*shell_program_args)
     # TODO pass stdin
     run_res = runner and runner("")
     print(*(tuple(x.rstrip() for x in tuplify(untuplify(run_res)) if x)), sep="\n")
