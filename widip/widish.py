@@ -1,60 +1,67 @@
 from functools import partial
-from itertools import batched
 from subprocess import CalledProcessError, run
 
-from discopy.closed import Category, Functor, Ty, Box, Eval
 from discopy.utils import tuplify, untuplify
-from discopy import python
+from discopy import closed, python
 
 
-io_ty = Ty("io")
+io_ty = closed.Ty("io")
 
-def run_native_subprocess(ar, *b):
-    def run_native_subprocess_constant(*params):
-        if not params:
-            return "" if ar.dom == Ty() else ar.dom.name
-        return untuplify(params)
-    def run_native_subprocess_map(*params):
-        mapped = []
-        for kv in b:
-            res = kv(*tuplify(params))
-            mapped.append(untuplify(res))
-        return untuplify(tuple(mapped))
-    def run_native_subprocess_seq(*params):
-        b0 = b[0](*tuplify(params))
-        b1 = b[1](*tuplify(b0))
-        return untuplify(b1)
-    def run_native_subprocess_inside(*params):
-        try:
-            io_result = run(
-                (ar.name,) + b,
-                check=True, text=True, capture_output=True,
-                input="\n".join(params) if params else None,
-                )
-            res = io_result.stdout.rstrip("\n")
-            return res
-        except CalledProcessError as e:
-            return e.stderr
-    if ar.name == "⌜−⌝":
-        return run_native_subprocess_constant
-    if ar.name == "(||)":
-        return run_native_subprocess_map
-    if ar.name == "(;)":
-        return run_native_subprocess_seq
-    if ar.name == "g":
-        res = run_native_subprocess_inside(*b)
-        return res
+def split_args(ar, args):
+    n = len(ar.dom)
+    return args[:n], args[n:]
 
-    return run_native_subprocess_inside
+def run_native_subprocess_constant(ar, *args):
+    b, params = split_args(ar, args)
+    if not params:
+        return "" if ar.dom == closed.Ty() else ar.dom.name
+    return untuplify(params)
 
-SHELL_RUNNER = Functor(
+def run_native_subprocess_map(ar, *args):
+    b, params = split_args(ar, args)
+    mapped = []
+    for kv in b:
+        res = kv(*tuplify(params))
+        mapped.append(untuplify(res))
+    return untuplify(tuple(mapped))
+
+def run_native_subprocess_seq(ar, *args):
+    b, params = split_args(ar, args)
+    b0 = b[0](*tuplify(params))
+    b1 = b[1](*tuplify(b0))
+    return untuplify(b1)
+
+def run_native_subprocess_default(ar, *args):
+    b, params = split_args(ar, args)
+    io_result = run(
+        (ar.name,) + b,
+        check=True, text=True, capture_output=True,
+        input="\n".join(params) if params else None,
+        )
+    res = io_result.stdout.rstrip("\n")
+    return res
+
+def run_native_subprocess_g(ar, *b):
+    io_result = run(
+        (ar.name,) + b,
+        check=True, text=True, capture_output=True,
+        input="\n".join(b) if b else None,
+        )
+    res = io_result.stdout.rstrip("\n")
+    return res
+
+SHELL_RUNNER = closed.Functor(
     lambda ob: str,
-    lambda ar: partial(run_native_subprocess, ar),
-    cod=Category(python.Ty, python.Function))
+    lambda ar: {
+        "⌜−⌝": partial(partial, run_native_subprocess_constant, ar),
+        "(||)": partial(partial, run_native_subprocess_map, ar),
+        "(;)": partial(partial, run_native_subprocess_seq, ar),
+        "g": partial(run_native_subprocess_g, ar),
+    }.get(ar.name, partial(partial, run_native_subprocess_default, ar)),
+    cod=closed.Category(python.Ty, python.Function))
 
 
-SHELL_COMPILER = Functor(
-    # lambda ob: Ty() if ob == Ty("io") else ob,
+SHELL_COMPILER = closed.Functor(
     lambda ob: ob,
     lambda ar: {
         # "ls": ar.curry().uncurry()
