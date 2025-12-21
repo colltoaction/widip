@@ -5,11 +5,11 @@ from watchdog.observers import Observer
 from yaml import YAMLError
 
 from discopy.closed import Id, Ty, Box
-from discopy.utils import tuplify, untuplify
+from discopy.utils import tuplify
 
 from .loader import repl_read
 from .files import diagram_draw, file_diagram
-from .widish import SHELL_RUNNER, compile_shell_program
+from .widish import SHELL_RUNNER, compile_shell_program, force
 
 
 # TODO watch functor ??
@@ -58,7 +58,7 @@ def shell_main(file_name):
                 #     >> Spider(len(source_d.cod), 1, Ty("io"))
                 # diagram_draw(path, source_d)
                 result_ev = SHELL_RUNNER(source_d)()
-                print(result_ev)
+                print(force(result_ev))
             except KeyboardInterrupt:
                 print()
             except YAMLError as e:
@@ -78,4 +78,12 @@ def widish_main(file_name, *shell_program_args: str):
 
     run_res = runner("") if sys.stdin.isatty() else runner(sys.stdin.read())
 
-    print(*(tuple(x.rstrip() for x in tuplify(untuplify(run_res)) if x)), sep="\n")
+    # force() now handles iteration and forcing recursively, and unwrapping.
+    # So we can just call force(run_res).
+    # If run_res is tuple of thunks, force maps over it.
+    # If run_res is single thunk, force calls it.
+    # If run_res is tuple of values (unlikely from thunk logic?), force unwraps if singleton.
+
+    val = force(run_res)
+
+    print(*(tuple(x.rstrip() for x in tuplify(val) if x)), sep="\n")
