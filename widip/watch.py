@@ -4,12 +4,12 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from yaml import YAMLError
 
-from discopy.closed import Id, Ty, Box
-from discopy.utils import tuplify, untuplify
+from discopy.utils import tuplify
 
 from .loader import repl_read
 from .files import diagram_draw, file_diagram
-from .widish import SHELL_RUNNER, compile_shell_program
+from .widish import SHELL_RUNNER
+from .compiler import SHELL_COMPILER, force
 
 
 # TODO watch functor ??
@@ -58,7 +58,7 @@ def shell_main(file_name):
                 #     >> Spider(len(source_d.cod), 1, Ty("io"))
                 # diagram_draw(path, source_d)
                 result_ev = SHELL_RUNNER(source_d)()
-                print(result_ev)
+                print(force(result_ev))
             except KeyboardInterrupt:
                 print()
             except YAMLError as e:
@@ -74,8 +74,9 @@ def widish_main(file_name, *shell_program_args: str):
     path = Path(file_name)
     diagram_draw(path, fd)
     constants = tuple(x.name for x in fd.dom)
+    fd = SHELL_COMPILER(fd)
     runner = SHELL_RUNNER(fd)(*constants)
 
     run_res = runner("") if sys.stdin.isatty() else runner(sys.stdin.read())
-
-    print(*(tuple(x.rstrip() for x in tuplify(untuplify(run_res)) if x)), sep="\n")
+    val = force(run_res)
+    print(*(tuple(x.rstrip() for x in tuplify(val) if x)), sep="\n")

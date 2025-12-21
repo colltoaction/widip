@@ -1,8 +1,10 @@
-from functools import partial
-from subprocess import CalledProcessError, run
+from functools import partial, cache
+from subprocess import run
 
-from discopy.utils import tuplify, untuplify
+from discopy.utils import tuplify
 from discopy import closed, python
+
+from .compiler import force
 
 
 io_ty = closed.Ty("io")
@@ -14,41 +16,39 @@ def split_args(ar, args):
 def run_native_subprocess_constant(ar, *args):
     b, params = split_args(ar, args)
     if not params:
-        return "" if ar.dom == closed.Ty() else ar.dom.name
-    return untuplify(params)
+        if ar.dom == closed.Ty():
+            return ()
+        return ar.dom.name
+    return force(params)
 
 def run_native_subprocess_map(ar, *args):
     b, params = split_args(ar, args)
-    mapped = []
-    for kv in b:
-        res = kv(*tuplify(params))
-        mapped.append(untuplify(res))
-    return untuplify(tuple(mapped))
+    return force(kv(*tuplify(params)) for kv in b)
 
 def run_native_subprocess_seq(ar, *args):
     b, params = split_args(ar, args)
     b0 = b[0](*tuplify(params))
     b1 = b[1](*tuplify(b0))
-    return untuplify(b1)
+    return b1
 
-def run_native_subprocess_default(ar, *args):
+@cache
+def _run_command(name, args, stdin):
+    io_result = run(
+        (name,) + args,
+        check=True, text=True, capture_output=True,
+        input="\n".join(stdin) if stdin else None,
+        )
+    return io_result.stdout.rstrip("\n")
+
+def _deferred_exec_subprocess(ar, args):
     b, params = split_args(ar, args)
-    io_result = run(
-        (ar.name,) + b,
-        check=True, text=True, capture_output=True,
-        input="\n".join(params) if params else None,
-        )
-    res = io_result.stdout.rstrip("\n")
-    return res
+    _b = tuplify(force(b))
+    _params = tuplify(force(params))
+    result = _run_command(ar.name, _b, _params)
+    if not ar.cod:
+        return ()
+    return result
 
-def run_native_subprocess_g(ar, *b):
-    io_result = run(
-        (ar.name,) + b,
-        check=True, text=True, capture_output=True,
-        input="\n".join(b) if b else None,
-        )
-    res = io_result.stdout.rstrip("\n")
-    return res
 
 SHELL_RUNNER = closed.Functor(
     lambda ob: str,
@@ -56,25 +56,5 @@ SHELL_RUNNER = closed.Functor(
         "⌜−⌝": partial(partial, run_native_subprocess_constant, ar),
         "(||)": partial(partial, run_native_subprocess_map, ar),
         "(;)": partial(partial, run_native_subprocess_seq, ar),
-        "g": partial(run_native_subprocess_g, ar),
-    }.get(ar.name, partial(partial, run_native_subprocess_default, ar)),
+    }.get(ar.name, partial(partial, lambda ar, *args: partial(_deferred_exec_subprocess, ar, args), ar)),
     cod=closed.Category(python.Ty, python.Function))
-
-
-SHELL_COMPILER = closed.Functor(
-    lambda ob: ob,
-    lambda ar: {
-        # "ls": ar.curry().uncurry()
-    }.get(ar.name, ar),)
-    # TODO remove .inside[0] workaround
-    # lambda ar: ar)
-
-
-def compile_shell_program(diagram):
-    """
-    close input parameters (constants)
-    drop outputs matching input parameters
-    all boxes are io->[io]"""
-    # TODO compile sequences and parallels to evals
-    diagram = SHELL_COMPILER(diagram)
-    return diagram
