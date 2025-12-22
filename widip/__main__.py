@@ -1,8 +1,9 @@
 import sys
 
 # Stop starting a Matplotlib GUI
-import matplotlib
-matplotlib.use('agg')
+if __debug__:
+    import matplotlib
+    matplotlib.use('agg')
 
 from .watch import shell_main, widish_main
 
