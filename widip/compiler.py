@@ -1,17 +1,5 @@
-from collections.abc import Iterator
 from discopy import closed
 
-def force(x):
-    while callable(x):
-        x = x()
-    if isinstance(x, (Iterator, tuple, list)):
-        # Recursively force items in iterator or sequence
-        x = tuple(map(force, x))
-    
-    # "untuplify" logic: unwrap singleton tuple/list
-    if isinstance(x, (tuple, list)) and len(x) == 1:
-        return x[0]
-    return x
 
 SHELL_COMPILER = closed.Functor(
     lambda ob: ob,

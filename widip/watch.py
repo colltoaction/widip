@@ -8,8 +8,8 @@ from discopy.utils import tuplify
 
 from .loader import repl_read
 from .files import diagram_draw, file_diagram
-from .widish import SHELL_RUNNER
-from .compiler import SHELL_COMPILER, force
+from .widish import SHELL_RUNNER, force
+from .compiler import SHELL_COMPILER
 
 
 # TODO watch functor ??
