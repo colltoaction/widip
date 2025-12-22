@@ -51,23 +51,22 @@ def load_scalar(node, index, tag):
             >> Box("e", Ty(v), Ty(v))
     if tag and v:
         return Box(tag, Ty(v), Ty(tag) >> Ty(tag))
-        return Box("run", Ty(tag) @ Ty(v), Ty(tag)).curry(left=False)
     elif tag:
-        return Box(tag, Ty(v), Ty(tag) >> Ty(tag))
-        return Box("run", Ty(tag), Ty(tag)).curry(left=False)
-        return Box(tag, Ty(), Ty() << Ty(""))
+        dom = Ty(v) if v else Ty()
+        return Box(tag, dom, Ty(tag) >> Ty(tag))
     elif v:
         return Box("⌜−⌝", Ty(v), Ty() >> Ty(v))
-        return Box("⌜−⌝", Ty(v), Ty(tag)).curry(0, left=False)
-        return Box("⌜−⌝", Ty(v), Ty() << Ty(""))
     else:
         return Box("⌜−⌝", Ty(), Ty() >> Ty(v))
-        return Box("⌜−⌝", Ty(), Ty(tag)).curry(0, left=False)
 
 def load_mapping(node, index, tag):
     ob = Id()
     i = 0
     nxt = tuple(hif_node_incidences(node, index, key="next"))
+
+    if not nxt and tag:
+        return Box(tag, Ty(), Ty(tag) >> Ty(tag))
+
     while True:
         if not nxt:
             break
@@ -105,6 +104,10 @@ def load_sequence(node, index, tag):
     ob = Id()
     i = 0
     nxt = tuple(hif_node_incidences(node, index, key="next"))
+
+    if not nxt and tag:
+        return Box(tag, Ty(), Ty(tag) >> Ty(tag))
+
     while True:
         if not nxt:
             break
