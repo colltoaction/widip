@@ -15,13 +15,13 @@ from .compiler import SHELL_COMPILER, force
 # TODO watch functor ??
 
 def reload_diagram(path_str):
-    print(f"reloading {path_str}")
+    print(f"reloading {path_str}", file=sys.stderr)
     try:
         fd = file_diagram(path_str)
         diagram_draw(Path(path_str), fd)
         diagram_draw(Path(path_str+".2"), fd)
     except YAMLError as e:
-        print(e)
+        print(e, file=sys.stderr)
 
 async def handle_changes():
     # watchfiles awatch yields sets of changes
@@ -35,16 +35,21 @@ async def async_shell_main(file_name):
     loop = asyncio.get_running_loop()
 
     # Start watcher
-    print(f"watching for changes in current path")
+    if sys.stdin.isatty():
+        print(f"watching for changes in current path", file=sys.stderr)
     watcher_task = asyncio.create_task(handle_changes())
 
     try:
         while True:
             try:
-                prompt = f"--- !{file_name}\n"
-                # Use run_in_executor for blocking input
-                source = await loop.run_in_executor(None, input, prompt)
-                
+                if not sys.stdin.isatty():
+                    source = await loop.run_in_executor(None, sys.stdin.read)
+                    if not source:
+                        break
+                else:
+                    prompt = f"--- !{file_name}\n"
+                    source = await loop.run_in_executor(None, input, prompt)
+
                 source_d = repl_read(source)
                 if __debug__:
                     diagram_draw(path, source_d)
@@ -54,14 +59,19 @@ async def async_shell_main(file_name):
                 #     diagram_draw(path.with_suffix(".shell.yaml"), compiled_d)
                 constants = tuple(x.name for x in compiled_d.dom)
                 result_ev = SHELL_RUNNER(compiled_d)(*constants)
-                print(force(result_ev))
+                result = force(result_ev)
+                print(*(tuple(x.rstrip() for x in tuplify(result) if x)), sep="\n")
+
+                if not sys.stdin.isatty():
+                    break
             except EOFError:
-                print("⌁")
+                if sys.stdin.isatty():
+                    print("⌁", file=sys.stderr)
                 break
             except KeyboardInterrupt:
-                print()
+                print(file=sys.stderr)
             except YAMLError as e:
-                print(e)
+                print(e, file=sys.stderr)
     finally:
         watcher_task.cancel()
         try:
