@@ -8,7 +8,7 @@ from discopy.utils import tuplify
 
 from .loader import repl_read
 from .files import diagram_draw, file_diagram
-from .widish import SHELL_RUNNER, force
+from .widish import SHELL_RUNNER, force, uncoro
 from .compiler import SHELL_COMPILER
 
 
@@ -59,7 +59,7 @@ async def async_shell_main(file_name):
                 #     diagram_draw(path.with_suffix(".shell.yaml"), compiled_d)
                 constants = tuple(x.name for x in compiled_d.dom)
                 result_ev = SHELL_RUNNER(compiled_d)(*constants)
-                result = force(result_ev)
+                result = await uncoro(force(result_ev))
                 print(*(tuple(x.rstrip() for x in tuplify(result) if x)), sep="\n")
 
                 if not sys.stdin.isatty():
@@ -98,7 +98,7 @@ async def async_widish_main(file_name, *shell_program_args: str):
         inp = await loop.run_in_executor(None, sys.stdin.read)
         
     run_res = runner(inp)
-    val = force(run_res)
+    val = await uncoro(force(run_res))
     print(*(tuple(x.rstrip() for x in tuplify(val) if x)), sep="\n")
 
 def widish_main(file_name, *shell_program_args: str):
