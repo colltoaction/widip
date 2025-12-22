@@ -79,7 +79,7 @@ def load_mapping(node, index, tag):
 
         exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, key.cod))
         bases = Ty().tensor(*map(lambda x: x.inside[0].base, value.cod))
-        kv_box = Box("(;)", key.cod @ value.cod, exps >> bases)
+        kv_box = Box("(;)", key.cod @ value.cod, bases << exps)
         kv = key @ value >> kv_box
 
         if i==0:
@@ -91,10 +91,10 @@ def load_mapping(node, index, tag):
         nxt = tuple(hif_node_incidences(node, v, key="forward"))
     exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
     bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
-    par_box = Box("(||)", ob.cod, exps >> bases)
+    par_box = Box("(||)", ob.cod, bases << exps)
     ob = ob >> par_box
     if tag:
-        ob = (ob @ exps >> Eval(exps >> bases))
+        ob = (ob @ exps >> Eval(bases << exps))
         box = Box(tag, ob.cod, Ty(tag) >> Ty(tag))
         # box = Box("run", Ty(tag) @ ob.cod, Ty(tag)).curry(left=False)
         ob = ob >> box
