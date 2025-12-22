@@ -1,5 +1,6 @@
-from pathlib import Path
+import asyncio
 import sys
+from pathlib import Path
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from yaml import YAMLError
@@ -16,35 +17,48 @@ from .compiler import SHELL_COMPILER, force
 
 class ShellHandler(FileSystemEventHandler):
     """Reload the shell on change."""
+    def __init__(self, loop, queue):
+        self.loop = loop
+        self.queue = queue
+
     def on_modified(self, event):
         if event.src_path.endswith(".yaml"):
-            print(f"reloading {event.src_path}")
-            try:
-                fd = file_diagram(str(event.src_path))
-                diagram_draw(Path(event.src_path), fd)
-                diagram_draw(Path(event.src_path+".2"), fd)
-            except YAMLError as e:
-                print(e)
+            self.loop.call_soon_threadsafe(self.queue.put_nowait, event)
 
-def watch_main():
-    """the process manager for the reader and """
-    #  TODO watch this path to reload changed files,
-    # returning an IO as always and maintaining the contract.
+async def handle_events(queue):
+    while True:
+        event = await queue.get()
+        print(f"reloading {event.src_path}")
+        try:
+            fd = file_diagram(str(event.src_path))
+            diagram_draw(Path(event.src_path), fd)
+            diagram_draw(Path(event.src_path+".2"), fd)
+        except YAMLError as e:
+            print(e)
+        queue.task_done()
+
+async def async_shell_main(file_name):
+    path = Path(file_name)
+    loop = asyncio.get_running_loop()
+    queue = asyncio.Queue()
+
+    # Start observer
     print(f"watching for changes in current path")
+    event_handler = ShellHandler(loop, queue)
     observer = Observer()
-    shell_handler = ShellHandler()
-    observer.schedule(shell_handler, ".", recursive=True)
+    observer.schedule(event_handler, ".", recursive=True)
     observer.start()
-    return observer
 
-def shell_main(file_name):
+    # Start event consumer
+    consumer_task = asyncio.create_task(handle_events(queue))
+
     try:
         while True:
-            observer = watch_main()
             try:
-                path = Path(file_name)
                 prompt = f"--- !{file_name}\n"
-                source = input(prompt)
+                # Use run_in_executor for blocking input
+                source = await loop.run_in_executor(None, input, prompt)
+                
                 source_d = repl_read(source)
                 if __debug__:
                     diagram_draw(path, source_d)
@@ -52,19 +66,24 @@ def shell_main(file_name):
                 # compiled_d = SHELL_COMPILER(source_d)
                 # if __debug__:
                 #     diagram_draw(path.with_suffix(".shell.yaml"), compiled_d)
-                result_ev = SHELL_RUNNER(compiled_d)()
+                constants = tuple(x.name for x in compiled_d.dom)
+                result_ev = SHELL_RUNNER(compiled_d)(*constants)
                 print(force(result_ev))
+            except EOFError:
+                print("⌁")
+                break
             except KeyboardInterrupt:
                 print()
             except YAMLError as e:
                 print(e)
-            finally:
-                observer.stop()
-    except EOFError:
-        print("⌁")
-        exit(0)
+    finally:
+        observer.stop()
+        observer.join()
+        consumer_task.cancel()
 
-def widish_main(file_name, *shell_program_args: str):
+async def async_widish_main(file_name, *shell_program_args: str):
+    loop = asyncio.get_running_loop()
+    
     fd = file_diagram(file_name)
     path = Path(file_name)
     if __debug__:
@@ -75,6 +94,25 @@ def widish_main(file_name, *shell_program_args: str):
         diagram_draw(path.with_suffix(".shell.yaml"), fd)
     runner = SHELL_RUNNER(fd)(*constants)
 
-    run_res = runner("") if sys.stdin.isatty() else runner(sys.stdin.read())
+    if sys.stdin.isatty():
+        inp = ""
+    else:
+        inp = await loop.run_in_executor(None, sys.stdin.read)
+        
+    run_res = runner(inp)
     val = force(run_res)
     print(*(tuple(x.rstrip() for x in tuplify(val) if x)), sep="\n")
+
+def widish_main(file_name, *shell_program_args: str):
+    # Deprecated sync wrapper
+    asyncio.run(async_widish_main(file_name, *shell_program_args))
+
+async def main():
+    match sys.argv:
+        case [_]:
+            try:
+                await async_shell_main("bin/yaml/shell.yaml")
+            except KeyboardInterrupt:
+                pass
+        case [_, file_name, *args]: 
+            await async_widish_main(file_name, *args)
