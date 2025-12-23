@@ -1,12 +1,13 @@
-import argparse
-import asyncio
-
-# Stop starting a Matplotlib GUI
 if __debug__:
+    # Non-interactive backend for file output
     import matplotlib
     matplotlib.use('agg')
 
-from .watch import async_shell_main, async_widish_main, async_command_main
+import argparse
+import asyncio
+
+from .interactive import async_shell_main
+from .watch import async_widish_main, async_command_main
 
 
 def main():
