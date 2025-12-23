@@ -26,6 +26,15 @@ async def async_thunk(val):
     ([1], (1,)),
     (thunk(lambda: (1,)), (1,)),
     (async_val((1,)), (1,)),
+    (thunk(lambda: (lambda n: [n, n])([1])), ((1,), (1,))),
+    (thunk(lambda: (lambda it: [it, it])(iter([1, 2, 3]))), ((1, 2, 3), (1, 2, 3))),
 ])
 async def test_unwrap(input_val, expected):
     assert await unwrap(input_val) == expected
+
+@pytest.mark.asyncio
+async def test_unwrap_self_reference():
+    l = []
+    l.append(l)
+    res = await unwrap(l)
+    assert res[0] is l
