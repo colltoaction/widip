@@ -8,7 +8,8 @@ from discopy.utils import tuplify
 
 from .loader import repl_read
 from .files import diagram_draw, file_diagram
-from .widish import SHELL_RUNNER, force, uncoro
+from .widish import SHELL_RUNNER
+from .thunk import force, uncoro
 from .compiler import SHELL_COMPILER
 
 

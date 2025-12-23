@@ -1,41 +1,10 @@
-from collections.abc import Iterator, Awaitable
-from functools import cache, partial
 import asyncio
 
 from discopy.utils import tuplify
 from discopy import closed, python
 
+from .thunk import thunk, force, uncoro
 
-def thunk(f, *args):
-    return partial(partial, f, *args)
-
-@cache
-def _force_call(thunk):
-    while callable(thunk):
-        thunk = thunk()
-    return thunk
-
-def force(x):
-    x = _force_call(x)
-    if isinstance(x, (Iterator, tuple, list)):
-        # Recursively force items in iterator or sequence
-        x = tuple(map(force, x))
-    
-    # "untuplify" logic: unwrap singleton tuple/list
-    if isinstance(x, (tuple, list)) and len(x) == 1:
-        return x[0]
-    return x
-
-async def uncoro(x):
-    if isinstance(x, Awaitable):
-        return await uncoro(await x)
-        
-    if isinstance(x, (Iterator, tuple, list)):
-        items = list(x)
-        results = await asyncio.gather(*(uncoro(i) for i in items))
-        return tuple(results)
-
-    return x
 
 def split_args(ar, *args):
     n = len(ar.dom)
