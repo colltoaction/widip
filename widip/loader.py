@@ -4,6 +4,8 @@ from nx_hif.hif import *
 
 from discopy.closed import Id, Ty, Box, Eval
 
+from .thunk import vertical_map, p_functor
+
 P = Ty() << Ty("")
 
 
@@ -14,36 +16,43 @@ def repl_read(stream):
 
 def incidences_to_diagram(node: HyperGraph):
     # TODO properly skip stream and document start
-    diagram = _incidences_to_diagram(node, 0)
+    cursor = (0, node)
+    diagram = _incidences_to_diagram(cursor)
     return diagram
 
-def _incidences_to_diagram(node: HyperGraph, index):
+def _incidences_to_diagram(cursor):
     """
     Takes an nx_yaml rooted bipartite graph
     and returns an equivalent string diagram
     """
+    node = p_functor(cursor)
+    index = cursor[0]
+
     tag = (hif_node(node, index).get("tag") or "")[1:]
     kind = hif_node(node, index)["kind"]
 
     match kind:
 
         case "stream":
-            ob = load_stream(node, index)
+            ob = load_stream(cursor)
         case "document":
-            ob = load_document(node, index)
+            ob = load_document(cursor)
         case "scalar":
-            ob = load_scalar(node, index, tag)
+            ob = load_scalar(cursor, tag)
         case "sequence":
-            ob = load_sequence(node, index, tag)
+            ob = load_sequence(cursor, tag)
         case "mapping":
-            ob = load_mapping(node, index, tag)
+            ob = load_mapping(cursor, tag)
         case _:
             raise Exception(f"Kind \"{kind}\" doesn't match any.")
         
     return ob
 
 
-def load_scalar(node, index, tag):
+def load_scalar(cursor, tag):
+    node = p_functor(cursor)
+    index = cursor[0]
+
     v = hif_node(node, index)["value"]
     if tag == "fix" and v:
         return Box("Ω", Ty(), Ty(v) << P) @ P \
@@ -59,7 +68,10 @@ def load_scalar(node, index, tag):
     else:
         return Box("⌜−⌝", Ty(), Ty() >> Ty(v))
 
-def load_mapping(node, index, tag):
+def load_mapping(cursor, tag):
+    node = p_functor(cursor)
+    index = cursor[0]
+
     ob = Id()
     i = 0
     nxt = tuple(hif_node_incidences(node, index, key="next"))
@@ -74,8 +86,10 @@ def load_mapping(node, index, tag):
         ((_, k, _, _), ) = hif_edge_incidences(node, k_edge, key="start")
         ((v_edge, _, _, _), ) = hif_node_incidences(node, k, key="forward")
         ((_, v, _, _), ) = hif_edge_incidences(node, v_edge, key="start")
-        key = _incidences_to_diagram(node, k)
-        value = _incidences_to_diagram(node, v)
+
+        # Use vertical_map to move the cursor to k and v
+        key = _incidences_to_diagram(vertical_map(cursor, lambda _: k))
+        value = _incidences_to_diagram(vertical_map(cursor, lambda _: v))
 
         exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, key.cod))
         bases = Ty().tensor(*map(lambda x: x.inside[0].base, value.cod))
@@ -100,7 +114,10 @@ def load_mapping(node, index, tag):
         ob = ob >> box
     return ob
 
-def load_sequence(node, index, tag):
+def load_sequence(cursor, tag):
+    node = p_functor(cursor)
+    index = cursor[0]
+
     ob = Id()
     i = 0
     nxt = tuple(hif_node_incidences(node, index, key="next"))
@@ -113,7 +130,8 @@ def load_sequence(node, index, tag):
             break
         ((v_edge, _, _, _), ) = nxt
         ((_, v, _, _), ) = hif_edge_incidences(node, v_edge, key="start")
-        value = _incidences_to_diagram(node, v)
+
+        value = _incidences_to_diagram(vertical_map(cursor, lambda _: v))
         if i==0:
             ob = value
         else:
@@ -131,16 +149,22 @@ def load_sequence(node, index, tag):
         ob = ob >> Box(tag, ob.cod, Ty() >> Ty(tag))
     return ob
 
-def load_document(node, index):
+def load_document(cursor):
+    node = p_functor(cursor)
+    index = cursor[0]
+
     nxt = tuple(hif_node_incidences(node, index, key="next"))
     ob = Id()
     if nxt:
         ((root_e, _, _, _), ) = nxt
         ((_, root, _, _), ) = hif_edge_incidences(node, root_e, key="start")
-        ob = _incidences_to_diagram(node, root)
+        ob = _incidences_to_diagram(vertical_map(cursor, lambda _: root))
     return ob
 
-def load_stream(node, index):
+def load_stream(cursor):
+    node = p_functor(cursor)
+    index = cursor[0]
+
     ob = Id()
     nxt = tuple(hif_node_incidences(node, index, key="next"))
     while True:
@@ -151,7 +175,7 @@ def load_stream(node, index):
         if not starts:
             break
         ((_, nxt_node, _, _), ) = starts
-        doc = _incidences_to_diagram(node, nxt_node)
+        doc = _incidences_to_diagram(vertical_map(cursor, lambda _: nxt_node))
         if ob == Id():
             ob = doc
         else:
