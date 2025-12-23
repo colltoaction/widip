@@ -1,5 +1,5 @@
 import pytest
-from discopy.symmetric import Box, Ty, Swap, Id
+from discopy.frobenius import Box, Ty, Swap, Id
 
 from .hif import to_hif, from_hif
 

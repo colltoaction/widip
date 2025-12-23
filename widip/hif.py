@@ -1,12 +1,19 @@
-from discopy.symmetric import Hypergraph, Box, Ty
+from discopy.frobenius import Hypergraph, Box, Ty
 
 
 def to_hif(hg: Hypergraph) -> dict:
     """Serializes a DisCoPy Hypergraph to a dictionary-based HIF format"""
     nodes = {}
-    for i, t in enumerate(hg.spider_types):
-        type_name = t[0].name if t else ""
-        nodes[str(i)] = {"type": type_name}
+
+    spider_types = hg.spider_types
+    if isinstance(spider_types, (list, tuple)):
+        iterator = enumerate(spider_types)
+    else:
+        iterator = spider_types.items()
+
+    for wire_id, t in iterator:
+        type_name = t.name if t else ""
+        nodes[str(wire_id)] = {"type": type_name}
 
     edges = []
     box_wires = hg.wires[1]
@@ -37,15 +44,13 @@ def to_hif(hg: Hypergraph) -> dict:
 
 def from_hif(data: dict) -> Hypergraph:
     """ Reconstructs a DisCoPy Hypergraph from the dictionary-based HIF format"""
-    # Map HIF node IDs to contiguous integers 0..N-1
-    # Sorting ensures deterministic mapping
     sorted_node_ids = sorted(data["nodes"].keys())
     id_map = {nid: i for i, nid in enumerate(sorted_node_ids)}
 
-    spider_types = []
+    spider_types = {}
     for nid in sorted_node_ids:
         t_name = data["nodes"][nid]["type"]
-        spider_types.append(Ty(t_name) if t_name else Ty())
+        spider_types[id_map[nid]] = Ty(t_name) if t_name else Ty()
 
     boxes = []
     box_wires_list = []
@@ -63,15 +68,13 @@ def from_hif(data: dict) -> Hypergraph:
         b_spec = edge["box"]
         box = Box(b_spec["name"], dom, cod, data=b_spec.get("data"))
         boxes.append(box)
-
         box_wires_list.append((tuple(sources), tuple(targets)))
 
     dom_wires = [id_map[s] for s in data["dom"]]
     cod_wires = [id_map[s] for s in data["cod"]]
 
     wires = (tuple(dom_wires), tuple(box_wires_list), tuple(cod_wires))
-
     dom = Ty().tensor(*[spider_types[i] for i in dom_wires])
     cod = Ty().tensor(*[spider_types[i] for i in cod_wires])
 
-    return Hypergraph(dom, cod, boxes, wires, spider_types=tuple(spider_types))
+    return Hypergraph(dom, cod, boxes, wires, spider_types=spider_types)
