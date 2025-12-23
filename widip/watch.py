@@ -79,18 +79,18 @@ async def async_shell_main(file_name):
         except asyncio.CancelledError:
             pass
 
-async def async_widish_main(file_name, *shell_program_args: str):
+async def async_exec_diagram(fd, path, *shell_program_args):
     loop = asyncio.get_running_loop()
-    
-    fd = file_diagram(file_name)
-    path = Path(file_name)
-    if __debug__:
+
+    if __debug__ and path is not None:
         diagram_draw(path, fd)
+
     constants = tuple(x.name for x in fd.dom)
-    fd = SHELL_COMPILER(fd)
-    if __debug__:
-        diagram_draw(path.with_suffix(".shell.yaml"), fd)
-    runner = SHELL_RUNNER(fd)(*constants)
+    compiled_d = SHELL_COMPILER(fd)
+
+    if __debug__ and path is not None:
+        diagram_draw(path.with_suffix(".shell.yaml"), compiled_d)
+    runner = SHELL_RUNNER(compiled_d)(*constants)
 
     if sys.stdin.isatty():
         inp = ""
@@ -101,16 +101,14 @@ async def async_widish_main(file_name, *shell_program_args: str):
     val = await uncoro(force(run_res))
     print(*(tuple(x.rstrip() for x in tuplify(val) if x)), sep="\n")
 
-def widish_main(file_name, *shell_program_args: str):
-    # Deprecated sync wrapper
-    asyncio.run(async_widish_main(file_name, *shell_program_args))
 
-async def main():
-    match sys.argv:
-        case [_]:
-            try:
-                await async_shell_main("bin/yaml/shell.yaml")
-            except KeyboardInterrupt:
-                pass
-        case [_, file_name, *args]: 
-            await async_widish_main(file_name, *args)
+async def async_command_main(command_string, *shell_program_args):
+    fd = repl_read(command_string)
+    # No file path associated with command string
+    await async_exec_diagram(fd, None, *shell_program_args)
+
+
+async def async_widish_main(file_name, *shell_program_args):
+    fd = file_diagram(file_name)
+    path = Path(file_name)
+    await async_exec_diagram(fd, path, *shell_program_args)
