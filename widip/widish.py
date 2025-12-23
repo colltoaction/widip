@@ -1,26 +1,26 @@
 import asyncio
 
-from discopy.utils import tuplify
+from discopy.utils import tuplify, untuplify
 from discopy import closed, python
 
-from .thunk import thunk, force, uncoro
+from .thunk import thunk, unwrap
 
 
 def split_args(ar, *args):
     n = len(ar.dom)
     return args[:n], args[n:]
 
-def run_native_subprocess_constant(ar, *args):
+async def run_native_subprocess_constant(ar, *args):
     b, params = split_args(ar, *args)
     if not params:
         if ar.dom == closed.Ty():
             return ()
         return ar.dom.name
-    return force(params)
+    return untuplify(await unwrap(params))
 
 def run_native_subprocess_map(ar, *args):
     b, params = split_args(ar, *args)
-    return force(kv(*tuplify(params)) for kv in b)
+    return untuplify(tuple(kv(*tuplify(params)) for kv in b))
 
 def run_native_subprocess_seq(ar, *args):
     b, params = split_args(ar, *args)
@@ -41,8 +41,8 @@ async def run_command(name, args, stdin):
 
 async def _deferred_exec_subprocess(ar, *args):
     b, params = split_args(ar, *args)
-    _b = await uncoro(tuplify(force(b)))
-    _params = await uncoro(tuplify(force(params)))
+    _b = await unwrap(tuplify(b))
+    _params = await unwrap(tuplify(params))
     result = await run_command(ar.name, _b, _params)
     if not ar.cod:
         return ()
