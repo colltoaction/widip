@@ -1,13 +1,12 @@
 import asyncio
 import sys
 from pathlib import Path
-from watchfiles import awatch
 from yaml import YAMLError
 
 from discopy.utils import tuplify
 
 from .loader import repl_read
-from .files import diagram_draw, file_diagram
+from .files import file_diagram
 from .widish import SHELL_RUNNER
 from .thunk import force, uncoro
 from .compiler import SHELL_COMPILER
@@ -16,6 +15,7 @@ from .compiler import SHELL_COMPILER
 # TODO watch functor ??
 
 def reload_diagram(path_str):
+    from .files import diagram_draw
     print(f"reloading {path_str}", file=sys.stderr)
     try:
         fd = file_diagram(path_str)
@@ -25,20 +25,23 @@ def reload_diagram(path_str):
         print(e, file=sys.stderr)
 
 async def handle_changes():
+    from watchfiles import awatch
     # watchfiles awatch yields sets of changes
     async for changes in awatch('.', recursive=True):
         for change_type, path_str in changes:
-             if path_str.endswith(".yaml"):
-                 reload_diagram(path_str)
+            if path_str.endswith(".yaml"):
+                reload_diagram(path_str)
 
 async def async_shell_main(file_name):
     path = Path(file_name)
     loop = asyncio.get_running_loop()
 
     # Start watcher
-    if sys.stdin.isatty():
-        print(f"watching for changes in current path", file=sys.stderr)
-    watcher_task = asyncio.create_task(handle_changes())
+    watcher_task = None
+    if __debug__:
+        if sys.stdin.isatty():
+            print(f"watching for changes in current path", file=sys.stderr)
+        watcher_task = asyncio.create_task(handle_changes())
 
     try:
         while True:
@@ -53,6 +56,7 @@ async def async_shell_main(file_name):
 
                 source_d = repl_read(source)
                 if __debug__:
+                    from .files import diagram_draw
                     diagram_draw(path, source_d)
                 compiled_d = source_d
                 # compiled_d = SHELL_COMPILER(source_d)
@@ -74,22 +78,25 @@ async def async_shell_main(file_name):
             except YAMLError as e:
                 print(e, file=sys.stderr)
     finally:
-        watcher_task.cancel()
-        try:
-            await watcher_task
-        except asyncio.CancelledError:
-            pass
+        if watcher_task:
+            watcher_task.cancel()
+            try:
+                await watcher_task
+            except asyncio.CancelledError:
+                pass
 
 async def async_exec_diagram(fd, path, *shell_program_args):
     loop = asyncio.get_running_loop()
 
     if __debug__ and path is not None:
+        from .files import diagram_draw
         diagram_draw(path, fd)
 
     constants = tuple(x.name for x in fd.dom)
     compiled_d = SHELL_COMPILER(fd)
 
     if __debug__ and path is not None:
+        from .files import diagram_draw
         diagram_draw(path.with_suffix(".shell.yaml"), compiled_d)
     runner = SHELL_RUNNER(compiled_d)(*constants)
 
