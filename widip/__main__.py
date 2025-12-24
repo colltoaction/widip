@@ -7,7 +7,7 @@ import argparse
 import asyncio
 
 from .interactive import async_shell_main
-from .watch import async_widish_main, async_command_main
+from .watch import async_widish_main, async_command_main, run_with_watcher
 
 
 def main():
@@ -36,7 +36,7 @@ def main():
             asyncio.run(async_widish_main(file_name, *file_args))
         else:
             # No -c, no operands -> Interactive
-            asyncio.run(async_shell_main("bin/yaml/shell.yaml"))
+            asyncio.run(run_with_watcher(async_shell_main)("bin/yaml/shell.yaml"))
     except KeyboardInterrupt:
         pass
 
