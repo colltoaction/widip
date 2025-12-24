@@ -8,16 +8,16 @@ def thunk[T](f: Callable[..., T], *args: Any) -> Callable[[], T]:
     """Creates a thunk (lazy evaluation wrapper)."""
     return partial(partial, f, *args)
 
-async def unwrap(x: Any, memo: dict[int, asyncio.Future] | None = None, _path: set[int] | None = None) -> Any:
-    """Recursively forces thunks and awaits awaitables."""
-    if memo is None:
-        memo = {}
-    if _path is None:
-        _path = frozenset()
-
-    if id(x) in memo:
-        fut = memo[id(x)]
-        if id(x) in _path:
+async def recurse(
+        f: Callable[..., Any],
+        x: Any,
+        state: tuple[dict[int, asyncio.Future], frozenset[int]] | None = ({}, frozenset())) -> Any:
+    """Generic recursive fixed-point combinator with cycle detection."""
+    memo, path = state
+    id_x = id(x)
+    if id_x in memo:
+        fut = memo[id_x]
+        if id_x in path:
             # Cycle detected: return the raw object to break recursion
             return x
         # Diamond / Shared Dependency: wait for the result
@@ -25,40 +25,33 @@ async def unwrap(x: Any, memo: dict[int, asyncio.Future] | None = None, _path: s
 
     loop = asyncio.get_running_loop()
     fut = loop.create_future()
-    memo[id(x)] = fut
-    current_path = _path | {id(x)}
+    memo[id_x] = fut
+    new_path = path | {id_x}
 
-    try:
-        while True:
-            if inspect.isroutine(x) or callable(x):
-                x = x()
-            elif inspect.iscoroutine(x) or inspect.isawaitable(x):
-                res = await x
-                if res is x:
-                    break
-                x = res
-                if id(x) in memo:
-                    other_fut = memo[id(x)]
-                    if id(x) in current_path:
-                        result = x
-                    else:
-                        result = await other_fut
-                    fut.set_result(result)
-                    return result
-            else:
+    call = partial(recurse, f, state=(memo, new_path))
+    res = await f(call, x)
+    fut.set_result(res)
+    return res
+
+async def unwrap_step(recurse: Callable[[Any], Any], x: Any) -> Any:
+    """Step function for unwrap logic."""
+    while True:
+        if inspect.isroutine(x) or callable(x):
+            x = x()
+        elif inspect.iscoroutine(x) or inspect.isawaitable(x):
+            res = await x
+            if res is x:
                 break
-
-        if isinstance(x, (Iterator, tuple, list)):
-            items = list(x)
-            results = await asyncio.gather(*(unwrap(i, memo, current_path) for i in items))
-            result = tuple(results)
+            x = res
+            return await recurse(x)
         else:
-            result = x
+            break
 
-        fut.set_result(result)
-        return result
+    if isinstance(x, (Iterator, tuple, list)):
+        items = list(x)
+        results = await asyncio.gather(*(recurse(i) for i in items))
+        return tuple(results)
 
-    except Exception as e:
-        if not fut.done():
-            fut.set_exception(e)
-        raise
+    return x
+
+unwrap = partial(recurse, unwrap_step)
