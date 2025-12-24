@@ -1,6 +1,5 @@
 import asyncio
 import sys
-from functools import partial
 from pathlib import Path
 
 from discopy.utils import tuplify
@@ -19,7 +18,7 @@ async def handle_changes():
             if path_str.endswith(".yaml"):
                 reload_diagram(path_str)
 
-async def _run_with_watcher(func, *args, **kwargs):
+async def run_with_watcher(coro):
     # Start watcher
     watcher_task = None
     if __debug__:
@@ -28,7 +27,7 @@ async def _run_with_watcher(func, *args, **kwargs):
         watcher_task = asyncio.create_task(handle_changes())
 
     try:
-        await func(*args, **kwargs)
+        await coro
     finally:
         if watcher_task:
             watcher_task.cancel()
@@ -36,9 +35,6 @@ async def _run_with_watcher(func, *args, **kwargs):
                 await watcher_task
             except asyncio.CancelledError:
                 pass
-
-def run_with_watcher(func):
-    return partial(_run_with_watcher, func)
 
 async def async_exec_diagram(fd, path, *shell_program_args):
     loop = asyncio.get_running_loop()
