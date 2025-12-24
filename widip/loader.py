@@ -7,6 +7,7 @@ from discopy.closed import Id, Ty, Box, Eval
 
 from .traverse import vertical_map, get_base, get_fiber
 from . import hif
+from .yaml import Str, Seq, Map, Pair
 
 P = Ty() << Ty("")
 
@@ -65,15 +66,15 @@ def load_scalar(cursor, tag):
         dom = Ty(v) if v else Ty()
         return Box(tag, dom, Ty(tag) >> Ty(tag))
     elif v:
-        return Box("⌜−⌝", Ty(v), Ty() >> Ty(v))
+        return Str(Ty(v), Ty() >> Ty(v))
     else:
-        return Box("⌜−⌝", Ty(), Ty() >> Ty(v))
+        return Str(Ty(), Ty() >> Ty(v))
 
 def load_pair(pair):
     key, value = pair
     exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, key.cod))
     bases = Ty().tensor(*map(lambda x: x.inside[0].base, value.cod))
-    kv_box = Box("(;)", key.cod @ value.cod, bases << exps)
+    kv_box = Pair(key.cod @ value.cod, bases << exps)
     return key @ value >> kv_box
 
 def load_mapping(cursor, tag):
@@ -91,7 +92,7 @@ def load_mapping(cursor, tag):
 
     exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
     bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
-    par_box = Box("(||)", ob.cod, bases << exps)
+    par_box = Map(ob.cod, bases << exps)
     ob = ob >> par_box
     if tag:
         ob = (ob @ exps >> Eval(bases << exps))
@@ -107,7 +108,7 @@ def load_sequence(cursor, tag):
         combined = acc @ value
         bases = combined.cod[0].inside[0].exponent
         exps = value.cod[0].inside[0].base
-        return combined >> Box("(;)", combined.cod, bases >> exps)
+        return combined >> Seq(combined.cod, bases >> exps)
 
     if not diagrams_list:
         if tag:
