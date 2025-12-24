@@ -35,7 +35,9 @@ def main():
             file_args = args.operands[1:]
             asyncio.run(async_widish_main(file_name, *file_args))
         else:
-            asyncio.run(run_with_watcher(async_shell_main("bin/yaml/shell.yaml")))
+            async_shell_runner = async_shell_main("bin/yaml/shell.yaml")
+            interactive_shell = run_with_watcher(async_shell_runner)
+            asyncio.run(interactive_shell)
     except KeyboardInterrupt:
         pass
 

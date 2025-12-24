@@ -25,12 +25,13 @@ async def async_shell_main(file_name):
                 prompt = f"--- !{file_name}\n"
                 source = await loop.run_in_executor(None, input, prompt)
 
-            source_d = repl_read(source)
+            yaml_d = repl_read(source)
             if __debug__:
                 from .files import diagram_draw
-                diagram_draw(path, source_d)
-            compiled_d = YAML_FUNCTOR(source_d)
-            # compiled_d = SHELL_COMPILER(compiled_d)
+                diagram_draw(path, yaml_d)
+            source_d = YAML_FUNCTOR(yaml_d)
+            compiled_d = source_d
+            # compiled_d = SHELL_COMPILER(source_d)
             # if __debug__:
             #     diagram_draw(path.with_suffix(".shell.yaml"), compiled_d)
             constants = tuple(x.name for x in compiled_d.dom)

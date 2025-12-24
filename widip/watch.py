@@ -37,16 +37,16 @@ async def run_with_watcher(coro):
             except asyncio.CancelledError:
                 pass
 
-async def async_exec_diagram(fd, path, *shell_program_args):
+async def async_exec_diagram(yaml_d, path, *shell_program_args):
     loop = asyncio.get_running_loop()
 
     if __debug__ and path is not None:
         from .files import diagram_draw
-        diagram_draw(path, fd)
+        diagram_draw(path, yaml_d)
 
-    constants = tuple(x.name for x in fd.dom)
-    compiled_d = YAML_FUNCTOR(fd)
-    compiled_d = SHELL_COMPILER(compiled_d)
+    constants = tuple(x.name for x in yaml_d.dom)
+    parsed_d = YAML_FUNCTOR(yaml_d)
+    compiled_d = SHELL_COMPILER(parsed_d)
 
     if __debug__ and path is not None:
         from .files import diagram_draw
