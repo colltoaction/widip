@@ -1,4 +1,7 @@
+from nx_hif.hif import hif_node_incidences, hif_edge_incidences
 from discopy.frobenius import Hypergraph, Box, Ty
+
+from .traverse import vertical_map, get_base, get_fiber, FoliatedObject
 
 
 def to_hif(hg: Hypergraph) -> dict:
@@ -78,3 +81,27 @@ def from_hif(data: dict) -> Hypergraph:
     cod = Ty().tensor(*[spider_types[i] for i in cod_wires])
 
     return Hypergraph(dom, cod, boxes, wires, spider_types=spider_types)
+
+
+def step(cursor: FoliatedObject, key: str) -> FoliatedObject | None:
+    """Advances the cursor along a specific edge key (e.g., 'next', 'forward')."""
+    node = get_base(cursor)
+    index = get_fiber(cursor)
+
+    incidences = tuple(hif_node_incidences(node, index, key=key))
+    if not incidences:
+        return None
+    ((edge, _, _, _), ) = incidences
+    start = tuple(hif_edge_incidences(node, edge, key="start"))
+    if not start:
+        return None
+    ((_, neighbor, _, _), ) = start
+
+    return vertical_map(cursor, lambda _: neighbor)
+
+def iterate(cursor: FoliatedObject):
+    """Yields a sequence of cursors by following 'next' then 'forward' edges."""
+    curr = step(cursor, "next")
+    while curr:
+        yield curr
+        curr = step(curr, "forward")

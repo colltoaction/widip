@@ -5,8 +5,8 @@ from nx_hif.hif import *
 
 from discopy.closed import Id, Ty, Box, Eval
 
-from .traverse import vertical_map, p_functor
-from .hif_traverse import cursor_iter, cursor_step
+from .traverse import vertical_map, get_base, get_fiber
+from . import hif
 
 P = Ty() << Ty("")
 
@@ -27,8 +27,8 @@ def _incidences_to_diagram(cursor):
     Takes an nx_yaml rooted bipartite graph
     and returns an equivalent string diagram
     """
-    node = p_functor(cursor)
-    index = cursor[0]
+    node = get_base(cursor)
+    index = get_fiber(cursor)
 
     tag = (hif_node(node, index).get("tag") or "")[1:]
     kind = hif_node(node, index)["kind"]
@@ -51,8 +51,8 @@ def _incidences_to_diagram(cursor):
     return ob
 
 def load_scalar(cursor, tag):
-    node = p_functor(cursor)
-    index = cursor[0]
+    node = get_base(cursor)
+    index = get_fiber(cursor)
 
     v = hif_node(node, index)["value"]
     if tag == "fix" and v:
@@ -69,18 +69,18 @@ def load_scalar(cursor, tag):
     else:
         return Box("⌜−⌝", Ty(), Ty() >> Ty(v))
 
+def load_pair(pair):
+    key, value = pair
+    exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, key.cod))
+    bases = Ty().tensor(*map(lambda x: x.inside[0].base, value.cod))
+    kv_box = Box("(;)", key.cod @ value.cod, bases << exps)
+    return key @ value >> kv_box
+
 def load_mapping(cursor, tag):
-    diagrams = map(_incidences_to_diagram, cursor_iter(cursor))
+    diagrams = map(_incidences_to_diagram, hif.iterate(cursor))
     kvs = batched(diagrams, 2)
 
-    def map_pair(pair):
-        key, value = pair
-        exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, key.cod))
-        bases = Ty().tensor(*map(lambda x: x.inside[0].base, value.cod))
-        kv_box = Box("(;)", key.cod @ value.cod, bases << exps)
-        return key @ value >> kv_box
-
-    kv_diagrams = list(map(map_pair, kvs))
+    kv_diagrams = list(map(load_pair, kvs))
 
     if not kv_diagrams:
         if tag:
@@ -101,7 +101,7 @@ def load_mapping(cursor, tag):
     return ob
 
 def load_sequence(cursor, tag):
-    diagrams_list = list(map(_incidences_to_diagram, cursor_iter(cursor)))
+    diagrams_list = list(map(_incidences_to_diagram, hif.iterate(cursor)))
 
     def reduce_fn(acc, value):
         combined = acc @ value
@@ -124,11 +124,11 @@ def load_sequence(cursor, tag):
     return ob
 
 def load_document(cursor):
-    root = cursor_step(cursor, "next")
+    root = hif.step(cursor, "next")
     if root:
         return _incidences_to_diagram(root)
     return Id()
 
 def load_stream(cursor):
-    diagrams = map(_incidences_to_diagram, cursor_iter(cursor))
+    diagrams = map(_incidences_to_diagram, hif.iterate(cursor))
     return reduce(lambda a, b: a @ b, diagrams, Id())
