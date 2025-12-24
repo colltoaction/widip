@@ -5,11 +5,36 @@ from pathlib import Path
 from discopy.utils import tuplify
 
 from .loader import repl_read
-from .files import file_diagram
+from .files import file_diagram, reload_diagram
 from .widish import SHELL_RUNNER
 from .thunk import unwrap
 from .compiler import SHELL_COMPILER
 
+
+async def handle_changes():
+    from watchfiles import awatch
+    async for changes in awatch('.', recursive=True):
+        for change_type, path_str in changes:
+            if path_str.endswith(".yaml"):
+                reload_diagram(path_str)
+
+async def run_with_watcher(coro):
+    # Start watcher
+    watcher_task = None
+    if __debug__:
+        if sys.stdin.isatty():
+            print(f"watching for changes in current path", file=sys.stderr)
+        watcher_task = asyncio.create_task(handle_changes())
+
+    try:
+        await coro
+    finally:
+        if watcher_task:
+            watcher_task.cancel()
+            try:
+                await watcher_task
+            except asyncio.CancelledError:
+                pass
 
 async def async_exec_diagram(fd, path, *shell_program_args):
     loop = asyncio.get_running_loop()
