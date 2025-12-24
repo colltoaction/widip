@@ -1,10 +1,12 @@
+from functools import reduce
 from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
 from nx_hif.hif import *
 
 from discopy.closed import Id, Ty, Box, Eval
 
-from .thunk import vertical_map, p_functor
+from .traverse import vertical_map, get_base, get_fiber
+from . import hif
 
 P = Ty() << Ty("")
 
@@ -25,8 +27,8 @@ def _incidences_to_diagram(cursor):
     Takes an nx_yaml rooted bipartite graph
     and returns an equivalent string diagram
     """
-    node = p_functor(cursor)
-    index = cursor[0]
+    node = get_base(cursor)
+    index = get_fiber(cursor)
 
     tag = (hif_node(node, index).get("tag") or "")[1:]
     kind = hif_node(node, index)["kind"]
@@ -45,13 +47,12 @@ def _incidences_to_diagram(cursor):
             ob = load_mapping(cursor, tag)
         case _:
             raise Exception(f"Kind \"{kind}\" doesn't match any.")
-        
+
     return ob
 
-
 def load_scalar(cursor, tag):
-    node = p_functor(cursor)
-    index = cursor[0]
+    node = get_base(cursor)
+    index = get_fiber(cursor)
 
     v = hif_node(node, index)["value"]
     if tag == "fix" and v:
@@ -68,41 +69,26 @@ def load_scalar(cursor, tag):
     else:
         return Box("⌜−⌝", Ty(), Ty() >> Ty(v))
 
+def load_pair(pair):
+    key, value = pair
+    exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, key.cod))
+    bases = Ty().tensor(*map(lambda x: x.inside[0].base, value.cod))
+    kv_box = Box("(;)", key.cod @ value.cod, bases << exps)
+    return key @ value >> kv_box
+
 def load_mapping(cursor, tag):
-    node = p_functor(cursor)
-    index = cursor[0]
+    diagrams = map(_incidences_to_diagram, hif.iterate(cursor))
+    kvs = batched(diagrams, 2)
 
-    ob = Id()
-    i = 0
-    nxt = tuple(hif_node_incidences(node, index, key="next"))
+    kv_diagrams = list(map(load_pair, kvs))
 
-    if not nxt and tag:
-        return Box(tag, Ty(), Ty(tag) >> Ty(tag))
+    if not kv_diagrams:
+        if tag:
+            return Box(tag, Ty(), Ty(tag) >> Ty(tag))
+        ob = Id()
+    else:
+        ob = reduce(lambda a, b: a @ b, kv_diagrams)
 
-    while True:
-        if not nxt:
-            break
-        ((k_edge, _, _, _), ) = nxt
-        ((_, k, _, _), ) = hif_edge_incidences(node, k_edge, key="start")
-        ((v_edge, _, _, _), ) = hif_node_incidences(node, k, key="forward")
-        ((_, v, _, _), ) = hif_edge_incidences(node, v_edge, key="start")
-
-        # Use vertical_map to move the cursor to k and v
-        key = _incidences_to_diagram(vertical_map(cursor, lambda _: k))
-        value = _incidences_to_diagram(vertical_map(cursor, lambda _: v))
-
-        exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, key.cod))
-        bases = Ty().tensor(*map(lambda x: x.inside[0].base, value.cod))
-        kv_box = Box("(;)", key.cod @ value.cod, bases << exps)
-        kv = key @ value >> kv_box
-
-        if i==0:
-            ob = kv
-        else:
-            ob = ob @ kv
-
-        i += 1
-        nxt = tuple(hif_node_incidences(node, v, key="forward"))
     exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
     bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
     par_box = Box("(||)", ob.cod, bases << exps)
@@ -115,33 +101,21 @@ def load_mapping(cursor, tag):
     return ob
 
 def load_sequence(cursor, tag):
-    node = p_functor(cursor)
-    index = cursor[0]
+    diagrams_list = list(map(_incidences_to_diagram, hif.iterate(cursor)))
 
-    ob = Id()
-    i = 0
-    nxt = tuple(hif_node_incidences(node, index, key="next"))
+    def reduce_fn(acc, value):
+        combined = acc @ value
+        bases = combined.cod[0].inside[0].exponent
+        exps = value.cod[0].inside[0].base
+        return combined >> Box("(;)", combined.cod, bases >> exps)
 
-    if not nxt and tag:
-        return Box(tag, Ty(), Ty(tag) >> Ty(tag))
+    if not diagrams_list:
+        if tag:
+            return Box(tag, Ty(), Ty(tag) >> Ty(tag))
+        return Id()
 
-    while True:
-        if not nxt:
-            break
-        ((v_edge, _, _, _), ) = nxt
-        ((_, v, _, _), ) = hif_edge_incidences(node, v_edge, key="start")
+    ob = reduce(reduce_fn, diagrams_list)
 
-        value = _incidences_to_diagram(vertical_map(cursor, lambda _: v))
-        if i==0:
-            ob = value
-        else:
-            ob = ob @ value
-            bases = ob.cod[0].inside[0].exponent
-            exps = value.cod[0].inside[0].base
-            ob = ob >> Box("(;)", ob.cod, bases >> exps)
-
-        i += 1
-        nxt = tuple(hif_node_incidences(node, v, key="forward"))
     if tag:
         bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
         exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
@@ -150,36 +124,11 @@ def load_sequence(cursor, tag):
     return ob
 
 def load_document(cursor):
-    node = p_functor(cursor)
-    index = cursor[0]
-
-    nxt = tuple(hif_node_incidences(node, index, key="next"))
-    ob = Id()
-    if nxt:
-        ((root_e, _, _, _), ) = nxt
-        ((_, root, _, _), ) = hif_edge_incidences(node, root_e, key="start")
-        ob = _incidences_to_diagram(vertical_map(cursor, lambda _: root))
-    return ob
+    root = hif.step(cursor, "next")
+    if root:
+        return _incidences_to_diagram(root)
+    return Id()
 
 def load_stream(cursor):
-    node = p_functor(cursor)
-    index = cursor[0]
-
-    ob = Id()
-    nxt = tuple(hif_node_incidences(node, index, key="next"))
-    while True:
-        if not nxt:
-            break
-        ((nxt_edge, _, _, _), ) = nxt
-        starts = tuple(hif_edge_incidences(node, nxt_edge, key="start"))
-        if not starts:
-            break
-        ((_, nxt_node, _, _), ) = starts
-        doc = _incidences_to_diagram(vertical_map(cursor, lambda _: nxt_node))
-        if ob == Id():
-            ob = doc
-        else:
-            ob = ob @ doc
-
-        nxt = tuple(hif_node_incidences(node, nxt_node, key="forward"))
-    return ob
+    diagrams = map(_incidences_to_diagram, hif.iterate(cursor))
+    return reduce(lambda a, b: a @ b, diagrams, Id())
