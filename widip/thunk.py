@@ -3,10 +3,6 @@ from functools import partial
 from typing import Any
 import asyncio
 
-type T = Any
-type B = Any
-type FoliatedObject[T, B] = tuple[T, B]
-
 def thunk[T](f: Callable[..., T], *args: Any) -> Callable[[], T]:
     """Creates a thunk (lazy evaluation wrapper)."""
     return partial(partial, f, *args)
@@ -63,15 +59,3 @@ async def unwrap(x: Any, memo: dict[int, asyncio.Future] | None = None, _path: s
         if not fut.done():
             fut.set_exception(e)
         raise
-
-def p_functor[T, B](obj: FoliatedObject[T, B]) -> B:
-    """Maps an object to its base index (the 'fibre' it belongs to)."""
-    return obj[1]
-
-def vertical_map[T, B](obj: FoliatedObject[T, B], f: Callable[[T], T]) -> FoliatedObject[T, B]:
-    """Transformation where P(f(obj)) == P(obj)."""
-    return (f(obj[0]), obj[1])
-
-def cartesian_lift[T, B](obj: FoliatedObject[T, B], new_index: B, lift_fn: Callable[[T, B], T]) -> FoliatedObject[T, B]:
-    """Transformation that moves the object from one fibre to another."""
-    return (lift_fn(obj[0], new_index), new_index)
