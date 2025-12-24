@@ -8,6 +8,7 @@ from discopy.utils import tuplify
 from .loader import repl_read
 from .widish import SHELL_RUNNER
 from .thunk import unwrap
+from .yaml import YAML_FUNCTOR
 
 
 async def async_shell_main(file_name):
@@ -28,8 +29,8 @@ async def async_shell_main(file_name):
             if __debug__:
                 from .files import diagram_draw
                 diagram_draw(path, source_d)
-            compiled_d = source_d
-            # compiled_d = SHELL_COMPILER(source_d)
+            compiled_d = YAML_FUNCTOR(source_d)
+            # compiled_d = SHELL_COMPILER(compiled_d)
             # if __debug__:
             #     diagram_draw(path.with_suffix(".shell.yaml"), compiled_d)
             constants = tuple(x.name for x in compiled_d.dom)

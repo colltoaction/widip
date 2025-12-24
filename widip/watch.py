@@ -9,6 +9,7 @@ from .files import file_diagram, reload_diagram
 from .widish import SHELL_RUNNER
 from .thunk import unwrap
 from .compiler import SHELL_COMPILER
+from .yaml import YAML_FUNCTOR
 
 
 async def handle_changes():
@@ -44,7 +45,8 @@ async def async_exec_diagram(fd, path, *shell_program_args):
         diagram_draw(path, fd)
 
     constants = tuple(x.name for x in fd.dom)
-    compiled_d = SHELL_COMPILER(fd)
+    compiled_d = YAML_FUNCTOR(fd)
+    compiled_d = SHELL_COMPILER(compiled_d)
 
     if __debug__ and path is not None:
         from .files import diagram_draw
