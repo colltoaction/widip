@@ -1,7 +1,8 @@
-from collections.abc import Iterator, Awaitable, Callable
+from collections.abc import Iterator, Callable
 from functools import partial
 from typing import Any
 import asyncio
+import inspect
 
 def thunk[T](f: Callable[..., T], *args: Any) -> Callable[[], T]:
     """Creates a thunk (lazy evaluation wrapper)."""
@@ -28,10 +29,10 @@ async def unwrap(x: Any, memo: dict[int, asyncio.Future] | None = None, _path: s
     current_path = _path | {id(x)}
 
     try:
-        while callable(x) or isinstance(x, Awaitable):
-            if callable(x):
+        while True:
+            if inspect.isroutine(x) or callable(x):
                 x = x()
-            elif isinstance(x, Awaitable):
+            elif inspect.iscoroutine(x) or inspect.isawaitable(x):
                 res = await x
                 if res is x:
                     break
@@ -44,6 +45,8 @@ async def unwrap(x: Any, memo: dict[int, asyncio.Future] | None = None, _path: s
                         result = await other_fut
                     fut.set_result(result)
                     return result
+            else:
+                break
 
         if isinstance(x, (Iterator, tuple, list)):
             items = list(x)
