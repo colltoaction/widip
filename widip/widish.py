@@ -3,7 +3,7 @@ import asyncio
 from discopy.utils import tuplify, untuplify
 from discopy import closed, python
 
-from .computer import Data, Sequential, Concurrent, Computation, Widish, Process
+from .computer import Data, Sequential, Concurrent, Computation, Widish, Process, Swap, Copy, Discard
 from .thunk import thunk, unwrap
 
 
@@ -28,6 +28,21 @@ def run_native_subprocess_seq(ar, *args):
     b0 = b[0](*tuplify(params))
     b1 = b[1](*tuplify(b0))
     return b1
+
+def run_native_swap(ar, *args):
+    b, params = split_args(ar, *args)
+    # args match dom, so inputs are in b
+    l_len = len(ar.left)
+    left_vals = b[:l_len]
+    right_vals = b[l_len:]
+    return right_vals + left_vals
+
+def run_native_copy(ar, *args):
+    b, params = split_args(ar, *args)
+    return b * ar.n
+
+def run_native_discard(ar, *args):
+    return ()
 
 async def run_command(name, args, stdin):
     process = await asyncio.create_subprocess_exec(
@@ -59,6 +74,12 @@ def shell_runner_ar(ar):
         t = thunk(run_native_subprocess_map, ar)
     elif isinstance(ar, Sequential):
         t = thunk(run_native_subprocess_seq, ar)
+    elif isinstance(ar, Swap):
+        t = thunk(run_native_swap, ar)
+    elif isinstance(ar, Copy):
+        t = thunk(run_native_copy, ar)
+    elif isinstance(ar, Discard):
+        t = thunk(run_native_discard, ar)
     else:
         t = thunk(_deferred_exec_subprocess_task, ar)
 
