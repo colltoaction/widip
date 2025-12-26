@@ -3,7 +3,8 @@ from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
 from nx_hif.hif import *
 
-from discopy.closed import Id, Ty, Box, Eval
+from discopy.closed import Id, Ty, Box
+from .computer import Eval
 
 from .traverse import vertical_map, get_base, get_fiber
 from . import hif
@@ -56,15 +57,18 @@ def load_scalar(cursor, tag):
     index = get_fiber(cursor)
 
     v = hif_node(node, index)["value"]
+    # Changed all Under (>>) to Over (<<) for consistency with compiler
     if tag and v:
-        return Box(tag, Ty(v), Ty(tag) >> Ty(tag))
+        return Box(tag, Ty(v), Ty(tag) << Ty(tag))
     elif tag:
         dom = Ty(v) if v else Ty()
-        return Box(tag, dom, Ty(tag) >> Ty(tag))
+        return Box(tag, dom, Ty(tag) << Ty(tag))
     elif v:
-        return Str(Ty(v), Ty() >> Ty(v))
+        # Ty() >> Ty(v) becomes Ty(v) << Ty()
+        return Str(Ty(v), Ty(v) << Ty())
     else:
-        return Str(Ty(), Ty() >> Ty(v))
+        # Ty() >> Ty(v) becomes Ty(v) << Ty()
+        return Str(Ty(), Ty(v) << Ty())
 
 def load_pair(pair):
     key, value = pair
@@ -81,7 +85,7 @@ def load_mapping(cursor, tag):
 
     if not kv_diagrams:
         if tag:
-            return Box(tag, Ty(), Ty(tag) >> Ty(tag))
+            return Box(tag, Ty(), Ty(tag) << Ty(tag))
         ob = Id()
     else:
         ob = reduce(lambda a, b: a @ b, kv_diagrams)
@@ -92,7 +96,7 @@ def load_mapping(cursor, tag):
     ob = ob >> par_box
     if tag:
         ob = (ob @ exps >> Eval(bases << exps))
-        box = Box(tag, ob.cod, Ty(tag) >> Ty(tag))
+        box = Box(tag, ob.cod, Ty(tag) << Ty(tag))
         # box = Box("run", Ty(tag) @ ob.cod, Ty(tag)).curry(left=False)
         ob = ob >> box
     return ob
@@ -102,13 +106,25 @@ def load_sequence(cursor, tag):
 
     def reduce_fn(acc, value):
         combined = acc @ value
+
+        # Consistent logic for Over types:
+        # acc.cod is Over(B, A). exponent=A, base=B.
+        # value.cod is Over(D, C). exponent=C, base=D.
+        # We want to compose: A -> B -> D.
+        # So we need B matched with C.
+        # Output is Over(D, A).
+        # exps = D (base of value).
+        # bases = A (exponent of acc).
+        # exps << bases = D << A.
+
         bases = combined.cod[0].inside[0].exponent
         exps = value.cod[0].inside[0].base
-        return combined >> Seq(combined.cod, bases >> exps)
+
+        return combined >> Seq(combined.cod, exps << bases)
 
     if not diagrams_list:
         if tag:
-            return Box(tag, Ty(), Ty(tag) >> Ty(tag))
+            return Box(tag, Ty(), Ty(tag) << Ty(tag))
         return Id()
 
     ob = reduce(reduce_fn, diagrams_list)
@@ -116,8 +132,11 @@ def load_sequence(cursor, tag):
     if tag:
         bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
         exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
-        ob = (bases @ ob >> Eval(bases >> exps))
-        ob = ob >> Box(tag, ob.cod, Ty() >> Ty(tag))
+        ob = (ob @ bases >> Eval(exps << bases))
+        # Output of Eval is 'exps' (the base, D).
+        # We need to map D to Over(tag, tag) ?
+        # Box(tag, dom=D, cod=tag<<tag).
+        ob = ob >> Box(tag, ob.cod, Ty(tag) << Ty(tag))
     return ob
 
 def load_document(cursor):
