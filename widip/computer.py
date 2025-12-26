@@ -18,7 +18,7 @@ class Concurrent(closed.Box):
     def __init__(self, dom, cod):
         super().__init__("(||)", dom, cod)
 
-class Swap(symmetric.Swap, closed.Box):
+class Swap(closed.Box, symmetric.Swap):
     def __init__(self, left, right):
         symmetric.Swap.__init__(self, left, right)
 
