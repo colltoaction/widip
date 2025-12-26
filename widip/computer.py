@@ -22,8 +22,14 @@ Computation = closed.Category(closed.Ty, closed.Box)
 
 
 class Process(python.Function):
-    # TODO re-enable type checking
-    type_checking = False
+    def then(self, other):
+        # TODO thunk
+        bridge_pipe = lambda *args: other(*utils.tuplify(self(*args)))
+        return Process(
+            bridge_pipe,
+            self.dom,
+            other.cod,
+        )
 
 
 Widish = closed.Category(python.Ty, Process)
