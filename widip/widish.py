@@ -3,9 +3,8 @@ import asyncio
 from discopy.utils import tuplify, untuplify
 from discopy import closed, python
 
-from .compiler import Data, Sequential, Concurrent
+from .computer import Data, Sequential, Concurrent, Computation, Widish, Process
 from .thunk import thunk, unwrap
-from .yaml import Str, Seq, Map
 
 
 def split_args(ar, *args):
@@ -54,15 +53,27 @@ def _deferred_exec_subprocess_task(ar, *args):
     return asyncio.create_task(_deferred_exec_subprocess(ar, *args))
 
 def shell_runner_ar(ar):
-    if isinstance(ar, (Data, Str)):
-        return thunk(run_native_subprocess_constant, ar)
-    if isinstance(ar, (Concurrent, Map)):
-        return thunk(run_native_subprocess_map, ar)
-    if isinstance(ar, (Sequential, Seq)):
-        return thunk(run_native_subprocess_seq, ar)
-    return thunk(_deferred_exec_subprocess_task, ar)
+    if isinstance(ar, Data):
+        t = thunk(run_native_subprocess_constant, ar)
+    elif isinstance(ar, Concurrent):
+        t = thunk(run_native_subprocess_map, ar)
+    elif isinstance(ar, Sequential):
+        t = thunk(run_native_subprocess_seq, ar)
+    else:
+        t = thunk(_deferred_exec_subprocess_task, ar)
 
-SHELL_RUNNER = closed.Functor(
-    lambda ob: object,
-    shell_runner_ar,
-    cod=closed.Category(python.Ty, python.Function))
+    # python.Ty takes a list of types as a single argument to avoid unpacking issues
+    dom = python.Ty([object] * len(ar.dom))
+    cod = python.Ty([object] * len(ar.cod))
+    return Process(t, dom, cod)
+
+class WidishFunctor(closed.Functor):
+    def __init__(self):
+        super().__init__(
+            lambda ob: object,
+            shell_runner_ar,
+            dom=Computation,
+            cod=Widish
+        )
+
+SHELL_RUNNER = WidishFunctor()
