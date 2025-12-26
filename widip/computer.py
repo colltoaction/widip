@@ -3,7 +3,7 @@ This module implements the computational model described in "Programs as Diagram
 It defines the core boxes (Data, Sequential, Concurrent) representing the computation category.
 """
 
-from discopy import closed, python
+from discopy import closed, python, utils
 
 
 class Data(closed.Box):
