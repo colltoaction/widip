@@ -3,7 +3,9 @@ import asyncio
 from discopy.utils import tuplify, untuplify
 from discopy import closed, python
 
+from .compiler import Data, Sequential, Concurrent
 from .thunk import thunk, unwrap
+from .yaml import Str, Seq, Map
 
 
 def split_args(ar, *args):
@@ -51,12 +53,16 @@ async def _deferred_exec_subprocess(ar, *args):
 def _deferred_exec_subprocess_task(ar, *args):
     return asyncio.create_task(_deferred_exec_subprocess(ar, *args))
 
+def shell_runner_ar(ar):
+    if isinstance(ar, (Data, Str)):
+        return thunk(run_native_subprocess_constant, ar)
+    if isinstance(ar, (Concurrent, Map)):
+        return thunk(run_native_subprocess_map, ar)
+    if isinstance(ar, (Sequential, Seq)):
+        return thunk(run_native_subprocess_seq, ar)
+    return thunk(_deferred_exec_subprocess_task, ar)
 
 SHELL_RUNNER = closed.Functor(
     lambda ob: object,
-    lambda ar: {
-        "⌜−⌝": thunk(run_native_subprocess_constant, ar),
-        "(||)": thunk(run_native_subprocess_map, ar),
-        "(;)": thunk(run_native_subprocess_seq, ar),
-    }.get(ar.name, thunk(_deferred_exec_subprocess_task, ar)),
+    shell_runner_ar,
     cod=closed.Category(python.Ty, python.Function))

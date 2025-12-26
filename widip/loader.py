@@ -56,10 +56,6 @@ def load_scalar(cursor, tag):
     index = get_fiber(cursor)
 
     v = hif_node(node, index)["value"]
-    if tag == "fix" and v:
-        return Box("Ω", Ty(), Ty(v) << P) @ P \
-            >> Eval(Ty(v) << P) \
-            >> Box("e", Ty(v), Ty(v))
     if tag and v:
         return Box(tag, Ty(v), Ty(tag) >> Ty(tag))
     elif tag:

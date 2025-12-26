@@ -1,4 +1,5 @@
 from discopy import closed
+from .compiler import Data, Sequential, Concurrent
 
 class Str(closed.Box):
     def __init__(self, dom, cod):
@@ -18,13 +19,13 @@ class Pair(closed.Box):
 
 def yaml_to_shell_box(ar):
     if isinstance(ar, Str):
-        return closed.Box("⌜−⌝", ar.dom, ar.cod)
+        return Data(ar.dom, ar.cod)
     if isinstance(ar, Seq):
-        return closed.Box("(;)", ar.dom, ar.cod)
+        return Sequential(ar.dom, ar.cod)
     if isinstance(ar, Map):
-        return closed.Box("(||)", ar.dom, ar.cod)
+        return Concurrent(ar.dom, ar.cod)
     if isinstance(ar, Pair):
-        return closed.Box("(;)", ar.dom, ar.cod)
+        return Sequential(ar.dom, ar.cod)
     return ar
 
 YAML_FUNCTOR = closed.Functor(

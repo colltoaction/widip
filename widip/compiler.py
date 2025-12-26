@@ -1,6 +1,19 @@
 from discopy import closed
 
 
+class Data(closed.Box):
+    def __init__(self, dom, cod):
+        super().__init__("⌜−⌝", dom, cod)
+
+class Sequential(closed.Box):
+    def __init__(self, dom, cod):
+        super().__init__("(;)", dom, cod)
+
+class Concurrent(closed.Box):
+    def __init__(self, dom, cod):
+        super().__init__("(||)", dom, cod)
+
+
 SHELL_COMPILER = closed.Functor(
     lambda ob: ob,
     lambda ar: {
