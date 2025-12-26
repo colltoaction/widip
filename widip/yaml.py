@@ -1,5 +1,5 @@
 from discopy import closed
-from .compiler import Data, Sequential, Concurrent
+from .computer import Data, Sequential, Concurrent, Computation
 
 class Str(closed.Box):
     def __init__(self, dom, cod):
@@ -17,6 +17,8 @@ class Pair(closed.Box):
     def __init__(self, dom, cod):
         super().__init__("Pair", dom, cod)
 
+Yaml = closed.Category(closed.Ty, closed.Box)
+
 def yaml_to_shell_box(ar):
     if isinstance(ar, Str):
         return Data(ar.dom, ar.cod)
@@ -28,7 +30,13 @@ def yaml_to_shell_box(ar):
         return Sequential(ar.dom, ar.cod)
     return ar
 
-YAML_FUNCTOR = closed.Functor(
-    ob=lambda x: x,
-    ar=yaml_to_shell_box
-)
+class YamlCompiler(closed.Functor):
+    def __init__(self):
+        super().__init__(
+            ob=lambda x: x,
+            ar=yaml_to_shell_box,
+            dom=Yaml,
+            cod=Computation
+        )
+
+YAML_COMPILER = YamlCompiler()

@@ -1,26 +1,19 @@
 from discopy import closed
+from .computer import Data, Sequential, Concurrent, Computation
 
 
-class Data(closed.Box):
-    def __init__(self, dom, cod):
-        super().__init__("⌜−⌝", dom, cod)
+class ShellFunctor(closed.Functor):
+    def __init__(self):
+        super().__init__(
+            lambda ob: ob,
+            lambda ar: {
+                # "ls": ar.curry().uncurry()
+            }.get(ar.name, ar),
+            dom=Computation,
+            cod=Computation
+        )
 
-class Sequential(closed.Box):
-    def __init__(self, dom, cod):
-        super().__init__("(;)", dom, cod)
-
-class Concurrent(closed.Box):
-    def __init__(self, dom, cod):
-        super().__init__("(||)", dom, cod)
-
-
-SHELL_COMPILER = closed.Functor(
-    lambda ob: ob,
-    lambda ar: {
-        # "ls": ar.curry().uncurry()
-    }.get(ar.name, ar),)
-    # TODO remove .inside[0] workaround
-    # lambda ar: ar)
+SHELL_COMPILER = ShellFunctor()
 
 
 def compile_shell_program(diagram):
