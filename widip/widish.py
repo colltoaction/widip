@@ -1,9 +1,9 @@
 import asyncio
 
 from discopy.utils import tuplify, untuplify
-from discopy import closed, python
+from discopy import closed
 
-from .computer import Data, Sequential, Concurrent, Computation, Widish, Process, Swap, Copy, Discard, Cast
+from .computer import *
 from .thunk import thunk, unwrap
 
 
@@ -48,6 +48,10 @@ def run_native_copy(ar, *args):
 def run_native_discard(ar, *args):
     return ()
 
+async def run_native_trace(ar, *args):
+    # TODO trace
+    return ()
+
 async def run_command(name, args, stdin):
     process = await asyncio.create_subprocess_exec(
         name, *args,
@@ -86,6 +90,8 @@ def shell_runner_ar(ar):
         t = thunk(run_native_copy, ar)
     elif isinstance(ar, Discard):
         t = thunk(run_native_discard, ar)
+    elif isinstance(ar, Trace):
+        t = thunk(run_native_trace, ar)
     else:
         t = thunk(_deferred_exec_subprocess_task, ar)
 

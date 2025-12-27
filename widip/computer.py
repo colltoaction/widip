@@ -3,7 +3,7 @@ This module implements the computational model described in "Programs as Diagram
 It defines the core boxes (Data, Sequential, Concurrent) representing the computation category.
 """
 
-from discopy import closed, symmetric, markov, python, utils
+from discopy import closed, symmetric, markov, python, utils, traced
 
 
 class Data(closed.Box):
@@ -44,6 +44,11 @@ class Discard(closed.Box, markov.Discard):
         else:
             name = f"Discard({dom})"
             closed.Box.__init__(self, name, dom=dom, cod=closed.Ty())
+
+class Trace(closed.Box, traced.Trace):
+    def __init__(self, arg, left=False):
+        traced.Trace.__init__(self, arg, left)
+        closed.Box.__init__(self, self.name, self.dom, self.cod)
 
 Computation = closed.Category(closed.Ty, closed.Box)
 
