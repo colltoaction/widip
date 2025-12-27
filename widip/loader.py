@@ -57,20 +57,20 @@ def load_scalar(cursor, tag):
 
     v = hif_node(node, index)["value"]
     if tag and v:
-        return Box(tag, Ty(v), Ty(tag) << Ty(tag))
+        return Box(tag, Ty(v), Ty(tag) >> Ty(tag))
     elif tag:
         dom = Ty(v) if v else Ty()
-        return Box(tag, dom, Ty(tag) << Ty(tag))
+        return Box(tag, dom, Ty(tag) >> Ty(tag))
     elif v:
-        return Scalar(Ty(v), Ty() << Ty(v))
+        return Scalar(Ty(v), Ty() >> Ty(v))
     else:
-        return Scalar(Ty(), Ty() << Ty(v))
+        return Scalar(Ty(), Ty() >> Ty(v))
 
 def load_pair(pair):
     key, value = pair
     exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, key.cod))
     bases = Ty().tensor(*map(lambda x: x.inside[0].base, value.cod))
-    kv_box = Sequence(key.cod @ value.cod, bases << exps)
+    kv_box = Sequence(key.cod @ value.cod, bases << exps, n=2)
     return key @ value >> kv_box
 
 def load_mapping(cursor, tag):
@@ -81,7 +81,7 @@ def load_mapping(cursor, tag):
 
     if not kv_diagrams:
         if tag:
-            return Box(tag, Ty(), Ty(tag) << Ty(tag))
+            return Box(tag, Ty(), Ty(tag) >> Ty(tag))
         ob = Id()
     else:
         ob = reduce(lambda a, b: a @ b, kv_diagrams)
@@ -92,7 +92,7 @@ def load_mapping(cursor, tag):
     ob = ob >> par_box
     if tag:
         ob = (ob @ exps >> Eval(bases << exps))
-        box = Box(tag, ob.cod, Ty(tag) << Ty(tag))
+        box = Box(tag, ob.cod, Ty(tag) >> Ty(tag))
         # box = Box("run", Ty(tag) @ ob.cod, Ty(tag)).curry(left=False)
         ob = ob >> box
     return ob
@@ -104,11 +104,11 @@ def load_sequence(cursor, tag):
         combined = acc @ value
         bases = combined.cod[0].inside[0].exponent
         exps = value.cod[0].inside[0].base
-        return combined >> Sequence(combined.cod, bases << exps)
+        return combined >> Sequence(combined.cod, bases >> exps)
 
     if not diagrams_list:
         if tag:
-            return Box(tag, Ty(), Ty(tag) << Ty(tag))
+            return Box(tag, Ty(), Ty(tag) >> Ty(tag))
         return Id()
 
     ob = reduce(reduce_fn, diagrams_list)
@@ -116,8 +116,8 @@ def load_sequence(cursor, tag):
     if tag:
         bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
         exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
-        ob = (ob @ exps >> Eval(bases << exps))
-        ob = ob >> Box(tag, ob.cod, Ty() << Ty(tag))
+        ob = (bases @ ob >> Eval(bases >> exps))
+        ob = ob >> Box(tag, ob.cod, Ty() >> Ty(tag))
     return ob
 
 def load_document(cursor):
