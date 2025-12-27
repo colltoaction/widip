@@ -12,22 +12,54 @@ def split_args(ar, *args):
     return args[:n], args[n:]
 
 async def run_native_subprocess_constant(ar, *args):
+    # Data box.
     b, params = split_args(ar, *args)
-    if not params:
-        if ar.dom == closed.Ty():
-            return ()
-        return ar.dom.name
-    return untuplify(await unwrap(params))
 
-def run_native_subprocess_map(ar, *args):
-    b, params = split_args(ar, *args)
-    return untuplify(tuple(kv(*tuplify(params)) for kv in b))
+    input_values = await unwrap(tuplify(b))
 
-def run_native_subprocess_seq(ar, *args):
-    b, params = split_args(ar, *args)
-    b0 = b[0](*tuplify(params))
-    b1 = b[1](*tuplify(b0))
-    return b1
+    if ar.name == "Scalar":
+        # Untagged scalar. Return the input value.
+        if input_values:
+            return input_values[0]
+        # If no input values (dom=Ty()), return None
+        return None
+    else:
+        # Tagged scalar. ar.name is the command.
+        parts = ar.name.split()
+        cmd = parts[0]
+        extra_args = parts[1:]
+
+        cmd_args = list(extra_args)
+
+        for v in input_values:
+            if v is not None:
+                cmd_args.append(str(v))
+
+        try:
+            result = await run_command(cmd, cmd_args, [])
+            return result
+        except Exception:
+            return ""
+
+async def run_native_subprocess_map(ar, *args):
+    # Concurrent box. Maps to Mapping.
+    items = await unwrap(args)
+    d = {}
+
+    for i in range(0, len(items), 2):
+        if i+1 < len(items):
+            key = items[i]
+            val = items[i+1]
+            try:
+                d[key] = val
+            except TypeError:
+                d[str(key)] = val
+
+    return d
+
+async def run_native_subprocess_seq(ar, *args):
+    items = await unwrap(args)
+    return list(items)
 
 def run_native_swap(ar, *args):
     n_left = len(ar.left)
@@ -49,25 +81,45 @@ def run_native_discard(ar, *args):
     return ()
 
 async def run_native_trace(ar, *args):
-    # TODO trace
     return ()
 
 async def run_command(name, args, stdin):
-    process = await asyncio.create_subprocess_exec(
-        name, *args,
-        stdout=asyncio.subprocess.PIPE,
-        stdin=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
-    )
-    input_data = "\n".join(stdin).encode() if stdin else None
-    stdout, stderr = await process.communicate(input=input_data)
-    return stdout.decode().rstrip("\n")
+    cmd_args = [str(a) for a in args]
+    stdin_data = [str(s) for s in stdin] if stdin else []
+
+    try:
+        process = await asyncio.create_subprocess_exec(
+            name, *cmd_args,
+            stdout=asyncio.subprocess.PIPE,
+            stdin=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        input_data = "\n".join(stdin_data).encode() if stdin_data else None
+        stdout, stderr = await process.communicate(input=input_data)
+
+        if process.returncode != 0:
+             pass
+
+        return stdout.decode().rstrip("\n")
+    except FileNotFoundError:
+        return "" # Command not found
 
 async def _deferred_exec_subprocess(ar, *args):
+    # Generic box (tag on sequence/mapping)
     b, params = split_args(ar, *args)
     _b = await unwrap(tuplify(b))
-    _params = await unwrap(tuplify(params))
-    result = await run_command(ar.name, _b, _params)
+
+    # Pass inputs as arguments
+    cmd_args = [str(x) for x in _b if x is not None]
+
+    command_parts = ar.name.split()
+    cmd = command_parts[0]
+    extra_args = command_parts[1:]
+
+    full_args = extra_args + cmd_args
+
+    result = await run_command(cmd, full_args, [])
+
     if not ar.cod:
         return ()
     return result

@@ -7,10 +7,7 @@ from discopy.closed import Id, Ty, Box, Eval
 
 from .traverse import vertical_map, get_base, get_fiber
 from . import hif
-from .yaml import Scalar, Sequence, Mapping
-
-P = Ty() << Ty("")
-
+from .yaml import Scalar, Sequence, Mapping, NODE
 
 def repl_read(stream):
     incidences = nx_compose_all(stream)
@@ -56,22 +53,17 @@ def load_scalar(cursor, tag):
     index = get_fiber(cursor)
 
     v = hif_node(node, index)["value"]
-    if tag and v:
-        return Box(tag, Ty(v), Ty(tag) << Ty(tag))
-    elif tag:
-        dom = Ty(v) if v else Ty()
-        return Box(tag, dom, Ty(tag) << Ty(tag))
-    elif v:
-        return Scalar(Ty(v), Ty() << Ty(v))
-    else:
-        return Scalar(Ty(), Ty() << Ty(v))
+
+    # Handle empty value (empty string or empty Ty) as None
+    if hasattr(v, "__len__") and len(v) == 0:
+        v = None
+
+    # Return Scalar with value and tag
+    return Scalar(v, tag=tag)
 
 def load_pair(pair):
     key, value = pair
-    exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, key.cod))
-    bases = Ty().tensor(*map(lambda x: x.inside[0].base, value.cod))
-    kv_box = Sequence(key.cod @ value.cod, bases << exps)
-    return key @ value >> kv_box
+    return key @ value
 
 def load_mapping(cursor, tag):
     diagrams = map(_incidences_to_diagram, hif.iterate(cursor))
@@ -80,44 +72,28 @@ def load_mapping(cursor, tag):
     kv_diagrams = list(map(load_pair, kvs))
 
     if not kv_diagrams:
-        if tag:
-            return Box(tag, Ty(), Ty(tag) << Ty(tag))
-        ob = Id()
+        ob = Mapping(Ty()) # Empty mapping
     else:
         ob = reduce(lambda a, b: a @ b, kv_diagrams)
+        ob = ob >> Mapping(ob.cod)
 
-    exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
-    bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
-    par_box = Mapping(ob.cod, bases << exps)
-    ob = ob >> par_box
     if tag:
-        ob = (ob @ exps >> Eval(bases << exps))
-        box = Box(tag, ob.cod, Ty(tag) << Ty(tag))
-        # box = Box("run", Ty(tag) @ ob.cod, Ty(tag)).curry(left=False)
-        ob = ob >> box
+        tag_box = Box(tag, NODE, NODE)
+        ob = ob >> tag_box
     return ob
 
 def load_sequence(cursor, tag):
     diagrams_list = list(map(_incidences_to_diagram, hif.iterate(cursor)))
 
-    def reduce_fn(acc, value):
-        combined = acc @ value
-        bases = combined.cod[0].inside[0].exponent
-        exps = value.cod[0].inside[0].base
-        return combined >> Sequence(combined.cod, bases << exps)
-
     if not diagrams_list:
-        if tag:
-            return Box(tag, Ty(), Ty(tag) << Ty(tag))
-        return Id()
-
-    ob = reduce(reduce_fn, diagrams_list)
+        ob = Sequence(Ty()) # Empty sequence
+    else:
+        ob = reduce(lambda a, b: a @ b, diagrams_list)
+        ob = ob >> Sequence(ob.cod)
 
     if tag:
-        bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
-        exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
-        ob = (ob @ exps >> Eval(bases << exps))
-        ob = ob >> Box(tag, ob.cod, Ty() << Ty(tag))
+        tag_box = Box(tag, NODE, NODE)
+        ob = ob >> tag_box
     return ob
 
 def load_document(cursor):

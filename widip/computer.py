@@ -7,8 +7,8 @@ from discopy import closed, symmetric, markov, python, utils, traced
 
 
 class Data(closed.Box):
-    def __init__(self, dom, cod):
-        super().__init__("⌜−⌝", dom, cod)
+    def __init__(self, name, dom, cod, drawing_name=None):
+        super().__init__(name, dom, cod, drawing_name=drawing_name)
 
 class Sequential(closed.Box):
     def __init__(self, dom, cod):

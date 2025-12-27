@@ -60,7 +60,13 @@ async def async_exec_diagram(yaml_d, path, *shell_program_args):
         
     run_res = runner(inp)
     val = await unwrap(run_res)
-    print(*(tuple(x.rstrip() for x in tuplify(val) if x)), sep="\n")
+
+    def safe_print(x):
+        if isinstance(x, str):
+            return x.rstrip()
+        return str(x)
+
+    print(*(tuple(safe_print(x) for x in tuplify(val) if x is not None)), sep="\n")
 
 
 async def async_command_main(command_string, *shell_program_args):
