@@ -1,15 +1,32 @@
 from discopy import closed
-from .computer import Data, Sequential, Concurrent, Computation
+from .computer import Data, Sequential, Concurrent, Cast, Swap, Copy, Discard, Computation
+from .yaml import Scalar, Sequence, Mapping, Yaml
+
+
+def compile_ar(ar):
+    if isinstance(ar, Scalar):
+        return Data(ar.dom, ar.cod)
+    if isinstance(ar, Sequence):
+        return Sequential(ar.dom, ar.cod)
+    if isinstance(ar, Mapping):
+        return Concurrent(ar.dom, ar.cod)
+    if isinstance(ar, Cast):
+        return ar
+    if isinstance(ar, Swap):
+        return ar
+    if isinstance(ar, Copy):
+        return ar
+    if isinstance(ar, Discard):
+        return ar
+    return ar
 
 
 class ShellFunctor(closed.Functor):
     def __init__(self):
         super().__init__(
             lambda ob: ob,
-            lambda ar: {
-                # "ls": ar.curry().uncurry()
-            }.get(ar.name, ar),
-            dom=Computation,
+            compile_ar,
+            dom=Yaml,
             cod=Computation
         )
 
