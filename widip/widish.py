@@ -3,7 +3,7 @@ import asyncio
 from discopy.utils import tuplify, untuplify
 from discopy import closed, python
 
-from .computer import Data, Sequential, Concurrent, Computation, Widish, Process, Swap, Copy, Discard
+from .computer import Data, Sequential, Concurrent, Computation, Widish, Process, Swap, Copy, Discard, Cast
 from .thunk import thunk, unwrap
 
 
@@ -30,12 +30,16 @@ def run_native_subprocess_seq(ar, *args):
     return b1
 
 def run_native_swap(ar, *args):
+    n_left = len(ar.left)
+    n_right = len(ar.right)
+    left_args = args[:n_left]
+    right_args = args[n_left : n_left + n_right]
+    return untuplify(right_args + left_args)
+
+def run_native_cast(ar, *args):
     b, params = split_args(ar, *args)
-    # args match dom, so inputs are in b
-    l_len = len(ar.left)
-    left_vals = b[:l_len]
-    right_vals = b[l_len:]
-    return right_vals + left_vals
+    func = b[0]
+    return func
 
 def run_native_copy(ar, *args):
     b, params = split_args(ar, *args)
@@ -76,6 +80,8 @@ def shell_runner_ar(ar):
         t = thunk(run_native_subprocess_seq, ar)
     elif isinstance(ar, Swap):
         t = thunk(run_native_swap, ar)
+    elif isinstance(ar, Cast):
+        t = thunk(run_native_cast, ar)
     elif isinstance(ar, Copy):
         t = thunk(run_native_copy, ar)
     elif isinstance(ar, Discard):
@@ -83,9 +89,8 @@ def shell_runner_ar(ar):
     else:
         t = thunk(_deferred_exec_subprocess_task, ar)
 
-    # python.Ty takes a list of types as a single argument to avoid unpacking issues
-    dom = python.Ty([object] * len(ar.dom))
-    cod = python.Ty([object] * len(ar.cod))
+    dom = SHELL_RUNNER(ar.dom)
+    cod = SHELL_RUNNER(ar.cod)
     return Process(t, dom, cod)
 
 class WidishFunctor(closed.Functor):
