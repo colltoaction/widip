@@ -70,7 +70,7 @@ def load_pair(pair):
     key, value = pair
     exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, key.cod))
     bases = Ty().tensor(*map(lambda x: x.inside[0].base, value.cod))
-    kv_box = Sequence(key.cod @ value.cod, bases << exps)
+    kv_box = Sequence(key.cod @ value.cod, bases << exps, n=2)
     return key @ value >> kv_box
 
 def load_mapping(cursor, tag):
@@ -100,18 +100,15 @@ def load_mapping(cursor, tag):
 def load_sequence(cursor, tag):
     diagrams_list = list(map(_incidences_to_diagram, hif.iterate(cursor)))
 
-    def reduce_fn(acc, value):
-        combined = acc @ value
-        bases = combined.cod[0].inside[0].exponent
-        exps = value.cod[0].inside[0].base
-        return combined >> Sequence(combined.cod, bases << exps)
-
     if not diagrams_list:
         if tag:
             return Box(tag, Ty(), Ty(tag) << Ty(tag))
         return Id()
 
-    ob = reduce(reduce_fn, diagrams_list)
+    ob = reduce(lambda a, b: a @ b, diagrams_list)
+    bases = diagrams_list[-1].cod[0].inside[0].base
+    exps = diagrams_list[0].cod[0].inside[0].exponent
+    ob = ob >> Sequence(ob.cod, bases << exps, n=len(diagrams_list))
 
     if tag:
         bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))

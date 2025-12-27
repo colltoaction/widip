@@ -6,9 +6,30 @@ It defines the core boxes (Data, Sequential, Concurrent) representing the comput
 from discopy import closed, symmetric, markov, python, utils, traced
 
 
+Language = closed.Ty("IO")
+
+class Eval(closed.Box):
+    def __init__(self, A, B):
+        drawing_name = "{}" + f": {A} -> {B}"
+        super().__init__("Eval", Language @ A, B, drawing_name=drawing_name)
+
+class Program(closed.Box):
+    def __init__(self, name, dom=None, cod=None):
+        self.target_dom = dom
+        self.target_cod = cod
+        super().__init__(name, closed.Ty(), Language)
+
+    def uncurry(self, left=True):
+        return self @ closed.Id(self.target_dom) >> Eval(self.target_dom, self.target_cod)
+
+class Constant(closed.Box):
+    def __init__(self, cod):
+        super().__init__("Γ", closed.Ty(), closed.Ty(Language))
+
 class Data(closed.Box):
     def __init__(self, dom, cod):
-        super().__init__("⌜−⌝", dom, cod)
+        drawing_name = f"⌜{dom[0].name}⌝" if dom else "⌜-⌝"
+        super().__init__("⌜-⌝", dom, cod, drawing_name=drawing_name)
 
 class Sequential(closed.Box):
     def __init__(self, dom, cod):
@@ -17,6 +38,10 @@ class Sequential(closed.Box):
 class Concurrent(closed.Box):
     def __init__(self, dom, cod):
         super().__init__("(||)", dom, cod)
+
+class Pair(closed.Box):
+    def __init__(self, dom, cod):
+        super().__init__("⌈−,−⌉", dom, cod)
 
 class Cast(closed.Box):
     def __init__(self, dom, cod):

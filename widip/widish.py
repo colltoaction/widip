@@ -80,6 +80,8 @@ def shell_runner_ar(ar):
         t = thunk(run_native_subprocess_constant, ar)
     elif isinstance(ar, Concurrent):
         t = thunk(run_native_subprocess_map, ar)
+    elif isinstance(ar, Pair):
+        t = thunk(run_native_subprocess_seq, ar)
     elif isinstance(ar, Sequential):
         t = thunk(run_native_subprocess_seq, ar)
     elif isinstance(ar, Swap):

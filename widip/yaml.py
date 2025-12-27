@@ -1,5 +1,5 @@
 from discopy import closed
-from .computer import Data, Sequential, Concurrent, Computation
+from .computer import Data, Sequential, Pair, Concurrent, Computation
 
 class Node(closed.Box):
     pass
@@ -9,8 +9,9 @@ class Scalar(Node):
         super().__init__("Scalar", dom, cod)
 
 class Sequence(Node):
-    def __init__(self, dom, cod):
+    def __init__(self, dom, cod, n=2):
         super().__init__("Sequence", dom, cod)
+        self.n = n
 
 class Mapping(Node):
     def __init__(self, dom, cod):
@@ -23,6 +24,8 @@ def yaml_to_shell_box(ar):
     if isinstance(ar, Scalar):
         return Data(ar.dom, ar.cod)
     if isinstance(ar, Sequence):
+        if ar.n == 2:
+            return Pair(ar.dom, ar.cod)
         return Sequential(ar.dom, ar.cod)
     if isinstance(ar, Mapping):
         return Concurrent(ar.dom, ar.cod)
