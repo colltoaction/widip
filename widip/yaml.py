@@ -1,33 +1,31 @@
 from discopy import closed
 from .computer import Data, Sequential, Concurrent, Computation
 
-class Str(closed.Box):
-    def __init__(self, dom, cod):
-        super().__init__("Str", dom, cod)
+class Node(closed.Box):
+    pass
 
-class Seq(closed.Box):
+class Scalar(Node):
     def __init__(self, dom, cod):
-        super().__init__("Seq", dom, cod)
+        super().__init__("Scalar", dom, cod)
 
-class Map(closed.Box):
+class Sequence(Node):
     def __init__(self, dom, cod):
-        super().__init__("Map", dom, cod)
+        super().__init__("Sequence", dom, cod)
 
-class Pair(closed.Box):
+class Mapping(Node):
     def __init__(self, dom, cod):
-        super().__init__("Pair", dom, cod)
+        super().__init__("Mapping", dom, cod)
+
 
 Yaml = closed.Category(closed.Ty, closed.Box)
 
 def yaml_to_shell_box(ar):
-    if isinstance(ar, Str):
+    if isinstance(ar, Scalar):
         return Data(ar.dom, ar.cod)
-    if isinstance(ar, Seq):
+    if isinstance(ar, Sequence):
         return Sequential(ar.dom, ar.cod)
-    if isinstance(ar, Map):
+    if isinstance(ar, Mapping):
         return Concurrent(ar.dom, ar.cod)
-    if isinstance(ar, Pair):
-        return Sequential(ar.dom, ar.cod)
     return ar
 
 class YamlCompiler(closed.Functor):
