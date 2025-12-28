@@ -75,7 +75,7 @@ class Trace(closed.Box, traced.Trace):
         traced.Trace.__init__(self, arg, left)
         closed.Box.__init__(self, self.name, self.dom, self.cod)
 
-Computation = closed.Category(closed.Ty, closed.Box)
+Computation = closed.Category(closed.Ty, closed.Diagram)
 
 
 class Process(python.Function):

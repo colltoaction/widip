@@ -1,5 +1,7 @@
 import asyncio
+import inspect
 
+from functools import partial
 from discopy.utils import tuplify, untuplify
 from discopy import closed
 
@@ -48,10 +50,6 @@ def run_native_copy(ar, *args):
 def run_native_discard(ar, *args):
     return ()
 
-async def run_native_trace(ar, *args):
-    # TODO trace
-    return ()
-
 async def run_command(name, args, stdin):
     process = await asyncio.create_subprocess_exec(
         name, *args,
@@ -64,16 +62,15 @@ async def run_command(name, args, stdin):
     return stdout.decode().rstrip("\n")
 
 async def _deferred_exec_subprocess(ar, *args):
-    b, params = split_args(ar, *args)
-    _b = await unwrap(tuplify(b))
-    _params = await unwrap(tuplify(params))
-    result = await run_command(ar.name, _b, _params)
-    if not ar.cod:
-        return ()
-    return result
-
-def _deferred_exec_subprocess_task(ar, *args):
-    return asyncio.create_task(_deferred_exec_subprocess(ar, *args))
+    async_b, async_params = map(unwrap, map(tuplify, split_args(ar, *args)))
+    b, params = await asyncio.gather(async_b, async_params)
+    name, cmd_args = (
+        (ar.name, b) if ar.name 
+        else (b[0], b[1:]) if b 
+        else (None, ())
+    )
+    result = await run_command(name, cmd_args, params)
+    return result if ar.cod else ()
 
 def shell_runner_ar(ar):
     if isinstance(ar, Data):
@@ -85,17 +82,15 @@ def shell_runner_ar(ar):
     elif isinstance(ar, Sequential):
         t = thunk(run_native_subprocess_seq, ar)
     elif isinstance(ar, Swap):
-        t = thunk(run_native_swap, ar)
+        t = partial(run_native_swap, ar)
     elif isinstance(ar, Cast):
         t = thunk(run_native_cast, ar)
     elif isinstance(ar, Copy):
-        t = thunk(run_native_copy, ar)
+        t = partial(run_native_copy, ar)
     elif isinstance(ar, Discard):
-        t = thunk(run_native_discard, ar)
-    elif isinstance(ar, Trace):
-        t = thunk(run_native_trace, ar)
+        t = partial(run_native_discard, ar)
     else:
-        t = thunk(_deferred_exec_subprocess_task, ar)
+        t = thunk(_deferred_exec_subprocess, ar)
 
     dom = SHELL_RUNNER(ar.dom)
     cod = SHELL_RUNNER(ar.cod)
