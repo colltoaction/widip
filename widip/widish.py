@@ -1,5 +1,4 @@
 import asyncio
-import inspect
 
 from functools import partial
 from discopy.utils import tuplify, untuplify
@@ -89,6 +88,8 @@ def shell_runner_ar(ar):
         t = partial(run_native_copy, ar)
     elif isinstance(ar, Discard):
         t = partial(run_native_discard, ar)
+    elif isinstance(ar, Exec):
+         t = thunk(_deferred_exec_subprocess, ar)
     else:
         t = thunk(_deferred_exec_subprocess, ar)
 

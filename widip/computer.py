@@ -75,6 +75,10 @@ class Trace(closed.Box, traced.Trace):
         traced.Trace.__init__(self, arg, left)
         closed.Box.__init__(self, self.name, self.dom, self.cod)
 
+class Exec(closed.Box):
+    def __init__(self, dom, cod):
+        super().__init__("exec", dom, cod)
+
 Computation = closed.Category(closed.Ty, closed.Diagram)
 
 
