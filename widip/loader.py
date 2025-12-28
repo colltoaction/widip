@@ -56,15 +56,7 @@ def load_scalar(cursor, tag):
     index = get_fiber(cursor)
 
     v = hif_node(node, index)["value"]
-    if tag and v:
-        return Box(tag, Ty(v), Ty(tag) << Ty(tag))
-    elif tag:
-        dom = Ty(v) if v else Ty()
-        return Box(tag, dom, Ty(tag) << Ty(tag))
-    elif v:
-        return Scalar(Ty(v), Ty() << Ty(v))
-    else:
-        return Scalar(Ty(), Ty() << Ty(v))
+    return Scalar(tag, v)
 
 def load_pair(pair):
     key, value = pair

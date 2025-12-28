@@ -1,5 +1,7 @@
 import asyncio
+import inspect
 
+from functools import partial
 from discopy.utils import tuplify, untuplify
 from discopy import closed
 
@@ -49,8 +51,29 @@ def run_native_discard(ar, *args):
     return ()
 
 async def run_native_trace(ar, *args):
-    # TODO trace
-    return ()
+    process = SHELL_RUNNER(ar.arg)
+    n_left = len(ar.dom)
+    n_trace = len(ar.arg.dom) - n_left
+
+    loop = asyncio.get_running_loop()
+    futures = [loop.create_future() for _ in range(n_trace)]
+
+    inputs = args + tuple(futures)
+    outputs = process(*inputs)
+
+    if inspect.iscoroutine(outputs):
+        outputs = await outputs
+
+    outputs = tuplify(outputs)
+    n_out = len(ar.cod)
+
+    b_out = outputs[:n_out]
+    u_out = outputs[n_out:]
+
+    for f, val in zip(futures, u_out):
+        f.set_result(val)
+
+    return untuplify(b_out)
 
 async def run_command(name, args, stdin):
     process = await asyncio.create_subprocess_exec(
@@ -85,13 +108,13 @@ def shell_runner_ar(ar):
     elif isinstance(ar, Sequential):
         t = thunk(run_native_subprocess_seq, ar)
     elif isinstance(ar, Swap):
-        t = thunk(run_native_swap, ar)
+        t = partial(run_native_swap, ar)
     elif isinstance(ar, Cast):
         t = thunk(run_native_cast, ar)
     elif isinstance(ar, Copy):
-        t = thunk(run_native_copy, ar)
+        t = partial(run_native_copy, ar)
     elif isinstance(ar, Discard):
-        t = thunk(run_native_discard, ar)
+        t = partial(run_native_discard, ar)
     elif isinstance(ar, Trace):
         t = thunk(run_native_trace, ar)
     else:
