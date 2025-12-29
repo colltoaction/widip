@@ -23,6 +23,17 @@ async def awaitable_unwrap(aw):
         aw = await aw
     return aw
 
+async def thunk_map(b, *args):
+    coroutines = [unwrap(kv(*args)) for kv in b]
+    results = await asyncio.gather(*coroutines)
+    return sum(results, ())
+
+async def thunk_reduce(b, *args):
+    for f in b:
+        args = await unwrap(args)
+        args = f(*args)
+    return await unwrap(args)
+
 async def recurse(
         f: Callable[..., Any],
         x: Any,
