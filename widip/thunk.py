@@ -6,8 +6,8 @@ import asyncio
 import contextvars
 import inspect
 
-# Context variables for recursion state
-memo_var: contextvars.ContextVar[dict[int, asyncio.Future] | None] = contextvars.ContextVar("memo", default=None)
+Memo = dict[int, tuple[Any, asyncio.Future]]
+memo_var: contextvars.ContextVar[Memo | None] = contextvars.ContextVar("memo", default=None)
 path_var: contextvars.ContextVar[frozenset[int] | None] = contextvars.ContextVar("path", default=None)
 
 @contextmanager
@@ -55,7 +55,7 @@ async def thunk_reduce(b, *args):
 
 def recurse(f: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator to create a recursive fixed-point combinator with cycle detection."""
-    async def wrapper(x: Any, state: tuple[dict[int, asyncio.Future], frozenset[int]] | None = None) -> Any:
+    async def wrapper(x: Any, state: tuple[Memo, frozenset[int]] | None = None) -> Any:
         if state is not None:
             return await _recurse_impl(f, x, state)
 
@@ -67,16 +67,17 @@ def recurse(f: Callable[..., Any]) -> Callable[..., Any]:
 async def _recurse_impl(
         f: Callable[..., Any],
         x: Any,
-        state: tuple[dict[int, asyncio.Future], frozenset[int]]) -> Any:
+        state: tuple[Memo, frozenset[int]]) -> Any:
     memo, path = state
     id_x = id(x)
     if id_x in memo:
-        fut = memo[id_x]
+        _, fut = memo[id_x]
         if id_x in path:
             return x
         return await fut
 
-    memo[id_x] = fut = asyncio.get_running_loop().create_future()
+    fut = asyncio.get_running_loop().create_future()
+    memo[id_x] = (x, fut)
     call = partial(_recurse_impl, f, state=(memo, path | {id_x}))
     res = await callable_unwrap(f, call, x)
     fut.set_result(res)

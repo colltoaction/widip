@@ -1,5 +1,6 @@
 import pytest
-from widip.thunk import thunk, unwrap, thunk_map, thunk_reduce
+
+from widip.thunk import *
 
 
 async def async_val(val):
@@ -90,3 +91,19 @@ async def test_nested_thunks_pipeline():
     # 19 -> 20 -> 40
     assert res == (40,)
 
+
+@pytest.mark.asyncio
+async def test_weakref_and_gc():
+    import weakref
+    import gc
+    with recursion_scope() as memo:
+        obj = lambda: "gctarget"
+        ref = weakref.ref(obj)
+
+        state = (memo, frozenset())
+        res = await unwrap(obj, state=state)
+        assert res == "gctarget"
+
+        del obj
+        gc.collect()
+        assert ref() is not None
