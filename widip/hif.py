@@ -1,8 +1,14 @@
-from nx_hif.hif import hif_node_incidences, hif_edge_incidences
+from nx_hif.hif import hif_node_incidences, hif_edge_incidences, hif_node
 from discopy.frobenius import Hypergraph, Box, Ty
 
 from .traverse import vertical_map, get_base, get_fiber, FoliatedObject
 
+
+def get_node_data(cursor: FoliatedObject) -> dict:
+    """Returns the data associated with the node at the cursor's position."""
+    node = get_base(cursor)
+    index = get_fiber(cursor)
+    return hif_node(node, index)
 
 def to_hif(hg: Hypergraph) -> dict:
     """Serializes a DisCoPy Hypergraph to a dictionary-based HIF format"""

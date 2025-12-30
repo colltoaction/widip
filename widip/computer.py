@@ -11,7 +11,7 @@ Language = closed.Ty("IO")
 class Eval(closed.Box):
     def __init__(self, A, B):
         drawing_name = "{}" + f": {A} -> {B}"
-        super().__init__("Eval", Language @ A, B, drawing_name=drawing_name)
+        super().__init__("", Language @ A, B, drawing_name=drawing_name)
 
 class Program(closed.Box):
     def __init__(self, name, dom=None, cod=None):
