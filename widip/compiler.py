@@ -1,5 +1,5 @@
 from discopy import closed
-from .computer import Data, Sequential, Concurrent, Cast, Swap, Copy, Discard, Computation, Program
+from .computer import Data, Sequential, Concurrent, Cast, Swap, Copy, Discard, Computation, Program, Pair
 from .yaml import Scalar, Sequence, Mapping, Yaml
 
 
@@ -9,6 +9,8 @@ def compile_ar(ar):
             return Program(ar.tag, dom=ar.dom, cod=ar.cod).uncurry()
         return Data(ar.dom, ar.cod)
     if isinstance(ar, Sequence):
+        if ar.n == 2:
+            return Pair(ar.dom, ar.cod)
         return Sequential(ar.dom, ar.cod)
     if isinstance(ar, Mapping):
         return Concurrent(ar.dom, ar.cod)
