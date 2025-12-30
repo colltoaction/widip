@@ -1,8 +1,27 @@
 from collections.abc import Iterator, Callable
+from contextlib import contextmanager
 from functools import partial
 from typing import Any
 import asyncio
+import contextvars
 import inspect
+
+# Context variables for recursion state
+memo_var: contextvars.ContextVar[dict[int, asyncio.Future] | None] = contextvars.ContextVar("memo", default=None)
+path_var: contextvars.ContextVar[frozenset[int] | None] = contextvars.ContextVar("path", default=None)
+
+@contextmanager
+def recursion_scope():
+    memo = memo_var.get()
+    token = None
+    if memo is None:
+        memo = {}
+        token = memo_var.set(memo)
+    try:
+        yield memo
+    finally:
+        if token:
+            memo_var.reset(token)
 
 def thunk[T](f: Callable[..., T], *args: Any) -> Callable[[], T]:
     """Creates a thunk (lazy evaluation wrapper)."""
@@ -34,32 +53,37 @@ async def thunk_reduce(b, *args):
         args = f(*args)
     return await unwrap(args)
 
-async def recurse(
+def recurse(f: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator to create a recursive fixed-point combinator with cycle detection."""
+    async def wrapper(x: Any, state: tuple[dict[int, asyncio.Future], frozenset[int]] | None = None) -> Any:
+        if state is not None:
+            return await _recurse_impl(f, x, state)
+
+        with recursion_scope() as memo:
+            return await _recurse_impl(f, x, (memo, frozenset()))
+    return wrapper
+
+
+async def _recurse_impl(
         f: Callable[..., Any],
         x: Any,
-        state: tuple[dict[int, asyncio.Future], frozenset[int]] | None = ({}, frozenset())) -> Any:
-    """Generic recursive fixed-point combinator with cycle detection."""
+        state: tuple[dict[int, asyncio.Future], frozenset[int]]) -> Any:
     memo, path = state
     id_x = id(x)
     if id_x in memo:
         fut = memo[id_x]
         if id_x in path:
-            # Cycle detected: return the raw object to break recursion
             return x
-        # Diamond / Shared Dependency: wait for the result
         return await fut
 
-    loop = asyncio.get_running_loop()
-    fut = loop.create_future()
-    memo[id_x] = fut
-    new_path = path | {id_x}
-
-    call = partial(recurse, f, state=(memo, new_path))
+    memo[id_x] = fut = asyncio.get_running_loop().create_future()
+    call = partial(_recurse_impl, f, state=(memo, path | {id_x}))
     res = await callable_unwrap(f, call, x)
     fut.set_result(res)
     return res
 
-async def unwrap_step(recurse: Callable[[Any], Any], x: Any) -> Any:
+@recurse
+async def unwrap(recurse: Callable[[Any], Any], x: Any) -> Any:
     """Step function for unwrap logic."""
     while True:
         if is_callable(x):
@@ -76,5 +100,3 @@ async def unwrap_step(recurse: Callable[[Any], Any], x: Any) -> Any:
         return tuple(results)
 
     return x
-
-unwrap = partial(recurse, unwrap_step)
