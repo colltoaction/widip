@@ -71,6 +71,9 @@ async def _deferred_exec_subprocess(ar, *args):
     result = await run_command(name, cmd_args, params)
     return result if ar.cod else ()
 
+def run_program(ar, *args):
+    return ar.name
+
 def shell_runner_ar(ar):
     if isinstance(ar, Data):
         t = thunk(run_native_subprocess_constant, ar)
@@ -90,6 +93,8 @@ def shell_runner_ar(ar):
         t = partial(run_native_discard, ar)
     elif isinstance(ar, Exec):
          t = thunk(_deferred_exec_subprocess, ar)
+    elif isinstance(ar, Program):
+         t = thunk(run_program, ar)
     else:
         t = thunk(_deferred_exec_subprocess, ar)
 

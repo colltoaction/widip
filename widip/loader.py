@@ -1,9 +1,9 @@
 from functools import reduce
 from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
-from nx_hif.hif import *
 
 from discopy.closed import Id, Ty, Box, Eval
+from nx_hif.hif import HyperGraph
 
 from .traverse import vertical_map, get_base, get_fiber
 from . import hif
@@ -28,11 +28,9 @@ def _incidences_to_diagram(cursor):
     Takes an nx_yaml rooted bipartite graph
     and returns an equivalent string diagram
     """
-    node = get_base(cursor)
-    index = get_fiber(cursor)
-
-    tag = (hif_node(node, index).get("tag") or "")[1:]
-    kind = hif_node(node, index)["kind"]
+    data = hif.get_node_data(cursor)
+    tag = (data.get("tag") or "")[1:]
+    kind = data["kind"]
 
     match kind:
 
@@ -52,19 +50,9 @@ def _incidences_to_diagram(cursor):
     return ob
 
 def load_scalar(cursor, tag):
-    node = get_base(cursor)
-    index = get_fiber(cursor)
-
-    v = hif_node(node, index)["value"]
-    if tag and v:
-        return Box(tag, Ty(v), Ty(tag) >> Ty(tag))
-    elif tag:
-        dom = Ty(v) if v else Ty()
-        return Box(tag, dom, Ty(tag) >> Ty(tag))
-    elif v:
-        return Scalar(Ty(v), Ty() >> Ty(v))
-    else:
-        return Scalar(Ty(), Ty() >> Ty(v))
+    data = hif.get_node_data(cursor)
+    v = data["value"]
+    return Scalar(tag, v)
 
 def load_pair(pair):
     key, value = pair
