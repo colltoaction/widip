@@ -8,7 +8,7 @@ class Scalar(Node):
         self.tag = tag
         self.value = value
 
-        dom = closed.Ty(value) if value else closed.Ty()
+        dom = closed.Ty()
         if tag:
             cod = closed.Ty(tag) >> closed.Ty(tag)
         else:

@@ -1,0 +1,9 @@
+&loop
+- !echo 3
+- !python
+  - -c
+  - >
+    import sys;
+    s=sys.argv[1] if len(sys.argv)>1 else "";
+    print("\n".join("Liftoff!" if x=="1" else str(int(x)-1) for x in s.split() if x.isdigit()))
+  - *loop

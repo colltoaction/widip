@@ -15,6 +15,8 @@ def split_args(ar, *args):
 async def run_native_subprocess_constant(ar, *args):
     b, params = split_args(ar, *args)
     if not params:
+        if ar.cod and ar.cod.inside and hasattr(ar.cod.inside[0], "base"):
+            return ar.cod.inside[0].base.name
         if ar.dom == closed.Ty():
             return ()
         return ar.dom.name
@@ -29,6 +31,10 @@ def run_native_subprocess_seq(ar, *args):
     b0 = b[0](*tuplify(params))
     b1 = b[1](*tuplify(b0))
     return b1
+
+def run_native_pair(ar, *args):
+    b, params = split_args(ar, *args)
+    return b
 
 def run_native_swap(ar, *args):
     n_left = len(ar.left)
@@ -49,6 +55,13 @@ def run_native_copy(ar, *args):
 def run_native_discard(ar, *args):
     return ()
 
+def flatten(x):
+    if isinstance(x, (list, tuple)):
+        for item in x:
+            yield from flatten(item)
+    else:
+        yield str(x)
+
 async def run_command(name, args, stdin):
     process = await asyncio.create_subprocess_exec(
         name, *args,
@@ -56,20 +69,52 @@ async def run_command(name, args, stdin):
         stdin=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE
     )
-    input_data = "\n".join(stdin).encode() if stdin else None
+    flat_stdin = list(flatten(stdin)) if stdin else []
+    input_data = "\n".join(flat_stdin).encode() if flat_stdin else None
     stdout, stderr = await process.communicate(input=input_data)
     return stdout.decode().rstrip("\n")
 
 async def _deferred_exec_subprocess(ar, *args):
-    async_b, async_params = map(unwrap, map(tuplify, split_args(ar, *args)))
-    b, params = await asyncio.gather(async_b, async_params)
+    b_args, params_args = split_args(ar, *args)
+    b = await asyncio.gather(*(unwrap(x) for x in b_args)) if b_args else ()
+    params = await asyncio.gather(*(unwrap(x) for x in params_args)) if params_args else ()
+
     name, cmd_args = (
         (ar.name, b) if ar.name 
         else (b[0], b[1:]) if b 
         else (None, ())
     )
+    if not isinstance(name, str):
+        return name
+
+    cmd_args = tuple(str(x) for x in cmd_args)
     result = await run_command(name, cmd_args, params)
     return result if ar.cod else ()
+
+async def run_native_trace(ar, *args):
+    n_in = len(ar.dom)
+    n_feedback = len(ar.arg.dom) - n_in
+
+    feedback = tuple([""] * n_feedback)
+
+    process = SHELL_RUNNER(ar.arg)
+
+    for i in range(20):
+        full_args = args + feedback
+        result = process(*full_args)
+        result = await unwrap(result)
+        result = tuplify(result)
+
+        n_out = len(ar.cod)
+        output = result[:n_out]
+        new_feedback = result[n_out:]
+
+        if new_feedback == feedback:
+            return untuplify(output)
+
+        feedback = new_feedback
+
+    return untuplify(output)
 
 def run_program(ar, *args):
     return ar.name
@@ -80,12 +125,14 @@ def shell_runner_ar(ar):
     elif isinstance(ar, Concurrent):
         t = thunk(run_native_subprocess_map, ar)
     elif isinstance(ar, Pair):
-        t = thunk(run_native_subprocess_seq, ar)
+        t = thunk(run_native_pair, ar)
     elif isinstance(ar, Sequential):
         t = thunk(run_native_subprocess_seq, ar)
     elif isinstance(ar, Swap):
         t = partial(run_native_swap, ar)
     elif isinstance(ar, Cast):
+        t = thunk(run_native_cast, ar)
+    elif isinstance(ar, closed.Curry):
         t = thunk(run_native_cast, ar)
     elif isinstance(ar, Copy):
         t = partial(run_native_copy, ar)
@@ -95,6 +142,8 @@ def shell_runner_ar(ar):
          t = thunk(_deferred_exec_subprocess, ar)
     elif isinstance(ar, Program):
          t = thunk(run_program, ar)
+    elif isinstance(ar, Trace):
+        t = partial(run_native_trace, ar)
     else:
         t = thunk(_deferred_exec_subprocess, ar)
 

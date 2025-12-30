@@ -31,8 +31,12 @@ async def async_exec_diagram(yaml_d, path, *shell_program_args):
         inp = ""
     else:
         inp = await loop.run_in_executor(None, sys.stdin.read)
-        
-    run_res = runner(inp)
+
+    if callable(runner):
+        run_res = runner(inp)
+    else:
+        run_res = runner
+
     val = await unwrap(run_res)
     print(*(tuple(x.rstrip() for x in tuplify(val) if x)), sep="\n")
 

@@ -4,7 +4,11 @@ It defines the core boxes (Data, Sequential, Concurrent) representing the comput
 """
 
 from discopy import closed, symmetric, markov, python, utils, traced
+import discopy.python.multiplicative as mp
 
+def unchecked_call(self, *xs):
+    return self.inside(*xs)
+mp.Function.__call__ = unchecked_call
 
 Language = closed.Ty("IO")
 
@@ -87,6 +91,9 @@ class Process(python.Function):
         super().__init__(inside, dom, cod)
         self.type_checking = False
 
+    def __call__(self, *xs):
+        return self.inside(*xs)
+
     def then(self, other):
         bridge_pipe = lambda *args: other(*utils.tuplify(self(*args)))
         return Process(
@@ -94,7 +101,16 @@ class Process(python.Function):
             self.dom,
             other.cod,
         )
-    
+
+    def tensor(self, other):
+        result = super().tensor(other)
+        return Process(result.inside, result.dom, result.cod)
+
+    @classmethod
+    def id(cls, dom=None):
+        f = super().id(dom)
+        return cls(f.inside, f.dom, f.cod)
+
     @classmethod
     def eval(cls, base, exponent, left=True):
         def func(f, *x):
