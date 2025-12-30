@@ -25,5 +25,14 @@ class Mapping(Node):
     def __init__(self, dom, cod):
         super().__init__("Mapping", dom, cod)
 
+class Anchor(Node):
+    def __init__(self, name, dom, cod):
+        self.name = name
+        super().__init__("Anchor", dom, cod)
+
+class Alias(Node):
+    def __init__(self, name, dom, cod):
+        self.name = name
+        super().__init__("Alias", dom, cod)
 
 Yaml = closed.Category(closed.Ty, closed.Box)

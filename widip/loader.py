@@ -5,11 +5,8 @@ from nx_yaml import nx_compose_all, nx_serialize_all
 from discopy.closed import Id, Ty, Box, Eval
 from nx_hif.hif import HyperGraph
 
-from .traverse import vertical_map, get_base, get_fiber
 from . import hif
-from .yaml import Scalar, Sequence, Mapping
-
-P = Ty() << Ty("")
+from .yaml import Scalar, Sequence, Mapping, Alias, Anchor
 
 
 def repl_read(stream):
@@ -31,6 +28,7 @@ def _incidences_to_diagram(cursor):
     data = hif.get_node_data(cursor)
     tag = (data.get("tag") or "")[1:]
     kind = data["kind"]
+    anchor = data.get("anchor")
 
     match kind:
 
@@ -44,10 +42,18 @@ def _incidences_to_diagram(cursor):
             ob = load_sequence(cursor, tag)
         case "mapping":
             ob = load_mapping(cursor, tag)
+        case "alias":
+            ob = load_alias(cursor, anchor)
         case _:
             raise Exception(f"Kind \"{kind}\" doesn't match any.")
 
+    if anchor and kind != 'alias':
+        ob = ob >> Anchor(anchor, ob.cod, ob.cod)
+
     return ob
+
+def load_alias(cursor, name):
+    return Alias(name, Ty(), Ty() >> Ty(name))
 
 def load_scalar(cursor, tag):
     data = hif.get_node_data(cursor)

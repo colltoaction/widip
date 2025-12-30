@@ -1,6 +1,6 @@
 from discopy import closed
 from .computer import Data, Sequential, Concurrent, Cast, Swap, Copy, Discard, Computation, Program, Pair
-from .yaml import Scalar, Sequence, Mapping, Yaml
+from .yaml import *
 
 
 def compile_ar(ar):
@@ -14,14 +14,10 @@ def compile_ar(ar):
         return Sequential(ar.dom, ar.cod)
     if isinstance(ar, Mapping):
         return Concurrent(ar.dom, ar.cod)
-    if isinstance(ar, Cast):
-        return ar
-    if isinstance(ar, Swap):
-        return ar
-    if isinstance(ar, Copy):
-        return ar
-    if isinstance(ar, Discard):
-        return ar
+    if isinstance(ar, Alias):
+        return Data(ar.dom, ar.cod)
+    if isinstance(ar, Anchor):
+        return Data(ar.dom, ar.cod)
     return ar
 
 
