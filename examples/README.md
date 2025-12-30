@@ -21,6 +21,20 @@ $ python -m widip examples/shell.yaml
 
 ![IMG](shell.jpg)
 
+## Countdown (Cyclic)
+
+Example of feedback loops using YAML anchors.
+
+```
+$ python -m widip examples/countdown.yaml
+3
+2
+1
+Liftoff!
+```
+
+![](countdown.jpg)
+
 
 # Working with the CLI
 Open terminal and run `widip` to start an interactive session. The program `bin/yaml/shell.yaml` prompts for one command per line, so when we hit `↵ Enter` it is evaluated. When hitting `⌁ Ctrl+D` the environment exits.
@@ -46,4 +60,4 @@ The first example in https://react.dev/ in diagrammatic style.
 ## Rosetta code
 
 * https://rosettacode.org
-* [rosetta](rosetta) examples directory
+* [rosetta](rosetta) examples

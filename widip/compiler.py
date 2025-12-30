@@ -1,5 +1,5 @@
 from discopy import closed
-from .computer import Data, Sequential, Concurrent, Cast, Swap, Copy, Discard, Computation, Program, Pair
+from .computer import Data, Sequential, Concurrent, Cast, Swap, Copy, Discard, Computation, Program, Pair, Trace
 from .yaml import *
 
 
@@ -18,6 +18,8 @@ def compile_ar(ar):
         return Data(ar.dom, ar.cod)
     if isinstance(ar, Anchor):
         return Data(ar.dom, ar.cod)
+    if isinstance(ar, Trace):
+        return closed.Diagram([ar], ar.dom, ar.cod)
     return ar
 
 

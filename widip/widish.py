@@ -4,7 +4,10 @@ from functools import partial
 from discopy.utils import tuplify, untuplify
 from discopy import closed
 
-from .computer import *
+from .computer import (
+    Computation, Data, Concurrent, Pair, Sequential, Swap, Cast, Copy, Discard,
+    Exec, Program, Trace, Widish, Process
+)
 from .thunk import thunk, unwrap
 
 
@@ -71,6 +74,36 @@ async def _deferred_exec_subprocess(ar, *args):
     result = await run_command(name, cmd_args, params)
     return result if ar.cod else ()
 
+async def run_native_trace(inner_process, ar, *args):
+    dom_len = len(ar.dom)
+    total_dom_len = len(ar.arg.dom)
+    n_feedback = total_dom_len - dom_len
+
+    x_placeholders = [None] * n_feedback
+
+    async def inner_call():
+        inputs = args + tuple(x_placeholders)
+        res = inner_process(*inputs)
+        return await res
+
+    res_thunk = thunk(inner_call)
+
+    async def get_x(i):
+        res = await unwrap(res_thunk)
+        res = tuplify(res)
+        b_len = len(ar.cod)
+        return res[b_len + i]
+
+    for i in range(n_feedback):
+        x_placeholders[i] = thunk(get_x, i)
+
+    full_res = await unwrap(res_thunk)
+    full_res = tuplify(full_res)
+    b_len = len(ar.cod)
+    b_part = full_res[:b_len]
+    return untuplify(b_part)
+
+
 def run_program(ar, *args):
     return ar.name
 
@@ -95,6 +128,9 @@ def shell_runner_ar(ar):
          t = thunk(_deferred_exec_subprocess, ar)
     elif isinstance(ar, Program):
          t = thunk(run_program, ar)
+    elif isinstance(ar, Trace):
+        inner_process = SHELL_RUNNER(ar.arg)
+        t = thunk(run_native_trace, inner_process, ar)
     else:
         t = thunk(_deferred_exec_subprocess, ar)
 
