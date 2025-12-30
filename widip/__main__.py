@@ -6,8 +6,8 @@ if __debug__:
 import argparse
 import asyncio
 
-from .interactive import async_shell_main
-from .watch import async_widish_main, async_command_main, run_with_watcher
+from .interactive import async_shell_main, async_widish_main, async_command_main
+from .watch import run_with_watcher
 
 
 def main():
