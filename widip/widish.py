@@ -26,9 +26,14 @@ def run_native_subprocess_map(ar, *args):
 
 def run_native_subprocess_seq(ar, *args):
     b, params = split_args(ar, *args)
-    b0 = b[0](*tuplify(params))
-    b1 = b[1](*tuplify(b0))
-    return b1
+    # Pipeline execution: b[0](params) -> b[1](res0) -> ...
+    if not b:
+        return params # Or empty?
+
+    res = b[0](*tuplify(params))
+    for func in b[1:]:
+        res = func(*tuplify(res))
+    return res
 
 def run_native_swap(ar, *args):
     n_left = len(ar.left)

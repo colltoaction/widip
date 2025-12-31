@@ -10,13 +10,25 @@ def compile_ar(ar):
             return Program(ar.tag, dom=ar.dom, cod=ar.cod).uncurry()
         return Data(ar.dom, ar.cod)
     if isinstance(ar, Sequence):
+        # Access the inner diagram from args.
+        # Note: ar.inside returns the layers of the Sequence box itself, not the content.
+        # ar.args contains the diagrams passed to the Bubble constructor.
+        inner_diagram = ar.args[0]
+        inside_compiled = SHELL_COMPILER(inner_diagram)
+
         if ar.dom[:1] == Language:
-            return Eval(ar.dom[1:], ar.cod)
+            return inside_compiled
+
         if ar.n == 2:
-            return Pair(ar.dom, ar.cod)
-        return Sequential(ar.dom, ar.cod)
+            return inside_compiled >> Pair(inside_compiled.cod, ar.cod)
+
+        return inside_compiled >> Sequential(inside_compiled.cod, ar.cod)
+
     if isinstance(ar, Mapping):
-        return Concurrent(ar.dom, ar.cod)
+        inner_diagram = ar.args[0]
+        inside_compiled = SHELL_COMPILER(inner_diagram)
+        return inside_compiled >> Concurrent(inside_compiled.cod, ar.cod)
+
     if isinstance(ar, Alias):
         return Data(ar.dom, ar.cod) >> Copy(ar.cod, 2) >> closed.Id(ar.cod) @ Discard(ar.cod)
     if isinstance(ar, Anchor):

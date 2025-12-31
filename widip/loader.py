@@ -30,7 +30,7 @@ def process_sequence(ob, tag):
     return ob
 
 def process_mapping(ob, tag):
-    ob >>= Mapping(ob.cod)
+    # Mapping bubble is already applied before calling this
     if tag:
         target = ob.cod
         exps, bases = get_exps_bases(target)
@@ -45,22 +45,14 @@ def load_scalar(cursor, tag):
 
 def load_sequence(cursor, tag):
     diagrams = map(_incidences_to_diagram, hif.iterate(cursor))
-    items = []
-
-    for item in diagrams:
-        if not items:
-            items.append(item)
-            continue
-
-        last = items[-1]
-        last = last @ item
-        last >>= Sequence(last.cod)
-        items[-1] = last
+    items = list(diagrams)
     
     if not items:
         ob = Scalar(tag, "")
     else:
-        ob = process_sequence(items[0], tag)
+        diagram = reduce(lambda a, b: a @ b, items)
+        ob = Sequence(diagram)
+        ob = process_sequence(ob, tag)
 
     with load_container(ob):
         return diagram_var.get()
@@ -68,15 +60,17 @@ def load_sequence(cursor, tag):
 def load_mapping(cursor, tag):
     diagrams = map(_incidences_to_diagram, hif.iterate(cursor))
     items = []
+
     for key, val in batched(diagrams, 2):
-        key @= val
-        key >>= Sequence(key.cod, n=2)
-        items.append(key)
+        pair = key @ val
+        pair = Sequence(pair, n=2)
+        items.append(pair)
     
     if not items:
         ob = Scalar(tag, "")
     else:
-        ob = functools.reduce(lambda a, b: a @ b, items)
+        diagram = reduce(lambda a, b: a @ b, items)
+        ob = Mapping(diagram)
         ob = process_mapping(ob, tag)
 
     with load_container(ob):
