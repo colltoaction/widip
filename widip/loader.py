@@ -1,37 +1,98 @@
 from functools import reduce
-from itertools import batched
-from nx_yaml import nx_compose_all, nx_serialize_all
 
-from discopy.closed import Id, Ty, Box, Eval
+from contextlib import contextmanager
+from contextvars import ContextVar
+from itertools import batched
+
+from discopy import closed
 from nx_hif.hif import HyperGraph
 
 from . import hif
-from .yaml import Scalar, Sequence, Mapping, Alias, Anchor
+from .yaml import *
 
+diagram_var: ContextVar[closed.Diagram] = ContextVar("diagram")
 
-def repl_read(stream):
-    incidences = nx_compose_all(stream)
-    diagrams = incidences_to_diagram(incidences)
-    return diagrams
+@contextmanager
+def load_container(ob):
+    token = diagram_var.set(ob)
+    try:
+        yield
+    finally:
+        diagram_var.reset(token)
+
+def process_sequence(ob, tag):
+    if tag:
+        target = ob.cod
+        exps, bases = get_exps_bases(target)
+        ob = exps @ ob
+        ob >>= closed.Eval(target)
+        ob >>= Node(tag, ob.cod, closed.Ty() >> closed.Ty(tag))
+    return ob
+
+def process_mapping(ob, tag):
+    ob >>= Mapping(ob.cod)
+    if tag:
+        target = ob.cod
+        exps, bases = get_exps_bases(target)
+        ob @= exps
+        ob >>= closed.Eval(target)
+        ob >>= Node(tag, ob.cod, closed.Ty(tag) >> closed.Ty(tag))
+    return ob
+
+def load_scalar(cursor, tag):
+    data = hif.get_node_data(cursor)
+    return Scalar(tag, data["value"])
+
+def load_sequence(cursor, tag):
+    diagrams = map(_incidences_to_diagram, hif.iterate(cursor))
+    items = []
+
+    for item in diagrams:
+        if not items:
+            items.append(item)
+            continue
+
+        last = items[-1]
+        last = last @ item
+        last >>= Sequence(last.cod)
+        items[-1] = last
+    
+    if not items:
+        ob = Scalar(tag, "")
+    else:
+        ob = process_sequence(items[0], tag)
+
+    with load_container(ob):
+        return diagram_var.get()
+
+def load_mapping(cursor, tag):
+    diagrams = map(_incidences_to_diagram, hif.iterate(cursor))
+    items = []
+    for key, val in batched(diagrams, 2):
+        key @= val
+        key >>= Sequence(key.cod, n=2)
+        items.append(key)
+    
+    if not items:
+        ob = Scalar(tag, "")
+    else:
+        ob = functools.reduce(lambda a, b: a @ b, items)
+        ob = process_mapping(ob, tag)
+
+    with load_container(ob):
+        return diagram_var.get()
 
 def incidences_to_diagram(node: HyperGraph):
-    # TODO properly skip stream and document start
     cursor = (0, node)
-    diagram = _incidences_to_diagram(cursor)
-    return diagram
+    return _incidences_to_diagram(cursor)
 
 def _incidences_to_diagram(cursor):
-    """
-    Takes an nx_yaml rooted bipartite graph
-    and returns an equivalent string diagram
-    """
     data = hif.get_node_data(cursor)
     tag = (data.get("tag") or "")[1:]
     kind = data["kind"]
     anchor = data.get("anchor")
 
     match kind:
-
         case "stream":
             ob = load_stream(cursor)
         case "document":
@@ -43,83 +104,18 @@ def _incidences_to_diagram(cursor):
         case "mapping":
             ob = load_mapping(cursor, tag)
         case "alias":
-            ob = load_alias(cursor, anchor)
+            ob = Alias(anchor, closed.Ty(), closed.Ty() >> closed.Ty(anchor))
         case _:
             raise Exception(f"Kind \"{kind}\" doesn't match any.")
 
     if anchor and kind != 'alias':
-        ob = ob >> Anchor(anchor, ob.cod, ob.cod)
-
-    return ob
-
-def load_alias(cursor, name):
-    return Alias(name, Ty(), Ty() >> Ty(name))
-
-def load_scalar(cursor, tag):
-    data = hif.get_node_data(cursor)
-    v = data["value"]
-    return Scalar(tag, v)
-
-def load_pair(pair):
-    key, value = pair
-    exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, key.cod))
-    bases = Ty().tensor(*map(lambda x: x.inside[0].base, value.cod))
-    kv_box = Sequence(key.cod @ value.cod, bases << exps, n=2)
-    return key @ value >> kv_box
-
-def load_mapping(cursor, tag):
-    diagrams = map(_incidences_to_diagram, hif.iterate(cursor))
-    kvs = batched(diagrams, 2)
-
-    kv_diagrams = list(map(load_pair, kvs))
-
-    if not kv_diagrams:
-        if tag:
-            return Box(tag, Ty(), Ty(tag) >> Ty(tag))
-        ob = Id()
-    else:
-        ob = reduce(lambda a, b: a @ b, kv_diagrams)
-
-    exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
-    bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
-    par_box = Mapping(ob.cod, bases << exps)
-    ob = ob >> par_box
-    if tag:
-        ob = (ob @ exps >> Eval(bases << exps))
-        box = Box(tag, ob.cod, Ty(tag) >> Ty(tag))
-        # box = Box("run", Ty(tag) @ ob.cod, Ty(tag)).curry(left=False)
-        ob = ob >> box
-    return ob
-
-def load_sequence(cursor, tag):
-    diagrams_list = list(map(_incidences_to_diagram, hif.iterate(cursor)))
-
-    def reduce_fn(acc, value):
-        combined = acc @ value
-        bases = combined.cod[0].inside[0].exponent
-        exps = value.cod[0].inside[0].base
-        return combined >> Sequence(combined.cod, bases >> exps)
-
-    if not diagrams_list:
-        if tag:
-            return Box(tag, Ty(), Ty(tag) >> Ty(tag))
-        return Id()
-
-    ob = reduce(reduce_fn, diagrams_list)
-
-    if tag:
-        bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
-        exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
-        ob = (bases @ ob >> Eval(bases >> exps))
-        ob = ob >> Box(tag, ob.cod, Ty() >> Ty(tag))
+        ob >>= Anchor(anchor, ob.cod, ob.cod)
     return ob
 
 def load_document(cursor):
     root = hif.step(cursor, "next")
-    if root:
-        return _incidences_to_diagram(root)
-    return Id()
+    return _incidences_to_diagram(root) if root else closed.Id()
 
 def load_stream(cursor):
     diagrams = map(_incidences_to_diagram, hif.iterate(cursor))
-    return reduce(lambda a, b: a @ b, diagrams, Id())
+    return reduce(lambda a, b: a @ b, diagrams, closed.Id())
