@@ -9,6 +9,8 @@ Hello world!
 
 ![](hello-world.jpg)
 
+![](hello-world.shell.jpg)
+
 ## Script
 
 ```
@@ -20,6 +22,8 @@ $ python -m widip examples/shell.yaml
 ```
 
 ![IMG](shell.jpg)
+
+![IMG](shell.shell.jpg)
 
 
 # Working with the CLI
