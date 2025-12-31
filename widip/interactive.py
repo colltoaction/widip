@@ -5,8 +5,7 @@ from yaml import YAMLError
 
 from discopy.utils import tuplify
 
-from .loader import repl_read
-from .files import file_diagram
+from .files import file_diagram, repl_read
 from .widish import SHELL_RUNNER
 from .thunk import unwrap
 from .compiler import SHELL_COMPILER

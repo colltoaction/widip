@@ -4,7 +4,13 @@ from yaml import YAMLError
 
 from discopy.closed import Ty, Diagram, Box, Functor
 
-from .loader import repl_read
+from nx_yaml import nx_compose_all
+from .yaml import incidences_to_diagram
+
+
+def repl_read(stream):
+    incidences = nx_compose_all(stream)
+    return incidences_to_diagram(incidences)
 
 
 def reload_diagram(path_str):
