@@ -1,9 +1,9 @@
 from discopy import closed
 
-class Node(closed.Box):
-    pass
 
-class Scalar(Node):
+Node = closed.Ty("")
+
+class Scalar(closed.Box):
     def __init__(self, tag, value):
         self.tag = tag
         self.value = value
@@ -16,23 +16,23 @@ class Scalar(Node):
 
         super().__init__("Scalar", dom, cod)
 
-class Sequence(Node):
+class Sequence(closed.Box):
     def __init__(self, dom, cod, n=2):
         super().__init__("Sequence", dom, cod)
         self.n = n
 
-class Mapping(Node):
+class Mapping(closed.Box):
     def __init__(self, dom, cod):
         super().__init__("Mapping", dom, cod)
 
-class Anchor(Node):
+class Anchor(closed.Box):
     def __init__(self, name, dom, cod):
         self.name = name
         super().__init__("Anchor", dom, cod)
 
-class Alias(Node):
+class Alias(closed.Box):
     def __init__(self, name, dom, cod):
         self.name = name
         super().__init__("Alias", dom, cod)
 
-Yaml = closed.Category(closed.Ty, closed.Box)
+Yaml = closed.Category()
