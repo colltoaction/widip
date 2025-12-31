@@ -6,6 +6,8 @@ from .yaml import *
 
 def compile_ar(ar):
     if isinstance(ar, Scalar):
+        if ar.tag == "exec":
+            return Exec(ar.dom, ar.cod)
         if ar.tag:
             return Program(ar.tag, dom=ar.dom, cod=ar.cod).uncurry()
         return Data(ar.dom, ar.cod)

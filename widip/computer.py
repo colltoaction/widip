@@ -23,8 +23,8 @@ class Program(closed.Box):
         return self @ closed.Id(self.target_dom) >> Eval(self.target_dom, self.target_cod)
 
 class Constant(closed.Box):
-    def __init__(self, cod):
-        super().__init__("Γ", closed.Ty(), closed.Ty(Language))
+    def __init__(self, cod=None):
+        super().__init__("Γ", closed.Ty(), Language)
 
 class Data(closed.Box):
     def __init__(self, dom, cod):
@@ -95,6 +95,13 @@ class Process(python.Function):
             other.cod,
         )
     
+    def tensor(self, other):
+        return Process(
+            super().tensor(other).inside,
+            self.dom + other.dom,
+            self.cod + other.cod
+        )
+
     @classmethod
     def eval(cls, base, exponent, left=True):
         def func(f, *x):

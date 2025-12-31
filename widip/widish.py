@@ -79,6 +79,9 @@ async def _deferred_exec_subprocess(ar, *args):
 def run_program(ar, *args):
     return ar.name
 
+def run_constant_gamma(ar, *args):
+    return "bin/widish"
+
 def shell_runner_ar(ar):
     if isinstance(ar, Data):
         t = thunk(run_native_subprocess_constant, ar)
@@ -97,9 +100,37 @@ def shell_runner_ar(ar):
     elif isinstance(ar, Discard):
         t = partial(run_native_discard, ar)
     elif isinstance(ar, Exec):
-         t = thunk(_deferred_exec_subprocess, ar)
+         # Compile Exec to Constant @ Id >> Eval
+         gamma = Constant()
+
+         # Logic:
+         # Exec(dom, cod) represents execution.
+         # We want to replace it with:
+         # Constant @ Id(dom) >> Eval(dom, cod)
+         #
+         # But wait, Constant codomain is Language.
+         # Id(dom) is Id on dom.
+         # So we have Language @ dom.
+         # Eval(dom, cod) takes Language @ dom -> cod.
+         #
+         # So we construct the diagram:
+         diagram = gamma @ closed.Id(ar.dom) >> Eval(ar.dom, ar.cod)
+
+         # Now we need to return the Process for this diagram.
+         # Recursively call SHELL_RUNNER on this new diagram.
+         return SHELL_RUNNER(diagram)
+
+    elif isinstance(ar, Constant):
+         t = thunk(run_constant_gamma, ar)
     elif isinstance(ar, Program):
          t = thunk(run_program, ar)
+    elif isinstance(ar, Eval):
+         # We need to handle Eval box too, using _deferred_exec_subprocess logic roughly?
+         # _deferred_exec_subprocess executes a command.
+         # Eval takes (program, args).
+         # program is the first input.
+         # args are the rest.
+         t = thunk(_deferred_exec_subprocess, ar)
     else:
         t = thunk(_deferred_exec_subprocess, ar)
 
