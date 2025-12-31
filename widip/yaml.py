@@ -1,4 +1,4 @@
-from discopy import closed
+from discopy import closed, monoidal
 
 
 # TODO node class is unnecessary
@@ -25,29 +25,37 @@ class Scalar(closed.Box):
         u = self.cod[0].inside[0]
         return u.base.name if not self.tag else ""
 
-class Sequence(closed.Box):
-    def __init__(self, dom, cod=None, n=2):
+class Sequence(monoidal.Bubble, closed.Box):
+    def __init__(self, inside, dom=None, cod=None, n=None):
+        if dom is None:
+            dom = inside.dom
+
         if cod is None:
+            # If n=2 is explicitly requested, use Pair logic (K -> V)
+            # Otherwise use Tuple logic (all inputs -> all outputs)
             if n == 2:
-                mid = len(dom) // 2
-                exps, _ = get_exps_bases(dom[:mid])
-                _, bases = get_exps_bases(dom[mid:])
+                mid = len(inside.cod) // 2
+                exps, _ = get_exps_bases(inside.cod[:mid])
+                _, bases = get_exps_bases(inside.cod[mid:])
                 cod = exps >> bases
             else:
-                exps, bases = get_exps_bases(dom)
+                exps, bases = get_exps_bases(inside.cod)
                 cod = exps >> bases
-        super().__init__("Sequence", dom, cod)
 
-    @property
-    def n(self):
-        return len(self.dom)
+        self.n = n if n is not None else len(inside.cod)
+        super().__init__(inside, dom=dom, cod=cod)
+        # Change method to bypass Functor's default bubble handling
+        self.method = "sequence_bubble"
 
-class Mapping(closed.Box):
-    def __init__(self, dom, cod=None):
+class Mapping(monoidal.Bubble, closed.Box):
+    def __init__(self, inside, dom=None, cod=None):
+        if dom is None:
+            dom = inside.dom
         if cod is None:
-            exps, bases = get_exps_bases(dom)
+            exps, bases = get_exps_bases(inside.cod)
             cod = bases << exps
-        super().__init__("Mapping", dom, cod)
+        super().__init__(inside, dom=dom, cod=cod)
+        self.method = "mapping_bubble"
 
 class Anchor(closed.Box):
     def __init__(self, name, dom, cod):
