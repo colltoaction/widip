@@ -26,9 +26,8 @@ def run_native_subprocess_map(ar, *args):
 
 def run_native_subprocess_seq(ar, *args):
     b, params = split_args(ar, *args)
-    # Pipeline execution: b[0](params) -> b[1](res0) -> ...
     if not b:
-        return params # Or empty?
+        return params
 
     res = b[0](*tuplify(params))
     for func in b[1:]:
@@ -79,6 +78,9 @@ async def _deferred_exec_subprocess(ar, *args):
 def run_program(ar, *args):
     return ar.name
 
+def run_constant_gamma(ar, *args):
+    return "bin/widish"
+
 def shell_runner_ar(ar):
     if isinstance(ar, Data):
         t = thunk(run_native_subprocess_constant, ar)
@@ -97,9 +99,15 @@ def shell_runner_ar(ar):
     elif isinstance(ar, Discard):
         t = partial(run_native_discard, ar)
     elif isinstance(ar, Exec):
-         t = thunk(_deferred_exec_subprocess, ar)
+         gamma = Constant()
+         diagram = gamma @ closed.Id(ar.dom) >> Eval(ar.dom, ar.cod)
+         return SHELL_RUNNER(diagram)
+    elif isinstance(ar, Constant):
+         t = thunk(run_constant_gamma, ar)
     elif isinstance(ar, Program):
          t = thunk(run_program, ar)
+    elif isinstance(ar, Eval):
+         t = thunk(_deferred_exec_subprocess, ar)
     else:
         t = thunk(_deferred_exec_subprocess, ar)
 

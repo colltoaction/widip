@@ -6,13 +6,12 @@ from .yaml import *
 
 def compile_ar(ar):
     if isinstance(ar, Scalar):
+        if ar.tag == "exec":
+            return Exec(ar.dom, ar.cod)
         if ar.tag:
             return Program(ar.tag, dom=ar.dom, cod=ar.cod).uncurry()
         return Data(ar.dom, ar.cod)
     if isinstance(ar, Sequence):
-        # Access the inner diagram from args.
-        # Note: ar.inside returns the layers of the Sequence box itself, not the content.
-        # ar.args contains the diagrams passed to the Bubble constructor.
         inner_diagram = ar.args[0]
         inside_compiled = SHELL_COMPILER(inner_diagram)
 
@@ -53,6 +52,5 @@ def compile_shell_program(diagram):
     close input parameters (constants)
     drop outputs matching input parameters
     all boxes are io->[io]"""
-    # TODO compile sequences and parallels to evals
     diagram = SHELL_COMPILER(diagram)
     return diagram
