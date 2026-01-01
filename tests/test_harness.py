@@ -24,11 +24,10 @@ def test_case(test_file):
 
     # Run the shell
     # Assuming running from repo root
-    cmd = ["bin/widish"]
+    cmd = ["bin/widish", test_file]
 
     result = subprocess.run(
         cmd,
-        input=input_content,
         text=True,
         capture_output=True,
         check=False

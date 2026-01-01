@@ -1,4 +1,4 @@
-!echo "hello":
-  !sed "s/hello/HI/":
-  !sed "s/hello/HELLO/":
-  !wc -c:
+- !echo { "widip", "project" }
+- !tr { "[:lower:]", "[:upper:]" }
+- ? !wc -w
+  ? !sed "s/PROJECT/STUFF/"

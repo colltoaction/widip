@@ -1,2 +1,2 @@
-!bin/yaml/range.yaml:
-  !head -n 5:
+- !bin/yaml/range.yaml
+- !head { -n, 5 }

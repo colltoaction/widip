@@ -25,22 +25,3 @@ Each test case consists of two files:
 
 1.  `tests/CASE.test.yaml`: The input YAML script.
 2.  `tests/CASE.log`: The expected standard output.
-
-### Example: Infinite Counter
-
-This example demonstrates using an infinite generator (`yes`), processing it, and limiting the output (`head`). It relies on `bin/yaml/range.yaml` which defines the infinite stream.
-
-`tests/infinite-counter.test.yaml`:
-```yaml
-- !bin/yaml/range.yaml
-- !head -n 5
-```
-
-`tests/infinite-counter.log`:
-```
-1
-2
-3
-4
-5
-```
