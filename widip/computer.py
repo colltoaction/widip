@@ -3,7 +3,7 @@ This module implements the computational model described in "Programs as Diagram
 It defines the core boxes (Data, Sequential, Concurrent) representing the computation category.
 """
 
-from discopy import closed, symmetric, markov, python, utils, traced
+from discopy import closed, symmetric, markov, traced
 
 
 Language = closed.Ty("IO")
@@ -80,36 +80,3 @@ class Exec(closed.Box):
         super().__init__("exec", dom, cod)
 
 Computation = closed.Category(closed.Ty, closed.Diagram)
-
-
-class Process(python.Function):
-    def __init__(self, inside, dom, cod):
-        super().__init__(inside, dom, cod)
-        self.type_checking = False
-
-    def then(self, other):
-        bridge_pipe = lambda *args: other(*utils.tuplify(self(*args)))
-        return Process(
-            bridge_pipe,
-            self.dom,
-            other.cod,
-        )
-    
-    def tensor(self, other):
-        return Process(
-            super().tensor(other).inside,
-            self.dom + other.dom,
-            self.cod + other.cod
-        )
-
-    @classmethod
-    def eval(cls, base, exponent, left=True):
-        def func(f, *x):
-             return f(*x)
-        return Process(
-            func,
-            (exponent << base) @ base,
-            exponent
-        )
-
-Widish = closed.Category(python.Ty, Process)

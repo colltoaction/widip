@@ -26,7 +26,7 @@ async def test_exec_runner():
     # Eval should trigger _deferred_exec_subprocess (or similar logic for Eval).
 
     # We need to mock run_command in widish.py
-    with patch("widip.widish.run_command", new_callable=AsyncMock) as mock_run:
+    with patch("widip.widish.Process.run_command", new_callable=AsyncMock) as mock_run:
         mock_run.return_value = "executed"
 
         # Run the process.
