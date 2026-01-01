@@ -4,13 +4,13 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from itertools import batched
 
-from discopy import closed
+from discopy import monoidal
 from nx_hif.hif import HyperGraph
 
 from . import hif
 from .yaml import *
 
-diagram_var: ContextVar[closed.Diagram] = ContextVar("diagram")
+diagram_var: ContextVar[monoidal.Diagram] = ContextVar("diagram")
 
 @contextmanager
 def load_container(ob):
@@ -22,21 +22,12 @@ def load_container(ob):
 
 def process_sequence(ob, tag):
     if tag:
-        target = ob.cod
-        exps, bases = get_exps_bases(target)
-        ob = exps @ ob
-        ob >>= closed.Eval(target)
-        ob >>= Node(tag, ob.cod, closed.Ty() >> closed.Ty(tag))
+        return Node(tag, monoidal.Ty(), monoidal.Ty(), args=ob)
     return ob
 
 def process_mapping(ob, tag):
-    # Mapping bubble is already applied before calling this
     if tag:
-        target = ob.cod
-        exps, bases = get_exps_bases(target)
-        ob @= exps
-        ob >>= closed.Eval(target)
-        ob >>= Node(tag, ob.cod, closed.Ty(tag) >> closed.Ty(tag))
+        return Node(tag, monoidal.Ty(), monoidal.Ty(), args=ob)
     return ob
 
 def load_scalar(cursor, tag):
@@ -50,7 +41,7 @@ def load_sequence(cursor, tag):
     if not items:
         ob = Scalar(tag, "")
     else:
-        diagram = reduce(lambda a, b: a @ b, items)
+        diagram = reduce(lambda a, b: a >> b, items)
         ob = Sequence(diagram)
         ob = process_sequence(ob, tag)
 
@@ -62,7 +53,10 @@ def load_mapping(cursor, tag):
     items = []
 
     for key, val in batched(diagrams, 2):
-        pair = key @ val
+        if isinstance(val, Scalar) and not val.tag and not val.value:
+            pair = key
+        else:
+            pair = key >> val
         pair = Sequence(pair, n=2)
         items.append(pair)
     
@@ -98,7 +92,7 @@ def _incidences_to_diagram(cursor):
         case "mapping":
             ob = load_mapping(cursor, tag)
         case "alias":
-            ob = Alias(anchor, closed.Ty(), closed.Ty() >> closed.Ty(anchor))
+            ob = Alias(anchor, monoidal.Ty(), monoidal.Ty(anchor))
         case _:
             raise Exception(f"Kind \"{kind}\" doesn't match any.")
 
@@ -108,8 +102,8 @@ def _incidences_to_diagram(cursor):
 
 def load_document(cursor):
     root = hif.step(cursor, "next")
-    return _incidences_to_diagram(root) if root else closed.Id()
+    return _incidences_to_diagram(root) if root else monoidal.Id()
 
 def load_stream(cursor):
     diagrams = map(_incidences_to_diagram, hif.iterate(cursor))
-    return reduce(lambda a, b: a @ b, diagrams, closed.Id())
+    return reduce(lambda a, b: a @ b, diagrams, monoidal.Id())

@@ -12,8 +12,10 @@ async def test_exec_runner():
     # Exec(dom, cod)
     # dom = "input"
     # cod = "output"
-    dom = closed.Ty("input")
-    cod = closed.Ty("output")
+    # dom = "input" -> Ty("IO") for piping semantics
+    # cod = "output" -> Ty("IO")
+    dom = closed.Ty("IO")
+    cod = closed.Ty("IO")
     exec_box = Exec(dom, cod)
 
     # SHELL_RUNNER converts Exec to Process
@@ -44,5 +46,5 @@ async def test_exec_runner():
         call_args = mock_run.call_args
         # name, args, stdin
         assert call_args[0][0] == "bin/widish"
-        assert call_args[0][1] == ("some_input",)
-        assert call_args[0][2] == () # stdin
+        assert call_args[0][1] == ()
+        assert call_args[0][2] == "some_input"

@@ -18,22 +18,49 @@ async def async_exec_diagram(yaml_d, path, *shell_program_args):
         from .files import diagram_draw
         diagram_draw(path, yaml_d)
 
-    constants = tuple(x.name for x in yaml_d.dom)
+    # constants = tuple(x.name for x in yaml_d.dom) 
+    # Logic moved to after reading input to allow injecting stdin into IO wires
     compiled_d = SHELL_COMPILER(yaml_d)
 
     if __debug__ and path is not None:
         from .files import diagram_draw
         diagram_draw(path.with_suffix(".shell.yaml"), compiled_d)
-    runner = SHELL_RUNNER(compiled_d)(*constants)
 
     if sys.stdin.isatty():
         inp = ""
     else:
         inp = await loop.run_in_executor(None, sys.stdin.read)
         
-    run_res = runner(inp)
-    val = await unwrap(run_res)
-    print(*(tuple(x.rstrip() for x in tuplify(val) if x)), sep="\n")
+    # Bind inputs: Use 'inp' for IO wires, box name for others (constants)
+    args = tuple(inp if x.name == "IO" else x.name for x in compiled_d.dom)
+    
+    runner = SHELL_RUNNER(compiled_d)(*args)
+    
+    runners = tuplify(runner)
+    tasks = []
+    immediate_results = []
+    
+    for r in runners:
+        if callable(r):
+            # Thunk is now fully bound with inputs, just call it
+            tasks.append(r())
+        else:
+            immediate_results.append(r)
+            
+    task_results = await asyncio.gather(*map(unwrap, tasks))
+    results = tuple(immediate_results) + tuple(task_results)
+    
+    # Flatten results if needed, though they might be strings
+    # Filter out empty strings and Ty() artifacts
+    final_output = []
+    for res in results:
+        for x in tuplify(res):
+            if x:
+                s = str(x).rstrip()
+                if s and "Ty(" not in s:
+                     final_output.append(s)
+
+    print(*final_output, sep="\n")
 
 
 async def async_command_main(command_string, *shell_program_args):
