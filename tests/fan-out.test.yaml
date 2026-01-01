@@ -1,0 +1,4 @@
+!echo "hello":
+  !sed "s/hello/HI/":
+  !sed "s/hello/HELLO/":
+  !wc -c:

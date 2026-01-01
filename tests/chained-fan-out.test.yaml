@@ -1,0 +1,4 @@
+!echo "start":
+  !sed "s/start/process/":
+    !sed "s/process/end1/":
+    !sed "s/process/end2/":

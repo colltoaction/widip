@@ -1,0 +1,4 @@
+#!/app/bin/widish
+!timeout 2s yes:
+  !cat -n:
+    !sed "s/^[[:space:]]*//; s/[[:space:]].*//":
