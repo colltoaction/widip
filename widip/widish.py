@@ -92,6 +92,11 @@ class Process(python.Function):
 
     @staticmethod
     async def run_command(name, args, stdin):
+        # this enables non-executable
+        # YAML files to be run as commands
+        if name.endswith(".yaml"):
+            args = (name, ) + args
+            name = "bin/widish"
         process = await asyncio.create_subprocess_exec(
             name, *args,
             stdout=asyncio.subprocess.PIPE,
@@ -100,6 +105,9 @@ class Process(python.Function):
         )
         input_data = "\n".join(stdin).encode() if stdin else None
         stdout, stderr = await process.communicate(input=input_data)
+        if stderr:
+            import sys
+            print(stderr.decode(), file=sys.stderr)
         return stdout.decode().rstrip("\n")
 
     @classmethod
