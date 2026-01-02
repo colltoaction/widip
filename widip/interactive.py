@@ -20,7 +20,7 @@ async def async_exec_diagram(yaml_d, path, *shell_program_args):
 
     constants = tuple(x.name for x in yaml_d.dom)
     compiled_d = SHELL_COMPILER(yaml_d)
-
+    
     if __debug__ and path is not None:
         from .files import diagram_draw
         diagram_draw(path.with_suffix(".shell.yaml"), compiled_d)
@@ -44,8 +44,10 @@ async def async_exec_diagram(yaml_d, path, *shell_program_args):
     else:
         res = await unwrap(runner_process())
     
-    # if res != ():
-    #     print(*(tuplify(res)), sep="\n")
+    # Filter out dead branches (None) and print result
+    filtered = [x for x in tuplify(res) if x is not None]
+    if filtered:
+        print(*filtered, sep="\n")
 
 
 async def async_command_main(command_string, *shell_program_args):

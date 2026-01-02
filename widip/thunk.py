@@ -55,17 +55,6 @@ async def thunk_reduce(b, *args):
         args = f(*args)
     return await unwrap(args)
 
-def recurse(f: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorator to create a recursive fixed-point combinator with cycle detection."""
-    async def wrapper(x: Any, state: tuple[Memo, frozenset[int]] | None = None) -> Any:
-        if state is not None:
-            return await _recurse_impl(f, x, state)
-
-        with recursion_scope() as memo:
-            return await _recurse_impl(f, x, (memo, frozenset()))
-    return wrapper
-
-
 async def _recurse_impl(
         f: Callable[..., Any],
         x: Any,
@@ -84,6 +73,16 @@ async def _recurse_impl(
     res = await callable_unwrap(f, call, x)
     fut.set_result(res)
     return res
+
+def recurse(f: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator to create a recursive fixed-point combinator with cycle detection."""
+    async def wrapper(x: Any, state: tuple[Memo, frozenset[int]] | None = None) -> Any:
+        if state is not None:
+            return await _recurse_impl(f, x, state)
+
+        with recursion_scope() as memo:
+            return await _recurse_impl(f, x, (memo, frozenset()))
+    return wrapper
 
 @recurse
 async def unwrap(recurse: Callable[[Any], Any], x: Any) -> Any:

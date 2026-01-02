@@ -71,17 +71,6 @@ class Process(python.Function):
         return args[:n], args[n:]
 
     @classmethod
-    async def run_constant(cls, ar, *args):
-        b, params = cls.split_args(ar, *args)
-        if hasattr(ar, "value") and ar.value is not None:
-             return ar.value
-        if not params:
-            if ar.dom == closed.Ty():
-                return ()
-            return ar.dom.name
-        return untuplify(await unwrap(params))
-
-    @classmethod
     async def run_node(cls, node, *args):
         from discopy import closed
         from .compiler import Program
@@ -140,6 +129,12 @@ class Process(python.Function):
     @classmethod
     async def run_discard(cls, ar, *args):
         return ()
+
+    @classmethod
+    async def run_data(cls, ar, *args):
+        if any(x is None for x in args):
+             return (None,)
+        return (ar.value,)
 
     @classmethod
     async def run_command(cls, name, args, stdin):
@@ -274,7 +269,7 @@ Widish = closed.Category(python.Ty, Process)
 
 def shell_runner_ar(ar):
     if isinstance(ar, Data):
-        t = thunk(Process.run_constant, ar)
+        t = thunk(Process.run_data, ar)
     elif isinstance(ar, Concurrent):
         t = thunk(Process.run_map, ar)
     elif isinstance(ar, Pair):
