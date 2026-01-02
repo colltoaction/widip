@@ -2,6 +2,7 @@ import pytest
 import subprocess
 import glob
 import os
+import sys
 
 # Find all test cases
 TEST_DIR = os.path.dirname(__file__)
@@ -23,8 +24,9 @@ def test_case(test_file):
         expected_output = f.read()
 
     # Run the shell
-    # Assuming running from repo root
-    cmd = ["bin/widish", test_file]
+    # Use the 'titi' command which should be in the PATH after installation
+    # Or use python -m titi
+    cmd = [sys.executable, "-m", "titi", test_file]
 
     result = subprocess.run(
         cmd,

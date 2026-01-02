@@ -1,5 +1,5 @@
 import pytest
-from widip.traverse import get_base, get_fiber, vertical_map, cartesian_lift
+from titi.traverse import get_base, get_fiber, vertical_map, cartesian_lift
 
 @pytest.mark.parametrize("data, base", [
     (1, "A"),

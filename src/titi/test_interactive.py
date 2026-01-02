@@ -6,11 +6,11 @@ import pytest
     ("examples/shell.yaml", "72\n22\n  ? !grep grep: !wc -c\n  ? !tail -2\n"),
     ("examples/aoc2025/1-1.yaml", "1147\n"),
 ])
-def test_piping_to_widish(filename, expected_output, capfd):
+def test_piping_to_titi(filename, expected_output, capfd):
     with open(filename, "r") as f:
         content = f.read()
     
-    subprocess.run(["bin/widish"], input=content, text=True, check=False)
+    subprocess.run(["titi"], input=content, text=True, check=False)
     
     out, err = capfd.readouterr()
     assert expected_output == out

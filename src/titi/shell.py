@@ -96,7 +96,7 @@ class Process(python.Function):
         # YAML files to be run as commands
         if name.endswith(".yaml"):
             args = (name, ) + args
-            name = "bin/widish"
+            name = "titi"
         process = await asyncio.create_subprocess_exec(
             name, *args,
             stdout=asyncio.subprocess.PIPE,
@@ -128,7 +128,7 @@ class Process(python.Function):
 
     @staticmethod
     def run_constant_gamma(ar, *args):
-        return "bin/widish"
+        return "titi"
 
 Widish = closed.Category(python.Ty, Process)
 

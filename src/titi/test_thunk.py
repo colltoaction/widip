@@ -1,6 +1,6 @@
 import pytest
 
-from widip.thunk import *
+from titi.thunk import *
 
 
 async def async_val(val):

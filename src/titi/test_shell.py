@@ -2,7 +2,7 @@ import pytest
 from discopy import closed
 from unittest.mock import patch, AsyncMock
 from .compiler import Exec
-from .widish import SHELL_RUNNER, Process
+from .shell import SHELL_RUNNER, Process
 
 @pytest.mark.asyncio
 async def test_exec_runner():
@@ -21,19 +21,19 @@ async def test_exec_runner():
 
     # The process should:
     # 1. Start with inputs corresponding to dom.
-    # 2. Add Constant (Gamma) -> "bin/widish"
-    # 3. Call Eval("bin/widish", inputs)
+    # 2. Add Constant (Gamma) -> "titi"
+    # 3. Call Eval("titi", inputs)
     # Eval should trigger _deferred_exec_subprocess (or similar logic for Eval).
 
-    # We need to mock run_command in widish.py
-    with patch("widip.widish.Process.run_command", new_callable=AsyncMock) as mock_run:
+    # We need to mock run_command in shell.py
+    with patch("titi.shell.Process.run_command", new_callable=AsyncMock) as mock_run:
         mock_run.return_value = "executed"
 
         # Run the process.
         result = process("some_input")
 
         # If result is awaitable, await it.
-        from widip.thunk import unwrap
+        from titi.thunk import unwrap
         final_result = await unwrap(result)
 
         assert final_result == "executed"
@@ -43,6 +43,6 @@ async def test_exec_runner():
         mock_run.assert_called_once()
         call_args = mock_run.call_args
         # name, args, stdin
-        assert call_args[0][0] == "bin/widish"
+        assert call_args[0][0] == "titi"
         assert call_args[0][1] == ("some_input",)
         assert call_args[0][2] == () # stdin

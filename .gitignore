@@ -24,7 +24,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/  <-- Commented out as lib/ is now a source directory
 lib64/
 parts/
 sdist/

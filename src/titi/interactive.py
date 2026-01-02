@@ -6,7 +6,7 @@ from yaml import YAMLError
 from discopy.utils import tuplify
 
 from .files import file_diagram, repl_read
-from .widish import SHELL_RUNNER
+from .shell import SHELL_RUNNER
 from .thunk import unwrap
 from .compiler import SHELL_COMPILER
 
@@ -42,7 +42,7 @@ async def async_command_main(command_string, *shell_program_args):
     await async_exec_diagram(fd, None, *shell_program_args)
 
 
-async def async_widish_main(file_name, *shell_program_args):
+async def async_titi_main(file_name, *shell_program_args):
     fd = file_diagram(file_name)
     path = Path(file_name)
     await async_exec_diagram(fd, path, *shell_program_args)
