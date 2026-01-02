@@ -44,8 +44,8 @@ def load_sequence(cursor, tag):
 def load_mapping(cursor, tag):
     items = []
     with load_container(cursor) as nodes:
-        diagrams = map(_incidences_to_diagram, nodes)
-        for key, val in batched(diagrams, 2):
+        diagrams_list = list(map(_incidences_to_diagram, nodes))
+        for key, val in batched(diagrams_list, 2):
             if isinstance(key, Scalar) and not key.tag and not key.value:
                  continue
             # Mapping entries are Key >> Value (pipeline)
@@ -56,6 +56,7 @@ def load_mapping(cursor, tag):
     else:
         # Implicitly copy input to all branches
         from .computer import Copy, Language
+        from functools import reduce
         ob = Copy(Language, len(items)) >> reduce(lambda a, b: a @ b, items)
     
     if tag:

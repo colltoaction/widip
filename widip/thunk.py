@@ -1,4 +1,4 @@
-from collections.abc import Iterator, Callable
+from collections.abc import Iterator, Callable, Awaitable
 from contextlib import contextmanager
 from functools import partial
 from typing import Any
@@ -9,6 +9,8 @@ import inspect
 Memo = dict[int, tuple[Any, asyncio.Future]]
 memo_var: contextvars.ContextVar[Memo | None] = contextvars.ContextVar("memo", default=None)
 path_var: contextvars.ContextVar[frozenset[int] | None] = contextvars.ContextVar("path", default=None)
+
+type Thunk[T] = Callable[[], T] | Awaitable[T]
 
 @contextmanager
 def recursion_scope():

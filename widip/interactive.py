@@ -44,8 +44,8 @@ async def async_exec_diagram(yaml_d, path, *shell_program_args):
     else:
         res = await unwrap(runner_process())
     
-    if res != ():
-        print(*(tuplify(res)), sep="\n")
+    # if res != ():
+    #     print(*(tuplify(res)), sep="\n")
 
 
 async def async_command_main(command_string, *shell_program_args):

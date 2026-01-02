@@ -29,11 +29,12 @@ class Scalar(closed.Box):
         from .compiler import Exec, Program, Data
         if self.tag == "exec":
             return Exec(self.dom, self.cod)
-        if self.tag:
+        elif self.tag:
             # Tagged scalar: command name is tag, argument is value
             args = (self.value, ) if self.value else ()
             return Program(self.tag, args=args, dom=self.dom, cod=self.cod)
-        return Data(self.dom, self.cod, self.value)
+        else:
+             return Data(self.dom, self.cod, self.value)
 
 class Sequence(closed.Box):
     def __init__(self, inside, dom=None, cod=None, n=None, tag=""):

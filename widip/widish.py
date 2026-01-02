@@ -1,5 +1,4 @@
 import asyncio
-import re
 
 from collections.abc import Callable
 from functools import partial
@@ -38,7 +37,7 @@ class Process(python.Function):
         for p in [self, other]:
             if hasattr(p, "_parts"): parts.extend(p._parts)
             else: parts.append(p)
-        
+            
         async def tensored(*args):
             current_idx = 0
             thunks = []
@@ -134,6 +133,8 @@ class Process(python.Function):
     @classmethod
     async def run_copy(cls, ar, *args):
         val = args[0] if args else ""
+        if val is None:
+             return (None,) * ar.n
         return untuplify(tuple([val] * ar.n))
 
     @classmethod
@@ -149,6 +150,10 @@ class Process(python.Function):
 
         if not name:
              return stdin[0] if stdin else ""
+        
+        # Propagate dead branch
+        if any(x is None for x in stdin):
+             return (None,)
 
         # No expansion: $ is not part of widish according to user.
         expanded_args = args
@@ -177,7 +182,7 @@ class Process(python.Function):
                   )
                   stdout, _ = await proc.communicate()
                   res = stdout.decode().strip()
-                  return (res,) if res else ()
+                  return (res,) if res else (None,)
 
              if name.startswith("test"):
                   test_cmd = ["test"] + list(map(str, stdin))
@@ -189,9 +194,8 @@ class Process(python.Function):
                       stdout=asyncio.subprocess.PIPE
                   )
                   await proc.wait()
-                  # print(f"DEBUG: test {test_cmd} ret={proc.returncode}")
                   if proc.returncode != 0:
-                       return () # Guard fails
+                       return (None,) # Guard fails
                   
                   return stdin
 
