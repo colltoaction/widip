@@ -156,47 +156,6 @@ class Process(python.Function):
         if not isinstance(name, str):
              return await unwrap(name(*(tuplify(expanded_args) + tuplify(stdin))))
 
-        is_builtin = name in ("seq", "seq:", "mapping", "mapping:", "cat", "cat:", "test", "test:", "expr", "expr:", "echo", "echo:")
-        
-        if is_builtin:
-             if name.startswith("echo"):
-                  out_items = expanded_args if expanded_args else stdin
-                  out = " ".join(map(str, out_items))
-                  print(out, flush=True)
-                  return (out,)
-             
-             if name.startswith("expr"):
-                  cmd = ["expr"] + list(map(str, stdin))
-                  for arg in expanded_args:
-                       cmd += str(arg).split()
-                  proc = await asyncio.create_subprocess_exec(
-                      cmd[0], *cmd[1:],
-                      stdout=asyncio.subprocess.PIPE
-                  )
-                  stdout, _ = await proc.communicate()
-                  res = stdout.decode().strip()
-                  return (res,) if res else (None,)
-
-             if name.startswith("test"):
-                  test_cmd = ["test"] + list(map(str, stdin))
-                  for arg in expanded_args:
-                       test_cmd += str(arg).split()
-                  
-                  proc = await asyncio.create_subprocess_exec(
-                      test_cmd[0], *test_cmd[1:],
-                      stdout=asyncio.subprocess.PIPE
-                  )
-                  await proc.wait()
-                  if proc.returncode != 0:
-                       return (None,) # Guard fails
-                  
-                  return stdin
-
-             res = stdin
-             for arg in expanded_args:
-                  res = await unwrap(Process.run_node(arg, *tuplify(res)))
-             return res
-
         # Check recursion registry
         if name in (registry := RECURSION_REGISTRY.get()):
              item = registry[name]
@@ -211,6 +170,7 @@ class Process(python.Function):
              return await unwrap(runner(*(tuplify(expanded_args) + tuplify(stdin))))
 
         # Evaluate arguments for external command
+        cmd = [name]
         cmd_args = []
         current_stdin = stdin
         for arg in expanded_args:
@@ -273,7 +233,7 @@ class Process(python.Function):
 
     @staticmethod
     def run_constant_gamma(ar, *args):
-        return "bin/widish"
+        return ("bin/widish",)
 
 Widish = closed.Category(python.Ty, Process)
 
@@ -295,7 +255,7 @@ def shell_runner_ar(ar):
     elif isinstance(ar, Discard):
         t = thunk(Process.run_discard, ar)
     elif isinstance(ar, Exec):
-         gamma = Constant()
+         gamma = Constant(dom=closed.Ty())
          diagram = gamma @ closed.Id(ar.dom) >> Eval(ar.dom, ar.cod)
          return SHELL_RUNNER(diagram)
     elif isinstance(ar, Constant):

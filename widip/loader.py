@@ -48,6 +48,12 @@ def load_mapping(cursor, tag):
         for key, val in batched(diagrams_list, 2):
             if isinstance(key, Scalar) and not key.tag and not key.value:
                  continue
+            
+            # Treat empty value as Identity to allow pass-through
+            if isinstance(val, Scalar) and not val.tag and not val.value:
+                 # We need Id matching key's codomain
+                 val = closed.Id(key.cod)
+
             # Mapping entries are Key >> Value (pipeline)
             items.append(key >> val)
 

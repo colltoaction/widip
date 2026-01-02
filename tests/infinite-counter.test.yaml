@@ -1,5 +1,4 @@
-!expr 1: &loop
-  !test -le 5:
-    - !echo
-    - !expr + 1
-    - *loop
+!echo 1: &loop
+  !awk '$1 <= 5 { print $1 }':
+    - ? !cat
+      ? !awk '{ print $1 + 1 }': *loop

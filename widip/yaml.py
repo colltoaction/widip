@@ -50,7 +50,7 @@ class Sequence(closed.Box):
         self.args = (inside, )
 
     def to_closed(self):
-        from .compiler import SHELL_COMPILER, Program, Language
+        from .compiler import SHELL_COMPILER, Program, Language, Sequential, Pair
         ob = SHELL_COMPILER(self.args[0])
         if self.tag:
             return Program(self.tag, args=(ob, ))
@@ -68,7 +68,7 @@ class Mapping(closed.Box):
         self.args = (inside, )
 
     def to_closed(self):
-        from .compiler import SHELL_COMPILER, Program, Language
+        from .compiler import SHELL_COMPILER, Program, Language, Concurrent
         ob = SHELL_COMPILER(self.args[0])
         if self.tag:
             return Program(self.tag, args=(ob, ))
