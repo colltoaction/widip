@@ -1,0 +1,20 @@
+? Hello World!
+
+? !echo Hello World!
+
+? { Hello World! }
+
+? { Hello, World! }
+
+? !echo { Hello, World! }
+
+? Hello World!
+: !xargs echo
+
+? { Hello, World! }
+: !xargs echo
+
+? |
+  Hello
+  World!
+: !xargs echo

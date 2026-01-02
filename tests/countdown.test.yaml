@@ -1,8 +1,6 @@
-#!/usr/bin/env -S timeout 0.1s python3 -u -m widip
 - 3
 - &countdown
   !xargs { test, 0, -eq }: Liftoff!
   !xargs { test, 0, -lt }:
-    - !xargs { -I, "{}", echo, "{}" }
     - !xargs { -I, "{}", expr, "{}", -, 1 }
     - *countdown

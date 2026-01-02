@@ -1,20 +1,17 @@
 import contextvars
 from typing import Any
-from discopy import closed, monoidal
-from .computer import Language, Trace, Copy, Discard, Eval, Swap
+from discopy import closed
 
 
 class Node(closed.Box):
     def __init__(self, name, dom, cod):
         super().__init__(name, dom, cod)
 
-    def to_closed(self):
-        return self
-
 class Scalar(closed.Box):
     def __init__(self, tag, value):
-        dom, cod = Language, Language
-        closed.Box.__init__(self, "Scalar", dom, cod)
+        dom, cod = closed.Ty(""), closed.Ty("")
+        name = value if not tag else f"{tag}"
+        closed.Box.__init__(self, "Scalar", dom, cod, drawing_name=name)
         self._tag, self._value = tag, value
 
     @property
@@ -25,54 +22,30 @@ class Scalar(closed.Box):
     def value(self):
         return self._value
 
-    def to_closed(self):
-        from .compiler import Exec, Program, Data
-        if self.tag == "exec":
-            return Exec(self.dom, self.cod)
-        elif self.tag:
-            # Tagged scalar: command name is tag, argument is value
-            args = (self.value, ) if self.value else ()
-            return Program(self.tag, args=args, dom=self.dom, cod=self.cod)
-        else:
-             return Data(self.dom, self.cod, self.value)
-
 class Sequence(closed.Box):
     def __init__(self, inside, dom=None, cod=None, n=None, tag=""):
         if tag:
-            dom = dom or Language
-            cod = cod or Language
-        if dom is None: dom = inside.dom if hasattr(inside, "dom") else Language
-        if cod is None: cod = inside.cod if hasattr(inside, "cod") else Language
+            dom = dom or closed.Ty("")
+            cod = cod or closed.Ty("")
+        if dom is None: dom = inside.dom if hasattr(inside, "dom") else closed.Ty("")
+        if cod is None: cod = inside.cod if hasattr(inside, "cod") else closed.Ty("")
 
         self.n = n
         self.tag = tag
         closed.Box.__init__(self, "Sequence", dom, cod)
         self.args = (inside, )
 
-    def to_closed(self):
-        from .compiler import SHELL_COMPILER, Program, Language, Sequential, Pair
-        ob = SHELL_COMPILER(self.args[0])
-        if self.tag:
-            return Program(self.tag, args=(ob, ))
-        return ob
-
 class Mapping(closed.Box):
     def __init__(self, inside, dom=None, cod=None, tag=""):
         if tag:
-            dom = dom or Language
-            cod = cod or Language
-        if dom is None: dom = inside.dom if hasattr(inside, "dom") else Language
-        if cod is None: cod = inside.cod if hasattr(inside, "cod") else Language
+            dom = dom or closed.Ty("")
+            cod = cod or closed.Ty("")
+        if dom is None: dom = inside.dom if hasattr(inside, "dom") else closed.Ty("")
+        if cod is None: cod = inside.cod if hasattr(inside, "cod") else closed.Ty("")
         self.tag = tag
-        closed.Box.__init__(self, "Mapping", dom, cod)
+        name = f"!{tag}" if tag else "Mapping"
+        closed.Box.__init__(self, "Mapping", dom, cod, drawing_name=name)
         self.args = (inside, )
-
-    def to_closed(self):
-        from .compiler import SHELL_COMPILER, Program, Language, Concurrent
-        ob = SHELL_COMPILER(self.args[0])
-        if self.tag:
-            return Program(self.tag, args=(ob, ))
-        return ob
 
 RECURSION_REGISTRY: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("recursion", default={})
 
@@ -82,24 +55,11 @@ class Anchor(closed.Box):
         self.name = name
         self.args = (inside, )
 
-    def to_closed(self):
-        from .compiler import SHELL_COMPILER
-        # Register the anchor for later lookup during execution
-        anchors = RECURSION_REGISTRY.get().copy()
-        anchors[self.name] = self.args[0]
-        RECURSION_REGISTRY.set(anchors)
-        return SHELL_COMPILER(self.args[0])
-
 class Alias(closed.Box):
     def __init__(self, name, dom=None, cod=None):
-        if dom is None: dom = Language
-        if cod is None: cod = Language
+        if dom is None: dom = closed.Ty("")
+        if cod is None: cod = closed.Ty("")
         super().__init__(name, dom, cod)
-
-    def to_closed(self):
-        from .compiler import Program
-        # Recursive call! Return a Program box with the anchor name.
-        return Program(self.name, dom=self.dom, cod=self.cod)
 
 Yaml = closed.Category()
 

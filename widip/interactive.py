@@ -6,9 +6,18 @@ from yaml import YAMLError
 from discopy.utils import tuplify
 
 from .files import file_diagram, repl_read
-from .widish import SHELL_RUNNER, Process, fold_diagram
+from .widish import SHELL_RUNNER, Process
 from .thunk import unwrap
 from .compiler import SHELL_COMPILER
+
+
+def flatten(x):
+    if x is None: return []
+    if isinstance(x, (list, tuple)):
+        res = []
+        for item in x: res.extend(flatten(item))
+        return res
+    return [x]
 
 
 async def async_exec_diagram(yaml_d, path, *shell_program_args):
@@ -25,8 +34,7 @@ async def async_exec_diagram(yaml_d, path, *shell_program_args):
         from .files import diagram_draw
         diagram_draw(path.with_suffix(".shell.yaml"), compiled_d)
     
-    compiled_widish = SHELL_RUNNER(compiled_d)
-    runner_process = fold_diagram(compiled_widish)
+    runner_process = SHELL_RUNNER(compiled_d)
     
     # Map shell_program_args to the initial input
     # If the diagram expects input, use shell_program_args or stdin
@@ -45,9 +53,9 @@ async def async_exec_diagram(yaml_d, path, *shell_program_args):
         res = await unwrap(runner_process())
     
     # Filter out dead branches (None) and print result
-    filtered = [x for x in tuplify(res) if x is not None]
+    filtered = flatten(res)
     if filtered:
-        print(*filtered, sep="\n")
+        print(*filtered, sep="\n", flush=True)
 
 
 async def async_command_main(command_string, *shell_program_args):

@@ -3,7 +3,7 @@
 ## Hello world!
 
 ```
-$ python -m widip examples/hello-world.yaml
+$ ./examples/hello-world.yaml
 Hello world!
 ```
 
@@ -14,17 +14,31 @@ Hello world!
 ## Script
 
 ```
-$ python -m widip examples/shell.yaml
+$ ./examples/shell.yaml
 73
 23
-  ? !grep grep: !wc -c
-  ? !tail -2
+  ? !grep { grep: }: !wc { -c }
+  ? !tail { -2 }
 ```
 
 ![IMG](shell.jpg)
 
 ![IMG](shell.shell.jpg)
 
+## Countdown
+Recursive countdown orchestration. It uses `test` for termination, `expr` for arithmetic, and a built-in feedback trace in the `widish` runtime to print values during recursion.
+
+```
+$ examples/countdown.yaml
+3
+2
+1
+Liftoff!
+```
+
+![IMG](countdown.jpg)
+
+![IMG](countdown.shell.jpg)
 
 # Working with the CLI
 Open terminal and run `widip` to start an interactive session. The program `bin/yaml/shell.yaml` prompts for one command per line, so when we hit `↵ Enter` it is evaluated. When hitting `⌁ Ctrl+D` the environment exits.

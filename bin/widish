@@ -1,2 +1,2 @@
 #!/bin/sh
-exec python -O -m widip "$@"
+exec python -m widip "$@"

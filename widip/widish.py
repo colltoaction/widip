@@ -1,12 +1,30 @@
 import asyncio
-
-from collections.abc import Callable
+import sys
 from functools import partial
 from discopy.utils import tuplify, untuplify
 from discopy import closed, python, utils
 
 from .computer import *
-from .thunk import thunk, unwrap
+from .thunk import unwrap
+
+async def _bridge_pipe(f, g, *args):
+    res = await unwrap(f(*args))
+    return await unwrap(g(*utils.tuplify(res)))
+
+async def _tensor_inside(f, g, n, *args):
+    args1, args2 = args[:n], args[n:]
+    res1 = await unwrap(f(*args1))
+    res2 = await unwrap(g(*args2))
+    return tuplify(res1) + tuplify(res2)
+
+async def _eval_func(f, *x):
+    return await unwrap(f(*x))
+
+def _lazy(func, ar):
+    """Returns a function that returns a partial application of func."""
+    async def wrapper(*args):
+        return partial(func, ar, *args)
+    return wrapper
 
 class Process(python.Function):
     def __init__(self, inside, dom, cod):
@@ -14,301 +32,233 @@ class Process(python.Function):
         self.type_checking = False
 
     def then(self, other):
-        from discopy.utils import tuplify, untuplify
-        steps = []
-        for p in [self, other]:
-            if hasattr(p, "_steps"): steps.extend(p._steps)
-            else: steps.append(p)
-        
-        async def piped(*args):
-            res = args
-            for p in steps:
-                res = await unwrap(p(*tuplify(res)))
-                if res == (): return ()
-            return untuplify(res)
-        
-        new_p = Process(piped, self.dom, other.cod)
-        new_p._steps = steps
-        return new_p
+        return Process(
+            partial(_bridge_pipe, self, other),
+            self.dom,
+            other.cod,
+        )
 
     def tensor(self, other):
-        from discopy.utils import tuplify, untuplify
-        parts = []
-        for p in [self, other]:
-            if hasattr(p, "_parts"): parts.extend(p._parts)
-            else: parts.append(p)
-            
-        async def tensored(*args):
-            current_idx = 0
-            thunks = []
-            for p in parts:
-                dom_len = len(p.dom)
-                p_args = args[current_idx : current_idx + dom_len]
-                thunks.append(thunk(p, *p_args))
-                current_idx += dom_len
-            
-            results = await unwrap(tuple(thunks))
-            final_res = tuple(item for r in results for item in tuplify(r))
-            return final_res
-            
-        new_p = Process(tensored, self.dom + other.dom, self.cod + other.cod)
-        new_p._parts = parts
-        return new_p
+        return Process(
+            partial(_tensor_inside, self, other, len(self.dom)),
+            self.dom + other.dom,
+            self.cod + other.cod
+        )
 
     @classmethod
     def eval(cls, base, exponent, left=True):
-        async def func(f, *x):
-             return await unwrap(f(*x))
         return Process(
-            func,
+            _eval_func,
             (exponent << base) @ base,
             exponent
         )
 
     @staticmethod
     def split_args(ar, *args):
-        n = len(ar.dom)
+        # We need to handle when dom is not a Ty (e.g. object)
+        try:
+            n = len(ar.dom)
+        except TypeError:
+            n = 1
         return args[:n], args[n:]
 
     @classmethod
-    async def run_node(cls, node, *args):
-        from discopy import closed
-        from .compiler import Program
-        from .yaml import Alias
-        
-        if isinstance(node, (Program, Alias)):
-             return await cls.run_command(node.name, getattr(node, "args", ()), args)
-
-        if isinstance(node, closed.Diagram):
-             from .widish import SHELL_RUNNER, fold_diagram
-             node = fold_diagram(SHELL_RUNNER(node))
-        
-        if callable(node):
-            return await unwrap(node(*args))
-        
-        # Original command execution path
-        return await cls.run_command(node, (), args)
+    async def run_constant(cls, ar, *args):
+        b, params = cls.split_args(ar, *args)
+        if not params:
+            return (ar.value, )
+        return untuplify(params)
 
     @classmethod
     async def run_map(cls, ar, *args):
         b, params = cls.split_args(ar, *args)
-        # return a function that returns a tuple of results
-        async def composed(*x):
-             results = [cls.run_node(kv, *tuplify(x)) for kv in b]
-             return untuplify(tuple([await unwrap(r) for r in results]))
-        return composed
+        
+        async def run_branch(kv):
+             # kv is Task (partial). unwrap it.
+             # Wait, kv might be the partial itself.
+             res = await unwrap(kv(*tuplify(params)))
+             return tuplify(res) # Ensure tuple for sum
+
+        results = await asyncio.gather(*(run_branch(kv) for kv in b))
+        # Filter out branches where all results are None
+        active = [r for r in results if any(x is not None for x in r)]
+        return sum(active, ())
 
     @classmethod
     async def run_seq(cls, ar, *args):
         b, params = cls.split_args(ar, *args)
-        if not b: return args
-        
-        res = await cls.run_node(b[0], *tuplify(args))
+        if not b:
+            return params
+
+        res = await unwrap(b[0](*tuplify(params)))
         for func in b[1:]:
-            res = await cls.run_node(func, *tuplify(res))
+            res = await unwrap(func(*tuplify(res)))
         return res
 
-    @classmethod
-    async def run_swap(cls, ar, *args):
+    @staticmethod
+    def run_swap(ar, *args):
         n_left = len(ar.left)
-        return untuplify(args[n_left:] + args[:n_left])
+        n_right = len(ar.right)
+        left_args = args[:n_left]
+        right_args = args[n_left : n_left + n_right]
+        return untuplify(right_args + left_args)
 
     @classmethod
-    async def run_cast(cls, ar, *args):
+    def run_cast(cls, ar, *args):
         b, params = cls.split_args(ar, *args)
         func = b[0]
         return func
 
     @classmethod
-    async def run_copy(cls, ar, *args):
-        val = args[0] if args else ""
+    def run_copy(cls, ar, *args):
+        b, params = cls.split_args(ar, *args)
+        val = b[0] if b else params[0] if params else ""
         if val is None:
              return (None,) * ar.n
-        return untuplify(tuple([val] * ar.n))
+        return (val,) * ar.n
 
-    @classmethod
-    async def run_discard(cls, ar, *args):
+    @staticmethod
+    def run_discard(ar, *args):
         return ()
 
-    @classmethod
-    async def run_data(cls, ar, *args):
-        if any(x is None for x in args):
-             return (None,)
-        return (ar.value,)
-
-    @classmethod
-    async def run_command(cls, name, args, stdin):
-        from .compiler import SHELL_COMPILER
+    @staticmethod
+    async def run_command(name, args, stdin):
         from .yaml import RECURSION_REGISTRY
-        from discopy.utils import tuplify, untuplify
-        from pathlib import Path
-
-        if not name:
-             return stdin[0] if stdin else ""
+        from .widish import SHELL_RUNNER
+        from .compiler import SHELL_COMPILER
         
-        # Propagate dead branch
         if any(x is None for x in stdin):
              return (None,)
 
-        # No expansion: $ is not part of widish according to user.
-        expanded_args = args
-
         if not isinstance(name, str):
-             return await unwrap(name(*(tuplify(expanded_args) + tuplify(stdin))))
+             return await unwrap(name(*(tuplify(args) + tuplify(stdin))))
 
-        # Check recursion registry
+        # Recurse
         if name in (registry := RECURSION_REGISTRY.get()):
              item = registry[name]
-             if not isinstance(item, (Process, Callable)):
-                  from .widish import SHELL_RUNNER, fold_diagram
+             if not callable(item):
                   compiled = SHELL_COMPILER(item)
-                  runner = fold_diagram(SHELL_RUNNER(compiled))
+                  runner = SHELL_RUNNER(compiled)
                   registry[name] = runner
                   RECURSION_REGISTRY.set(dict(registry))
              else:
                   runner = item
-             return await unwrap(runner(*(tuplify(expanded_args) + tuplify(stdin))))
+             return await runner(*tuplify(stdin))
 
-        # Evaluate arguments for external command
-        cmd = [name]
-        cmd_args = []
-        current_stdin = stdin
-        for arg in expanded_args:
-             # Run the arg as a filter on current inputs
-             res = await unwrap(Process.run_node(arg, *tuplify(current_stdin)))
-             # Flatten result and append to command args
-             for item in tuplify(res):
-                  cmd_args.append(str(item))
-
-        cmd += cmd_args
-
-        # print(f"DEBUG: run_command {cmd} stdin={stdin}")
-        if len(cmd) > 1 or " " in name:
-            import os
-            shell = os.environ.get("WIDIP_SHELL", "sh -c").split()
-            cmd = shell + [" ".join(cmd)]
-
+        if name.endswith(".yaml"):
+            args = (name, ) + args
+            name = "bin/widish"
+            
         process = await asyncio.create_subprocess_exec(
-            cmd[0], *cmd[1:],
+            name, *map(str, args),
             stdout=asyncio.subprocess.PIPE,
             stdin=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
-        input_data = "\n".join(stdin).encode() if stdin else None
+        input_data = "\n".join(map(str, stdin)).encode() if stdin else None
         stdout, stderr = await process.communicate(input=input_data)
-        if stderr:
-             import sys
-             print(stderr.decode(), file=sys.stderr)
         
         if process.returncode != 0:
-             return ()
+             return (None,)
 
-        res = stdout.decode().rstrip("\n")
-        return res
+        res_str = stdout.decode()
+        if not res_str.strip():
+             if name in ("awk", "grep"): return (None,)
+             return tuple(stdin)
+        
+        return tuple(res_str.splitlines())
 
     @classmethod
     async def deferred_exec(cls, ar, *args):
-        async_b, async_params = map(unwrap, map(tuplify, cls.split_args(ar, *args)))
-        b, params = await asyncio.gather(async_b, async_params)
-        name, cmd_args = (
-            (ar.name, b) if ar.name
-            else (b[0], b[1:]) if b
-            else (None, ())
-        )
+        async def resolve(x):
+            if callable(x):
+                return await unwrap(x())
+            return x
+
+        # Resolve all input wires
+        resolved = []
+        for x in args:
+            res = await resolve(x)
+            # If it's a tuple of lines (from a command), we keep it as a single unit for now
+            # unless it's explicitly multiple wires. 
+            # But Eval expects 1 object per wire.
+            resolved.append(res)
         
-        if name is None:
-             return params[0] if params else ""
+        if ar.name:
+             # Constant/Program call
+             name = ar.name
+             cmd_args = resolved
+             stdin = ()
+        else:
+             # Eval case: (Name, [Args...], Stdin)
+             if not resolved: return (None,)
+             name = resolved[0]
+             stdin = resolved[-1]
+             cmd_args = resolved[1:-1]
 
-        if callable(name):
-             # If the "name" is a function, call it directly
-             return await unwrap(name(*(tuplify(cmd_args) + tuplify(params))))
+        # Ensure stdin is a collection of lines
+        if isinstance(stdin, str): stdin = (stdin,)
+        if stdin is None: stdin = ()
+        # If it's a tuple of tuples (nested), flatten it
+        def flatten_lines(x):
+            if isinstance(x, (list, tuple)):
+                res = []
+                for i in x: res.extend(flatten_lines(i))
+                return res
+            return [x]
+        stdin = flatten_lines(stdin)
 
-        result = await cls.run_command(name, cmd_args, params)
-        return result if ar.cod else ()
+        return await cls.run_command(name, cmd_args, stdin)
 
-    @staticmethod
-    async def run_program(ar, *args):
-        # ar is the Program box, args is the pipeline stdin
-        return await Process.run_command(ar.name, ar.args, args)
+    @classmethod
+    async def run_program(cls, ar, *args):
+        # Programs take all inputs from wires as stdin
+        return await cls.run_command(ar.name, ar.args, args)
 
     @staticmethod
     def run_constant_gamma(ar, *args):
-        return ("bin/widish",)
+        return "bin/widish"
 
 Widish = closed.Category(python.Ty, Process)
 
 def shell_runner_ar(ar):
     if isinstance(ar, Data):
-        t = thunk(Process.run_data, ar)
+        t = _lazy(Process.run_constant, ar)
     elif isinstance(ar, Concurrent):
-        t = thunk(Process.run_map, ar)
+        t = _lazy(Process.run_map, ar)
     elif isinstance(ar, Pair):
-        t = thunk(Process.run_seq, ar)
+        t = _lazy(Process.run_seq, ar)
     elif isinstance(ar, Sequential):
-        t = thunk(Process.run_seq, ar)
+        t = _lazy(Process.run_seq, ar)
     elif isinstance(ar, Swap):
-        t = thunk(Process.run_swap, ar)
+        t = partial(Process.run_swap, ar)
     elif isinstance(ar, Cast):
-        t = thunk(Process.run_cast, ar)
+        t = _lazy(Process.run_cast, ar)
     elif isinstance(ar, Copy):
-        t = thunk(Process.run_copy, ar)
+        t = partial(Process.run_copy, ar)
     elif isinstance(ar, Discard):
-        t = thunk(Process.run_discard, ar)
+        t = partial(Process.run_discard, ar)
     elif isinstance(ar, Exec):
-         gamma = Constant(dom=closed.Ty())
+         gamma = Constant()
          diagram = gamma @ closed.Id(ar.dom) >> Eval(ar.dom, ar.cod)
          return SHELL_RUNNER(diagram)
     elif isinstance(ar, Constant):
-         t = thunk(Process.run_constant_gamma, ar)
+         t = _lazy(Process.run_constant_gamma, ar)
     elif isinstance(ar, Program):
-         t = thunk(Process.run_program, ar)
-    elif isinstance(ar, closed.Eval):
-         return Process.eval(ar.base, ar.exponent, ar.left)
+         t = _lazy(Process.run_program, ar)
     elif isinstance(ar, Eval):
-         t = thunk(Process.deferred_exec, ar)
+         t = _lazy(Process.deferred_exec, ar)
     else:
-        t = thunk(Process.deferred_exec, ar)
+        t = _lazy(Process.deferred_exec, ar)
 
-    return Process(t, python.Ty(tuple([object] * len(ar.dom))), python.Ty(tuple([object] * len(ar.cod))))
-
-def fold_diagram(diagram):
-    if isinstance(diagram, Process):
-        return diagram
-
-    procs = []
-    for layer in diagram.inside:
-        layer_process = None
-        if len(layer.boxes_and_offsets) == 1 and layer.boxes_and_offsets[0][1] == 0:
-             layer_process = layer.boxes_and_offsets[0][0]
-        else:
-             for b, offset in layer.boxes_and_offsets:
-                  if layer_process is None:
-                       layer_process = b
-                  else:
-                       layer_process = layer_process.tensor(b)
-        if layer_process:
-            procs.append(layer_process)
-
-    if not procs:
-        async def identity(*x): return untuplify(x)
-        return Process(identity, diagram.dom, diagram.dom)
-
-    if len(procs) == 1:
-        return procs[0]
-
-    async def iterative_runner(*x):
-        res = x
-        for p in procs:
-            res = await unwrap(p(*tuplify(res)))
-            if res == (): return ()
-        return untuplify(res)
-
-    return Process(iterative_runner, diagram.dom, diagram.cod)
+    dom = SHELL_RUNNER(ar.dom)
+    cod = SHELL_RUNNER(ar.cod)
+    return Process(t, dom, cod)
 
 class WidishFunctor(closed.Functor):
     def __init__(self):
         super().__init__(
-            lambda ob: python.Ty(tuple([object] * len(ob))),
+            lambda ob: object,
             shell_runner_ar,
             dom=Computation,
             cod=Widish

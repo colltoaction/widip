@@ -7,9 +7,9 @@ from itertools import batched
 from discopy import closed
 from nx_hif.hif import HyperGraph
 
+import sys
 from . import hif
 from .yaml import Scalar, Sequence, Mapping, Anchor, Alias
-from .computer import Program, Language
 
 diagram_var: ContextVar[closed.Diagram] = ContextVar("diagram")
 
@@ -45,13 +45,12 @@ def load_mapping(cursor, tag):
     items = []
     with load_container(cursor) as nodes:
         diagrams_list = list(map(_incidences_to_diagram, nodes))
+
         for key, val in batched(diagrams_list, 2):
             if isinstance(key, Scalar) and not key.tag and not key.value:
                  continue
             
-            # Treat empty value as Identity to allow pass-through
             if isinstance(val, Scalar) and not val.tag and not val.value:
-                 # We need Id matching key's codomain
                  val = closed.Id(key.cod)
 
             # Mapping entries are Key >> Value (pipeline)
@@ -61,9 +60,10 @@ def load_mapping(cursor, tag):
         ob = Scalar(tag, "")
     else:
         # Implicitly copy input to all branches
-        from .computer import Copy, Language
-        from functools import reduce
-        ob = Copy(Language, len(items)) >> reduce(lambda a, b: a @ b, items)
+        from .computer import Copy
+        tensor = reduce(lambda a, b: a @ b, items)
+        connector = Copy(closed.Ty(""), len(items))
+        ob = connector >> tensor
     
     if tag:
         ob = Mapping(ob, tag=tag)
@@ -101,8 +101,8 @@ def _incidences_to_diagram(cursor):
 
 def load_document(cursor):
     root = hif.step(cursor, "next")
-    return _incidences_to_diagram(root) if root else closed.Id()
+    return _incidences_to_diagram(root) if root else closed.Id(closed.Ty(""))
 
 def load_stream(cursor):
     diagrams = map(_incidences_to_diagram, hif.iterate(cursor))
-    return reduce(lambda a, b: a @ b, diagrams, closed.Id())
+    return reduce(lambda a, b: a @ b, diagrams, closed.Id(closed.Ty()))

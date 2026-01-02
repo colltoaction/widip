@@ -1,0 +1,35 @@
+- 1
+- &loop
+  ?
+    # FizzBuzz
+    - !xargs { -I, "{}", printf, "{} % 15 == 0\n" }
+    - !bc
+    - !xargs { -I, "{}", test, "{}", -ne, 0 }
+    - !printf { FizzBuzz\n }
+    - !tee { /dev/stdout }
+  ?
+    # Fizz
+    - !xargs { -I, "{}", printf, "{} % 3 == 0 && {} % 15 != 0\n" }
+    - !bc
+    - !xargs { -I, "{}", test, "{}", -ne, 0 }
+    - !printf { Fizz\n }
+    - !tee { /dev/stdout }
+  ?
+    # Buzz
+    - !xargs { -I, "{}", printf, "{} % 5 == 0 && {} % 15 != 0\n" }
+    - !bc
+    - !xargs { -I, "{}", test, "{}", -ne, 0 }
+    - !printf { Buzz\n }
+    - !tee { /dev/stdout }
+  ?
+    # Number
+    - !xargs { -I, "{}", printf, "{} * ({} % 3 != 0) * ({} % 5 != 0)\n" }
+    - !bc
+    - !xargs { -I, "{}", test, "{}", -ne, 0 }
+    - !xargs { -I, "{}", printf, "%s\n", "{}" }
+    - !tee { /dev/stdout }
+  ?
+    # Loop
+    - !xargs { -I, "{}", printf, "{} + 1\n" }
+    - !bc
+    - *loop

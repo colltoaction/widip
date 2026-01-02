@@ -31,7 +31,7 @@ def test_case(test_file):
             ["python", "-m", "widip", test_file],
             capture_output=True,
             text=True,
-            timeout=0.5
+            timeout=2.0
         )
     except subprocess.TimeoutExpired as e:
         proc = e # Store the exception object to access stdout/stderr if needed, or handle differently

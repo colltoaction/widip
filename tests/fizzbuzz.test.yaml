@@ -1,0 +1,5 @@
+- 1
+- &loop
+  !xargs { test, 5, -gt }:
+    - !xargs { -I, "{}", expr, "{}", +, 1 }
+    - *loop

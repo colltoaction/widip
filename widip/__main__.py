@@ -1,10 +1,12 @@
+import sys
+
 if __debug__:
     # Non-interactive backend for file output
     import matplotlib
     matplotlib.use('agg')
 
 import sys
-sys.setrecursionlimit(2000)
+sys.setrecursionlimit(10000)
 
 import argparse
 import asyncio

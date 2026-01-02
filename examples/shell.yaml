@@ -1,4 +1,6 @@
-!cat examples/shell.yaml:
-  ? !wc -c
-  ? !grep grep: !wc -c
-  ? !tail -2
+#!/usr/bin/env -S python3 -u -O -m widip
+!cat { examples/shell.yaml }:
+  ? !wc { -c }
+  ? - !grep { grep: }
+    - !wc { -c }
+  ? !tail { -2 }

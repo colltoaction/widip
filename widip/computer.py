@@ -26,12 +26,14 @@ class Constant(closed.Box):
         if cod is None: cod = Language
         super().__init__(name, dom, cod)
 
+
 class Data(closed.Box):
     def __init__(self, dom=None, cod=None, value=None):
         if dom is None: dom = Language
         if cod is None: cod = Language
-        super().__init__("⌜-⌝", dom, cod)
         self.value = value
+        name = f"⌜{value}⌝" if value else "⌜-⌝"
+        super().__init__(name, dom, cod)
 
 class Sequential(closed.Box):
     def __init__(self, dom, cod):
@@ -76,5 +78,6 @@ class Trace(closed.Box):
 class Exec(closed.Box):
     def __init__(self, dom, cod):
         super().__init__("exec", dom, cod)
+
 
 Computation = closed.Category(closed.Ty, closed.Diagram)
