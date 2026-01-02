@@ -1,0 +1,3 @@
+- ? !echo ha
+  ? !echo ha
+- !tr -d '\n'

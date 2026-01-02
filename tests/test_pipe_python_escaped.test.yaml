@@ -1,0 +1,4 @@
+?
+  ? !echo ha
+  ? !echo ha
+: !python { -c, "import sys; print(sys.stdin.read().replace('\\n', ''))" }

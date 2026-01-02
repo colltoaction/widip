@@ -1,0 +1,3 @@
+!expr "10":
+  !test "-gt 5": !echo "Greater"
+  !test "-lt 5": !echo "Lesser"

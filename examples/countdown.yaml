@@ -1,0 +1,7 @@
+&countdown
+!test "-eq 0":
+  - !echo Liftoff!
+!test "-gt 0":
+  - !echo
+  - !expr "- 1"
+  - *countdown

@@ -1,0 +1,7 @@
+!seq
+- !expr "5 * 2"
+- !expr "- 3"
+- !test "-gt 5"
+- !expr "+ 3"
+- !test "-eq 10"
+- !echo "Ten"
