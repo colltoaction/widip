@@ -14,22 +14,24 @@ class Eval(closed.Box):
         super().__init__("", Language @ A, B, drawing_name=drawing_name)
 
 class Program(closed.Box):
-    def __init__(self, name, dom=None, cod=None):
-        self.target_dom = dom
-        self.target_cod = cod
-        super().__init__(name, closed.Ty(), Language)
-
-    def uncurry(self, left=True):
-        return self @ closed.Id(self.target_dom) >> Eval(self.target_dom, self.target_cod)
+    def __init__(self, name, args=None, dom=None, cod=None):
+        if dom is None: dom = Language
+        if cod is None: cod = Language
+        super().__init__(name, dom, cod)
+        self.args = args or ()
 
 class Constant(closed.Box):
-    def __init__(self, cod=None):
-        super().__init__("Γ", closed.Ty(), Language)
+    def __init__(self, name="Γ", dom=None, cod=None):
+        if dom is None: dom = Language
+        if cod is None: cod = Language
+        super().__init__(name, dom, cod)
 
 class Data(closed.Box):
-    def __init__(self, dom, cod):
-        drawing_name = f"⌜{dom[0].name}⌝" if dom else "⌜-⌝"
-        super().__init__("⌜-⌝", dom, cod, drawing_name=drawing_name)
+    def __init__(self, dom=None, cod=None, value=None):
+        if dom is None: dom = Language
+        if cod is None: cod = Language
+        super().__init__("⌜-⌝", dom, cod)
+        self.value = value
 
 class Sequential(closed.Box):
     def __init__(self, dom, cod):
@@ -47,33 +49,29 @@ class Cast(closed.Box):
     def __init__(self, dom, cod):
         super().__init__("Cast", dom, cod)
 
-class Swap(closed.Box, symmetric.Swap):
+class Swap(closed.Box):
     def __init__(self, left, right):
-        symmetric.Swap.__init__(self, left, right)
-        self.name = "σ"
+        closed.Box.__init__(self, "σ", left @ right, right @ left)
+        self.left, self.right = left, right
 
-class Copy(closed.Box, markov.Copy):
+class Copy(closed.Box):
     def __init__(self, x, n=2):
-        if len(x) == 1:
-            markov.Copy.__init__(self, x, n)
-        else:
-            name = f"Copy({x}" + ("" if n == 2 else f", {n}") + ")"
-            closed.Box.__init__(self, name, dom=x, cod=x ** n)
-            
+        name = f"Copy({x}" + ("" if n == 2 else f", {n}") + ")"
+        closed.Box.__init__(self, name, x, x ** n)
         self.n = n
 
-class Discard(closed.Box, markov.Discard):
+class Discard(closed.Box):
     def __init__(self, dom):
-        if len(dom) == 1:
-            markov.Discard.__init__(self, dom)
-        else:
-            name = f"Discard({dom})"
-            closed.Box.__init__(self, name, dom=dom, cod=closed.Ty())
+        name = f"Discard({dom})"
+        closed.Box.__init__(self, name, dom, closed.Ty())
 
-class Trace(closed.Box, traced.Trace):
+class Trace(closed.Box):
     def __init__(self, arg, left=False):
-        traced.Trace.__init__(self, arg, left)
-        closed.Box.__init__(self, self.name, self.dom, self.cod)
+        dom = arg.dom[:-1] if not left else arg.dom[1:]
+        cod = arg.cod[:-1] if not left else arg.cod[1:]
+        closed.Box.__init__(self, "Trace", dom, cod)
+        self.arg = arg
+        self.left = left
 
 class Exec(closed.Box):
     def __init__(self, dom, cod):

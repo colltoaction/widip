@@ -6,7 +6,7 @@ from yaml import YAMLError
 from discopy.utils import tuplify
 
 from .files import file_diagram, repl_read
-from .widish import SHELL_RUNNER
+from .widish import SHELL_RUNNER, Process, fold_diagram
 from .thunk import unwrap
 from .compiler import SHELL_COMPILER
 
@@ -24,16 +24,28 @@ async def async_exec_diagram(yaml_d, path, *shell_program_args):
     if __debug__ and path is not None:
         from .files import diagram_draw
         diagram_draw(path.with_suffix(".shell.yaml"), compiled_d)
-    runner = SHELL_RUNNER(compiled_d)(*constants)
-
+    
+    compiled_widish = SHELL_RUNNER(compiled_d)
+    runner_process = fold_diagram(compiled_widish)
+    
+    # Map shell_program_args to the initial input
+    # If the diagram expects input, use shell_program_args or stdin
+    initial_input = shell_program_args if shell_program_args else []
+    
     if sys.stdin.isatty():
-        inp = ""
+        inp = initial_input
     else:
-        inp = await loop.run_in_executor(None, sys.stdin.read)
-        
-    run_res = runner(inp)
-    val = await unwrap(run_res)
-    print(*(tuple(x.rstrip() for x in tuplify(val) if x)), sep="\n")
+        stdin_data = await loop.run_in_executor(None, sys.stdin.read)
+        inp = list(initial_input) + (stdin_data.splitlines() if stdin_data else [])
+
+    # Execute the folded process with the input
+    if runner_process.dom:
+        res = await unwrap(runner_process(*tuplify(inp)))
+    else:
+        res = await unwrap(runner_process())
+    
+    if res != ():
+        print(*(tuplify(res)), sep="\n")
 
 
 async def async_command_main(command_string, *shell_program_args):
@@ -72,9 +84,8 @@ async def async_shell_main(file_name):
             # if __debug__:
             #     diagram_draw(path.with_suffix(".shell.yaml"), compiled_d)
             constants = tuple(x.name for x in compiled_d.dom)
-            result_ev = SHELL_RUNNER(compiled_d)(*constants)
-            result = await unwrap(result_ev)
-            print(*(tuple(x.rstrip() for x in tuplify(result) if x)), sep="\n")
+            result = await unwrap(SHELL_RUNNER(compiled_d)(*constants))
+            print(*(tuplify(result)), sep="\n")
 
             if not sys.stdin.isatty():
                 break

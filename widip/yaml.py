@@ -1,69 +1,98 @@
+import contextvars
+from typing import Any
 from discopy import closed, monoidal
+from .computer import Language, Trace, Copy, Discard, Eval, Swap
 
 
-# TODO node class is unnecessary
 class Node(closed.Box):
     def __init__(self, name, dom, cod):
         super().__init__(name, dom, cod)
 
+    def to_closed(self):
+        return self
+
 class Scalar(closed.Box):
     def __init__(self, tag, value):
-        dom = closed.Ty(value) if value else closed.Ty()
-        cod = closed.Ty(tag) >> closed.Ty(tag) if tag else closed.Ty() >> closed.Ty(value)
-        super().__init__("Scalar", dom, cod)
+        dom, cod = Language, Language
+        closed.Box.__init__(self, "Scalar", dom, cod)
+        self._tag, self._value = tag, value
 
     @property
     def tag(self):
-        if not self.cod or not self.cod[0].is_exp: return ""
-        u = self.cod[0].inside[0]
-        return u.base.name if u.base == u.exponent else ""
+        return self._tag
 
     @property
     def value(self):
-        if self.dom: return self.dom[0].name
-        if not self.cod or not self.cod[0].is_exp: return ""
-        u = self.cod[0].inside[0]
-        return u.base.name if not self.tag else ""
+        return self._value
 
-class Sequence(monoidal.Bubble, closed.Box):
-    def __init__(self, inside, dom=None, cod=None, n=None):
-        if dom is None:
-            dom = inside.dom
+    def to_closed(self):
+        from .compiler import Exec, Program, Data
+        if self.tag == "exec":
+            return Exec(self.dom, self.cod)
+        if self.tag:
+            # Tagged scalar: command name is tag, argument is value
+            args = (self.value, ) if self.value else ()
+            return Program(self.tag, args=args, dom=self.dom, cod=self.cod)
+        return Data(self.dom, self.cod, self.value)
 
-        if cod is None:
-            # If n=2 is explicitly requested, use Pair logic (K -> V)
-            # Otherwise use Tuple logic (all inputs -> all outputs)
-            if n == 2:
-                mid = len(inside.cod) // 2
-                exps, _ = get_exps_bases(inside.cod[:mid])
-                _, bases = get_exps_bases(inside.cod[mid:])
-                cod = exps >> bases
-            else:
-                exps, bases = get_exps_bases(inside.cod)
-                cod = exps >> bases
+class Sequence(closed.Box):
+    def __init__(self, inside, dom=None, cod=None, n=None, tag=""):
+        if dom is None: dom = inside.dom if hasattr(inside, "dom") else Language
+        if cod is None: cod = inside.cod if hasattr(inside, "cod") else Language
 
-        self.n = n if n is not None else len(inside.cod)
-        super().__init__(inside, dom=dom, cod=cod)
-        # Change method to bypass Functor's default bubble handling
-        self.method = "sequence_bubble"
+        self.n = n
+        self.tag = tag
+        closed.Box.__init__(self, "Sequence", dom, cod)
+        self.args = (inside, )
 
-class Mapping(monoidal.Bubble, closed.Box):
-    def __init__(self, inside, dom=None, cod=None):
-        if dom is None:
-            dom = inside.dom
-        if cod is None:
-            exps, bases = get_exps_bases(inside.cod)
-            cod = bases << exps
-        super().__init__(inside, dom=dom, cod=cod)
-        self.method = "mapping_bubble"
+    def to_closed(self):
+        from .compiler import SHELL_COMPILER, Program, Language
+        ob = SHELL_COMPILER(self.args[0])
+        if self.tag:
+            return Program(self.tag, args=(ob, ))
+        return ob
+
+class Mapping(closed.Box):
+    def __init__(self, inside, dom=None, cod=None, tag=""):
+        if dom is None: dom = inside.dom if hasattr(inside, "dom") else Language
+        if cod is None: cod = inside.cod if hasattr(inside, "cod") else Language
+        self.tag = tag
+        closed.Box.__init__(self, "Mapping", dom, cod)
+        self.args = (inside, )
+
+    def to_closed(self):
+        from .compiler import SHELL_COMPILER, Program, Language
+        ob = SHELL_COMPILER(self.args[0])
+        if self.tag:
+            return Program(self.tag, args=(ob, ))
+        return ob
+
+RECURSION_REGISTRY: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("recursion", default={})
 
 class Anchor(closed.Box):
-    def __init__(self, name, dom, cod):
-        super().__init__(name, dom, cod)
+    def __init__(self, name, inside):
+        closed.Box.__init__(self, name, inside.dom, inside.cod)
+        self.name = name
+        self.args = (inside, )
+
+    def to_closed(self):
+        from .compiler import SHELL_COMPILER
+        # Register the anchor for later lookup during execution
+        anchors = RECURSION_REGISTRY.get().copy()
+        anchors[self.name] = self.args[0]
+        RECURSION_REGISTRY.set(anchors)
+        return SHELL_COMPILER(self.args[0])
 
 class Alias(closed.Box):
-    def __init__(self, name, dom, cod):
+    def __init__(self, name, dom=None, cod=None):
+        if dom is None: dom = Language
+        if cod is None: cod = Language
         super().__init__(name, dom, cod)
+
+    def to_closed(self):
+        from .compiler import Program
+        # Recursive call! Return a Program box with the anchor name.
+        return Program(self.name, dom=self.dom, cod=self.cod)
 
 Yaml = closed.Category()
 

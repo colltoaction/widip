@@ -8,73 +8,59 @@ from discopy import closed
 from nx_hif.hif import HyperGraph
 
 from . import hif
-from .yaml import *
+from .yaml import Scalar, Sequence, Mapping, Anchor, Alias
+from .computer import Program, Language
 
 diagram_var: ContextVar[closed.Diagram] = ContextVar("diagram")
 
 @contextmanager
-def load_container(ob):
-    token = diagram_var.set(ob)
+def load_container(cursor):
+    token = diagram_var.set(cursor)
     try:
-        yield
+        yield hif.iterate(cursor)
     finally:
         diagram_var.reset(token)
-
-def process_sequence(ob, tag):
-    if tag:
-        target = ob.cod
-        exps, bases = get_exps_bases(target)
-        ob = exps @ ob
-        ob >>= closed.Eval(target)
-        ob >>= Node(tag, ob.cod, closed.Ty() >> closed.Ty(tag))
-    return ob
-
-def process_mapping(ob, tag):
-    # Mapping bubble is already applied before calling this
-    if tag:
-        target = ob.cod
-        exps, bases = get_exps_bases(target)
-        ob @= exps
-        ob >>= closed.Eval(target)
-        ob >>= Node(tag, ob.cod, closed.Ty(tag) >> closed.Ty(tag))
-    return ob
 
 def load_scalar(cursor, tag):
     data = hif.get_node_data(cursor)
     return Scalar(tag, data["value"])
 
 def load_sequence(cursor, tag):
-    diagrams = map(_incidences_to_diagram, hif.iterate(cursor))
-    items = list(diagrams)
-    
-    if not items:
+    diagrams = []
+    with load_container(cursor) as items:
+        for item in items:
+            diagrams.append(_incidences_to_diagram(item))
+
+    if not diagrams:
         ob = Scalar(tag, "")
     else:
-        diagram = reduce(lambda a, b: a @ b, items)
-        ob = Sequence(diagram)
-        ob = process_sequence(ob, tag)
+        # Sequences are pipelines (sequential composition)
+        ob = reduce(lambda a, b: a >> b, diagrams)
 
-    with load_container(ob):
-        return diagram_var.get()
+    if tag:
+         ob = Sequence(ob, tag=tag)
+    return ob
 
 def load_mapping(cursor, tag):
-    diagrams = map(_incidences_to_diagram, hif.iterate(cursor))
     items = []
+    with load_container(cursor) as nodes:
+        diagrams = map(_incidences_to_diagram, nodes)
+        for key, val in batched(diagrams, 2):
+            if isinstance(key, Scalar) and not key.tag and not key.value:
+                 continue
+            # Mapping entries are Key >> Value (pipeline)
+            items.append(key >> val)
 
-    for key, val in batched(diagrams, 2):
-        pair = key @ val
-        pair = Sequence(pair, n=2)
-        items.append(pair)
-    
     if not items:
         ob = Scalar(tag, "")
     else:
-        diagram = reduce(lambda a, b: a @ b, items)
-        ob = Mapping(diagram)
-        ob = process_mapping(ob, tag)
-
-    with load_container(ob):
-        return diagram_var.get()
+        # Implicitly copy input to all branches
+        from .computer import Copy, Language
+        ob = Copy(Language, len(items)) >> reduce(lambda a, b: a @ b, items)
+    
+    if tag:
+        ob = Mapping(ob, tag=tag)
+    return ob
 
 def incidences_to_diagram(node: HyperGraph):
     cursor = (0, node)
@@ -98,12 +84,12 @@ def _incidences_to_diagram(cursor):
         case "mapping":
             ob = load_mapping(cursor, tag)
         case "alias":
-            ob = Alias(anchor, closed.Ty(), closed.Ty() >> closed.Ty(anchor))
+            ob = Alias(anchor)
         case _:
             raise Exception(f"Kind \"{kind}\" doesn't match any.")
 
     if anchor and kind != 'alias':
-        ob >>= Anchor(anchor, ob.cod, ob.cod)
+        ob = Anchor(anchor, ob)
     return ob
 
 def load_document(cursor):

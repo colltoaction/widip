@@ -3,6 +3,9 @@ if __debug__:
     import matplotlib
     matplotlib.use('agg')
 
+import sys
+sys.setrecursionlimit(2000)
+
 import argparse
 import asyncio
 

@@ -90,13 +90,13 @@ async def unwrap(recurse: Callable[[Any], Any], x: Any) -> Any:
         if is_callable(x):
             x = await callable_unwrap(x)
         elif is_awaitable(x):
-            res = await awaitable_unwrap(x)
-            return await recurse(res)
+            x = await awaitable_unwrap(x)
         else:
             break
 
     if isinstance(x, (Iterator, tuple, list)):
         items = list(x)
+        # Use recurse (the fixed-point step) for each item
         results = await asyncio.gather(*(recurse(i) for i in items))
         return tuple(results)
 
