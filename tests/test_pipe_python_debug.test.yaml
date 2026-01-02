@@ -1,4 +1,0 @@
-?
-  ? !echo ha
-  ? !echo ha
-: !python { -c, "print('DEBUG')" }

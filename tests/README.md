@@ -25,3 +25,12 @@ Each test case consists of two files:
 
 1.  `tests/CASE.test.yaml`: The input YAML script.
 2.  `tests/CASE.log`: The expected standard output.
+
+## Selected Tests
+We maintain a set of integration tests which can serve as more complex examples:
+
+- [`fan-out.test.yaml`](fan-out.test.yaml): Demonstrates parallel processing of scalar values.
+- [`git-first-commit.test.yaml`](git-first-commit.test.yaml): Queries git history to retrieve the first commit hash and date.
+- [`infinite-counter.test.yaml`](infinite-counter.test.yaml): Tests streaming capabilities with an infinite generator.
+- [`test_complex_expr.test.yaml`](test_complex_expr.test.yaml): complex numerical expressions with `!expr`.
+- [`test_complex_mapping.test.yaml`](test_complex_mapping.test.yaml): recursive or complex mapping logic.

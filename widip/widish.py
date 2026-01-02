@@ -156,8 +156,6 @@ class Process(python.Function):
         if not isinstance(name, str):
              return await unwrap(name(*(tuplify(expanded_args) + tuplify(stdin))))
 
-        # print(f"RUN: {name} {expanded_args} stdin={stdin}")
-
         is_builtin = name in ("seq", "seq:", "mapping", "mapping:", "cat", "cat:", "test", "test:", "expr", "expr:", "echo", "echo:")
         
         if is_builtin:
@@ -211,6 +209,18 @@ class Process(python.Function):
              else:
                   runner = item
              return await unwrap(runner(*(tuplify(expanded_args) + tuplify(stdin))))
+
+        # Evaluate arguments for external command
+        cmd_args = []
+        current_stdin = stdin
+        for arg in expanded_args:
+             # Run the arg as a filter on current inputs
+             res = await unwrap(Process.run_node(arg, *tuplify(current_stdin)))
+             # Flatten result and append to command args
+             for item in tuplify(res):
+                  cmd_args.append(str(item))
+
+        cmd += cmd_args
 
         # print(f"DEBUG: run_command {cmd} stdin={stdin}")
         if len(cmd) > 1 or " " in name:

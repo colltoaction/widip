@@ -38,6 +38,9 @@ class Scalar(closed.Box):
 
 class Sequence(closed.Box):
     def __init__(self, inside, dom=None, cod=None, n=None, tag=""):
+        if tag:
+            dom = dom or Language
+            cod = cod or Language
         if dom is None: dom = inside.dom if hasattr(inside, "dom") else Language
         if cod is None: cod = inside.cod if hasattr(inside, "cod") else Language
 
@@ -55,6 +58,9 @@ class Sequence(closed.Box):
 
 class Mapping(closed.Box):
     def __init__(self, inside, dom=None, cod=None, tag=""):
+        if tag:
+            dom = dom or Language
+            cod = cod or Language
         if dom is None: dom = inside.dom if hasattr(inside, "dom") else Language
         if cod is None: cod = inside.cod if hasattr(inside, "cod") else Language
         self.tag = tag

@@ -1,2 +1,5 @@
-- !bin/yaml/range.yaml
-- !head { -n, 5 }
+!expr 1: &loop
+  !test -le 5:
+    - !echo
+    - !expr + 1
+    - *loop
