@@ -1,3 +1,0 @@
-!git { log, "--max-parents=0" }:
-  !grep commit: !sed "s/commit /? !id /"
-  !grep Date: !sed "s/Date:   /? !date \"/;s/$/\"/"

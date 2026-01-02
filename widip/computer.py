@@ -77,4 +77,11 @@ class Exec(closed.Box):
     def __init__(self, dom, cod):
         super().__init__("exec", dom, cod)
 
+class Merge(closed.Box):
+    def __init__(self, dom):
+        name = f"Merge({dom})"
+        # Merge multiple IO wires into one IO wire
+        # Assuming cod is Language (IO)
+        closed.Box.__init__(self, name, dom, Language)
+
 Computation = closed.Category(closed.Ty, closed.Diagram)

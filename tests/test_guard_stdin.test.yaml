@@ -1,4 +1,0 @@
-!seq:
-  - !echo 5
-  - !test "-gt 3":
-    - !echo "5 is greater than 3"

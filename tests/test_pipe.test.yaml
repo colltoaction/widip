@@ -1,4 +1,4 @@
 ?
-  ? !echo ha
-  ? !echo ha
+  ? ha
+  ? ha
 : !tr -d '\n'

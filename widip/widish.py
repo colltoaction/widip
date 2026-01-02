@@ -142,6 +142,11 @@ class Process(python.Function):
         return ()
 
     @classmethod
+    async def run_merge(cls, ar, *args):
+        # Merge simply passes all inputs (which will be joined by run_command of the next step)
+        return untuplify(args)
+
+    @classmethod
     async def run_command(cls, name, args, stdin):
         from .compiler import SHELL_COMPILER
         from .yaml import RECURSION_REGISTRY
@@ -161,49 +166,6 @@ class Process(python.Function):
         if not isinstance(name, str):
              return await unwrap(name(*(tuplify(expanded_args) + tuplify(stdin))))
 
-        # print(f"RUN: {name} {expanded_args} stdin={stdin}")
-
-        is_builtin = name in ("seq", "seq:", "mapping", "mapping:", "cat", "cat:", "test", "test:", "expr", "expr:", "echo", "echo:")
-        
-        if is_builtin:
-             if name.startswith("echo"):
-                  out_items = expanded_args if expanded_args else stdin
-                  out = " ".join(map(str, out_items))
-                  print(out, flush=True)
-                  return (out,)
-             
-             if name.startswith("expr"):
-                  cmd = ["expr"] + list(map(str, stdin))
-                  for arg in expanded_args:
-                       cmd += str(arg).split()
-                  proc = await asyncio.create_subprocess_exec(
-                      cmd[0], *cmd[1:],
-                      stdout=asyncio.subprocess.PIPE
-                  )
-                  stdout, _ = await proc.communicate()
-                  res = stdout.decode().strip()
-                  return (res,) if res else (None,)
-
-             if name.startswith("test"):
-                  test_cmd = ["test"] + list(map(str, stdin))
-                  for arg in expanded_args:
-                       test_cmd += str(arg).split()
-                  
-                  proc = await asyncio.create_subprocess_exec(
-                      test_cmd[0], *test_cmd[1:],
-                      stdout=asyncio.subprocess.PIPE
-                  )
-                  await proc.wait()
-                  if proc.returncode != 0:
-                       return (None,) # Guard fails
-                  
-                  return stdin
-
-             res = stdin
-             for arg in expanded_args:
-                  res = await unwrap(Process.run_node(arg, *tuplify(res)))
-             return res
-
         # Check recursion registry
         if name in (registry := RECURSION_REGISTRY.get()):
              item = registry[name]
@@ -217,7 +179,8 @@ class Process(python.Function):
                   runner = item
              return await unwrap(runner(*(tuplify(expanded_args) + tuplify(stdin))))
 
-        # print(f"DEBUG: run_command {cmd} stdin={stdin}")
+        cmd = [name] + list(map(str, expanded_args))
+
         if len(cmd) > 1 or " " in name:
             import os
             shell = os.environ.get("WIDIP_SHELL", "sh -c").split()
@@ -289,6 +252,8 @@ def shell_runner_ar(ar):
         t = thunk(Process.run_copy, ar)
     elif isinstance(ar, Discard):
         t = thunk(Process.run_discard, ar)
+    elif isinstance(ar, Merge):
+        t = thunk(Process.run_merge, ar)
     elif isinstance(ar, Exec):
          gamma = Constant()
          diagram = gamma @ closed.Id(ar.dom) >> Eval(ar.dom, ar.cod)
@@ -326,6 +291,14 @@ def fold_diagram(diagram):
 
     if not procs:
         async def identity(*x): return untuplify(x)
+        if len(diagram.dom) == 1:
+             # Identity on single wire should preserve the tuple structure for unwrap
+             # If x is (val,), untuplify returns val.
+             # If val is [], unwrap returns ().
+             # If we return x, unwrap returns (unwrap(val),).
+             # If val is [], unwrap returns (). Result ((),).
+             # This seems safer to avoid accidental () return.
+             async def identity(*x): return x
         return Process(identity, diagram.dom, diagram.dom)
 
     if len(procs) == 1:

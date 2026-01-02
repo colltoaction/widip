@@ -1,7 +1,9 @@
-!seq
-- !expr "5 * 2"
-- !expr "- 3"
-- !test "-gt 5"
-- !expr "+ 3"
-- !test "-eq 10"
-- !echo "Ten"
+- "5 * 2"
+- !bc
+- !xargs "-I % echo % - 3"
+- !bc
+- !grep -E "^([6-9]|[1-9][0-9]+)$"
+- !xargs "-I % echo % + 3"
+- !bc
+- !grep -x "10"
+- "Ten"

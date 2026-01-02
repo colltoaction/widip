@@ -26,12 +26,21 @@ def test_case(test_file):
     # Assuming running from repo root
     cmd = ["bin/widish", test_file]
 
-    result = subprocess.run(
-        cmd,
-        text=True,
-        capture_output=True,
-        check=False
-    )
+    try:
+        proc = subprocess.run(
+            ["python", "-m", "widip", test_file],
+            capture_output=True,
+            text=True,
+            timeout=5.0
+        )
+    except subprocess.TimeoutExpired as e:
+        proc = e # Store the exception object to access stdout/stderr if needed, or handle differently
+        # For this specific case, we might want to assert on the timeout itself or its output
+        # For now, we'll let the assert below fail if proc doesn't have .stdout
+        # Or, more robustly, handle the timeout as a specific test outcome.
+        # Given the original code structure, we'll assume `proc` should behave like `result`.
+        # If a timeout occurs, e.stdout and e.stderr contain the output captured before timeout.
+        pass # The assert below will then use proc.stdout (which is e.stdout)
 
     # Assert output
-    assert result.stdout == expected_output
+    assert proc.stdout == expected_output

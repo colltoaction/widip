@@ -48,6 +48,18 @@ def load_mapping(cursor, tag):
         for key, val in batched(diagrams_list, 2):
             if isinstance(key, Scalar) and not key.tag and not key.value:
                  continue
+
+            # Auto-Merge heuristic logic
+            from .computer import Merge
+            # Check if key produces more outputs than val consumes
+            # key.cod is type. len(key.cod) gives number of wires.
+            if len(key.cod) > len(val.dom):
+                 # Assume we need to merge down to val.dom
+                 # If val.dom is 1 (Language).
+                 if len(val.dom) == 1:
+                      # Merge all outputs of key into 1
+                      key = key >> Merge(key.cod)
+
             # Mapping entries are Key >> Value (pipeline)
             items.append(key >> val)
 
@@ -57,7 +69,10 @@ def load_mapping(cursor, tag):
         # Implicitly copy input to all branches
         from .computer import Copy, Language
         from functools import reduce
-        ob = Copy(Language, len(items)) >> reduce(lambda a, b: a @ b, items)
+        # Parallel composition of items
+        parallel_items = reduce(lambda a, b: a @ b, items)
+        # Fan-out
+        ob = Copy(Language, len(items)) >> parallel_items
     
     if tag:
         ob = Mapping(ob, tag=tag)

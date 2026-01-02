@@ -38,14 +38,20 @@ async def async_exec_diagram(yaml_d, path, *shell_program_args):
         stdin_data = await loop.run_in_executor(None, sys.stdin.read)
         inp = list(initial_input) + (stdin_data.splitlines() if stdin_data else [])
 
+    # Force at least empty string if input is empty, to prevent pipeline abortion on empty stream
+    if not inp:
+        inp = [""]
+
     # Execute the folded process with the input
     if runner_process.dom:
         res = await unwrap(runner_process(*tuplify(inp)))
     else:
         res = await unwrap(runner_process())
     
-    # if res != ():
-    #     print(*(tuplify(res)), sep="\n")
+    if res != ():
+        to_print = tuplify(res)
+        if not (len(to_print) == 1 and to_print[0] is None):
+             print(*(x for x in to_print if x is not None), sep="\n")
 
 
 async def async_command_main(command_string, *shell_program_args):
