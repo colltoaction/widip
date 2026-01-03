@@ -1,5 +1,6 @@
 import asyncio
 import sys
+import inspect
 from pathlib import Path
 from yaml import YAMLError
 
@@ -7,9 +8,25 @@ from discopy.utils import tuplify
 
 from .files import file_diagram, repl_read
 from .widish import SHELL_RUNNER
-from .thunk import unwrap
 from .compiler import SHELL_COMPILER
+from .thunk import unwrap, force_execution, flatten, is_awaitable
 
+
+async def apply_inp(r, val):
+    if is_awaitable(r):
+        r = await unwrap(r)
+
+    if callable(r):
+        res = r(val)
+        return await unwrap(res)
+    return r
+
+async def run_process(runner, inp):
+    if isinstance(runner, tuple):
+        lazy_result = await asyncio.gather(*(apply_inp(r, inp) for r in runner))
+        return tuple(lazy_result)
+    else:
+        return await apply_inp(runner, inp)
 
 async def async_exec_diagram(yaml_d, path, *shell_program_args):
     loop = asyncio.get_running_loop()
@@ -24,16 +41,22 @@ async def async_exec_diagram(yaml_d, path, *shell_program_args):
     if __debug__ and path is not None:
         from .files import diagram_draw
         diagram_draw(path.with_suffix(".shell.yaml"), compiled_d)
-    runner = SHELL_RUNNER(compiled_d)(*constants)
+
+    # Run the shell runner to get the computation process/function
+    process_result = await unwrap(SHELL_RUNNER(compiled_d)(*constants))
+    runner = process_result
 
     if sys.stdin.isatty():
         inp = ""
     else:
         inp = await loop.run_in_executor(None, sys.stdin.read)
+
+    lazy_result = await run_process(runner, inp)
+
+    # Force execution of the Task(s)
+    val = await force_execution(lazy_result)
         
-    run_res = runner(inp)
-    val = await unwrap(run_res)
-    print(*(tuple(x.rstrip() for x in tuplify(val) if x)), sep="\n")
+    print(*(tuple(x.rstrip() for x in flatten(tuplify(val)) if x)), sep="\n")
 
 
 async def async_command_main(command_string, *shell_program_args):
@@ -72,9 +95,18 @@ async def async_shell_main(file_name):
             # if __debug__:
             #     diagram_draw(path.with_suffix(".shell.yaml"), compiled_d)
             constants = tuple(x.name for x in compiled_d.dom)
-            result_ev = SHELL_RUNNER(compiled_d)(*constants)
-            result = await unwrap(result_ev)
-            print(*(tuple(x.rstrip() for x in tuplify(result) if x)), sep="\n")
+
+            # Execute the runner to get the lazy result
+            process_result = await unwrap(SHELL_RUNNER(compiled_d)(*constants))
+
+            # Use empty input for interactive commands if they don't expect stdin?
+            # Or pass "" as before.
+            lazy_result = await run_process(process_result, "")
+
+            # Force execution
+            result = await force_execution(lazy_result)
+
+            print(*(tuple(x.rstrip() for x in flatten(tuplify(result)) if x)), sep="\n")
 
             if not sys.stdin.isatty():
                 break

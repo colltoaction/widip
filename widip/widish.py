@@ -1,11 +1,35 @@
 import asyncio
-
 from functools import partial
 from discopy.utils import tuplify, untuplify
 from discopy import closed, python, utils
 
 from .computer import *
-from .thunk import thunk, unwrap
+from .thunk import unwrap, is_awaitable
+
+async def _bridge_pipe(f, g, *args):
+    # f and g are Processes. f(*args) returns Awaitable.
+    res = await unwrap(f(*args))
+    # g expects inputs. res is output of f.
+    # g(*res) returns Awaitable.
+    return await unwrap(g(*utils.tuplify(res)))
+
+async def _tensor_inside(f, g, n, *args):
+    args1, args2 = args[:n], args[n:]
+    res1 = await unwrap(f(*args1))
+    res2 = await unwrap(g(*args2))
+    return tuplify(res1) + tuplify(res2)
+
+async def _eval_func(f, *x):
+    return await unwrap(f(*x))
+
+def _lazy(func, ar):
+    """Returns a function that returns a partial application of func."""
+    async def wrapper(*args):
+        # Return a partial (Runner)
+        # This wrapper is an async function, so calling it returns a Coroutine (Awaitable).
+        # This Coroutine resolves to the partial.
+        return partial(func, ar, *args)
+    return wrapper
 
 class Process(python.Function):
     def __init__(self, inside, dom, cod):
@@ -13,26 +37,23 @@ class Process(python.Function):
         self.type_checking = False
 
     def then(self, other):
-        bridge_pipe = lambda *args: other(*utils.tuplify(self(*args)))
         return Process(
-            bridge_pipe,
+            partial(_bridge_pipe, self, other),
             self.dom,
             other.cod,
         )
 
     def tensor(self, other):
         return Process(
-            super().tensor(other).inside,
+            partial(_tensor_inside, self, other, len(self.dom)),
             self.dom + other.dom,
             self.cod + other.cod
         )
 
     @classmethod
     def eval(cls, base, exponent, left=True):
-        def func(f, *x):
-             return f(*x)
         return Process(
-            func,
+            _eval_func,
             (exponent << base) @ base,
             exponent
         )
@@ -49,22 +70,37 @@ class Process(python.Function):
             if ar.dom == closed.Ty():
                 return ()
             return ar.dom.name
-        return untuplify(await unwrap(params))
+        return untuplify(params)
 
     @classmethod
-    def run_map(cls, ar, *args):
+    async def run_map(cls, ar, *args):
         b, params = cls.split_args(ar, *args)
-        return untuplify(tuple(kv(*tuplify(params)) for kv in b))
+
+        async def run_branch(kv):
+             # kv is Awaitable (resolving to Task).
+             task = await unwrap(kv)
+             # task is Task (partial). Run it.
+             res = await unwrap(task(*tuplify(params)))
+             return tuplify(res) # Ensure tuple for sum
+
+        results = await asyncio.gather(*(run_branch(kv) for kv in b))
+        return sum(results, ())
 
     @classmethod
-    def run_seq(cls, ar, *args):
+    async def run_seq(cls, ar, *args):
         b, params = cls.split_args(ar, *args)
         if not b:
             return params
 
-        res = b[0](*tuplify(params))
-        for func in b[1:]:
-            res = func(*tuplify(res))
+        # Resolve first task
+        task = await unwrap(b[0])
+        # Run it
+        res = await unwrap(task(*tuplify(params)))
+
+        for kv in b[1:]:
+            task = await unwrap(kv)
+            res = await unwrap(task(*tuplify(res)))
+
         return res
 
     @staticmethod
@@ -97,6 +133,7 @@ class Process(python.Function):
         if name.endswith(".yaml"):
             args = (name, ) + args
             name = "bin/widish"
+
         process = await asyncio.create_subprocess_exec(
             name, *args,
             stdout=asyncio.subprocess.PIPE,
@@ -112,15 +149,54 @@ class Process(python.Function):
 
     @classmethod
     async def deferred_exec(cls, ar, *args):
-        async_b, async_params = map(unwrap, map(tuplify, cls.split_args(ar, *args)))
-        b, params = await asyncio.gather(async_b, async_params)
+        b, params = cls.split_args(ar, *args)
+
+        async def resolve(x):
+            if is_awaitable(x):
+                x = await unwrap(x)
+            # If it's a runner (partial) for a value (Program/Constant), run it to get the value
+            if callable(x):
+                return await unwrap(x())
+            return x
+
+        # Resolve inputs (Awaitables -> Runners -> Values)
+        b = tuple([await resolve(x) for x in b])
+        params = tuple([await resolve(x) for x in params])
+
+        # Flatten params
+        flat_params = []
+        for p in params:
+             if isinstance(p, tuple):
+                 flat_params.extend(p)
+             else:
+                 flat_params.append(p)
+        params = tuple(flat_params)
+
+        # Flatten b
+        flat_b = []
+        for x in b:
+            if isinstance(x, tuple):
+                flat_b.extend(x)
+            else:
+                flat_b.append(x)
+        b = tuple(flat_b)
+
         name, cmd_args = (
             (ar.name, b) if ar.name
             else (b[0], b[1:]) if b
             else (None, ())
         )
+
+        # Generic brace expansion for any command
+        # e.g. {a, b} -> ("a", "b")
+        if len(cmd_args) == 1 and cmd_args[0].startswith("{") and cmd_args[0].endswith("}"):
+            # Parse simple {a, b} syntax
+            content = cmd_args[0][1:-1]
+            split_args = [s.strip() for s in content.split(",")]
+            cmd_args = tuple(split_args)
+
         result = await cls.run_command(name, cmd_args, params)
-        return result if ar.cod else ()
+        return result
 
     @staticmethod
     def run_program(ar, *args):
@@ -134,17 +210,17 @@ Widish = closed.Category(python.Ty, Process)
 
 def shell_runner_ar(ar):
     if isinstance(ar, Data):
-        t = thunk(Process.run_constant, ar)
+        t = _lazy(Process.run_constant, ar)
     elif isinstance(ar, Concurrent):
-        t = thunk(Process.run_map, ar)
+        t = _lazy(Process.run_map, ar)
     elif isinstance(ar, Pair):
-        t = thunk(Process.run_seq, ar)
+        t = _lazy(Process.run_seq, ar)
     elif isinstance(ar, Sequential):
-        t = thunk(Process.run_seq, ar)
+        t = _lazy(Process.run_seq, ar)
     elif isinstance(ar, Swap):
         t = partial(Process.run_swap, ar)
     elif isinstance(ar, Cast):
-        t = thunk(Process.run_cast, ar)
+        t = _lazy(Process.run_cast, ar)
     elif isinstance(ar, Copy):
         t = partial(Process.run_copy, ar)
     elif isinstance(ar, Discard):
@@ -154,13 +230,13 @@ def shell_runner_ar(ar):
          diagram = gamma @ closed.Id(ar.dom) >> Eval(ar.dom, ar.cod)
          return SHELL_RUNNER(diagram)
     elif isinstance(ar, Constant):
-         t = thunk(Process.run_constant_gamma, ar)
+         t = _lazy(Process.run_constant_gamma, ar)
     elif isinstance(ar, Program):
-         t = thunk(Process.run_program, ar)
+         t = _lazy(Process.run_program, ar)
     elif isinstance(ar, Eval):
-         t = thunk(Process.deferred_exec, ar)
+         t = _lazy(Process.deferred_exec, ar)
     else:
-        t = thunk(Process.deferred_exec, ar)
+        t = _lazy(Process.deferred_exec, ar)
 
     dom = SHELL_RUNNER(ar.dom)
     cod = SHELL_RUNNER(ar.cod)

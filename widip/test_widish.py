@@ -1,8 +1,10 @@
 import pytest
+import inspect
 from discopy import closed
 from unittest.mock import patch, AsyncMock
 from .compiler import Exec
 from .widish import SHELL_RUNNER, Process
+from .thunk import unwrap, force_execution
 
 @pytest.mark.asyncio
 async def test_exec_runner():
@@ -32,17 +34,23 @@ async def test_exec_runner():
         # Run the process.
         result = process("some_input")
 
-        # If result is awaitable, await it.
-        from widip.thunk import unwrap
-        final_result = await unwrap(result)
+        # result is a lazy Task (partial). Execute it.
+        final_result = await force_execution(result)
 
-        assert final_result == "executed"
+        # result is a tuple because discopy returns tuples
+        assert final_result == ("executed",)
 
         # Verify call arguments
         # args passed to run_command: name, cmd_args, stdin
         mock_run.assert_called_once()
         call_args = mock_run.call_args
-        # name, args, stdin
+
+        # name should be resolved to string "bin/widish"
         assert call_args[0][0] == "bin/widish"
+
+        # Exec logic passes input as argument to program (Gamma)
+        # So cmd_args should contain "some_input"
         assert call_args[0][1] == ("some_input",)
-        assert call_args[0][2] == () # stdin
+
+        # stdin should be empty
+        assert call_args[0][2] == ()
