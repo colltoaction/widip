@@ -1,7 +1,7 @@
 import pytest
 from discopy import closed
 from .yaml import Sequence, Mapping, Scalar
-from .compiler import SHELL_COMPILER
+from .computer import SHELL_COMPILER
 from .computer import Data, Program, Language
 
 # Helper to create dummy scalars for testing

@@ -1,19 +1,29 @@
 from __future__ import annotations
 from typing import Any
-from discopy import closed
-from .loader import load as load_serialization_tree
-from .composer import Composer
-from .construct import constructor
-from ..computer import Program, Data, Language, Computation
+from discopy import closed, symmetric
+from .composer import Composer, loader
+from .construct import construct
+from .serialization import Scalar, Sequence, Mapping, Anchor, Alias, Document, Stream, Node
 
-def load(node: Any) -> closed.Diagram:
-    """Full YAML loading pipeline: HIF -> Serialization -> NodeGraph -> Computer."""
-    serialization_tree = load_serialization_tree(node)
+# Pre-configured loader for standard YAML serialization classes
+load_serialization_tree = loader(Scalar, Sequence, Mapping, Anchor, Alias, Document, Stream, Node)
+
+def load(node: Any, computer_types: Any = None) -> symmetric.Diagram | closed.Diagram:
+    """Full YAML loading pipeline: HIF -> Serialization -> NodeGraph -> Computer.
     
-    # Create the Constructor functor using the active Computer implementation
-    Constructor = constructor(Program, Data, Language, Computation)
+    If 'computer_types' is provided (ignored for now as we hardcode in construct), 
+    the result is constructed into that computer category.
+    Otherwise, the result is the intermediate NodeGraph semantic diagram.
+    """
     
-    # Pipeline composition: Serialization -> (Composer) -> NodeGraph -> (Constructor) -> Computer
+    # 1. Load HIF to Serialization Tree
+    serialization_tree = load_serialization_tree((0, node))
     
+    # 2. Compose Serialization Tree to Node Graph (Semantic analysis)
     node_graph = Composer(serialization_tree)
-    return Constructor(node_graph)
+    
+    if computer_types is None:
+        return node_graph
+    
+    # 3. Construct Computer Diagram from Node Graph
+    return construct(node_graph)

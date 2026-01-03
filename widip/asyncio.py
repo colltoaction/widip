@@ -65,13 +65,15 @@ def recursion_scope():
 
 # --- Unwrapping ---
 
-async def callable_unwrap(func: Callable[[], Thunk[T]]) -> T:
-    """Unwrap a callable thunk."""
+# --- Unwrapping ---
+
+async def callable_unwrap(func: Callable[[], Any]) -> Any:
+    """Unwrap a callable."""
     result = func()
     return await awaitable_unwrap(result)
 
 
-async def awaitable_unwrap(aw: Thunk[T]) -> T:
+async def awaitable_unwrap(aw: Any) -> Any:
     """Unwrap an awaitable until we get a concrete value."""
     while True:
         match aw:
@@ -81,7 +83,7 @@ async def awaitable_unwrap(aw: Thunk[T]) -> T:
                 return aw
 
 
-async def unwrap_step(rec: Callable[[Any], Awaitable[T]], x: Thunk[T]) -> T | tuple[T, ...]:
+async def unwrap_step(rec: Callable[[Any], Awaitable[T]], x: Any) -> T | tuple[T, ...]:
     """Step function for recursive unwrapping."""
     while True:
         match x:
@@ -130,30 +132,15 @@ async def recurse(
     return res
 
 
-async def unwrap(loop: EventLoop, x: Thunk[T]) -> T | tuple[T, ...]:
-    """Unwrap a thunk to its final value."""
+async def unwrap(loop: EventLoop, x: Any) -> T | tuple[T, ...]:
+    """Unwrap a lazy value to its final value."""
     if loop is None:
          loop = loop_var.get() or asyncio.get_event_loop()
     return await recurse(unwrap_step, x, loop)
 
 
 # --- Collection Operations ---
-
-async def thunk_map(b: Iterator[Callable[[], Thunk[T]]]) -> tuple:
-    """Map over thunks and gather results."""
-    loop = asyncio.get_running_loop()
-    coroutines = [unwrap(loop, kv()) for kv in b]
-    results = await asyncio.gather(*coroutines)
-    return sum(results, ())
-
-
-async def thunk_reduce(b: Iterator[Callable[[], Thunk[T]]]) -> T:
-    """Reduce thunks to a single value."""
-    loop = asyncio.get_running_loop()
-    res = None
-    for f in b:
-        res = f()
-    return await unwrap(loop, res)
+# (Removed deprecated thunk_map/thunk_reduce)
 
 
 # --- Async Composition Helpers ---

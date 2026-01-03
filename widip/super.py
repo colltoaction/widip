@@ -7,18 +7,17 @@ from .asyncio import unwrap, recurse
 
 # --- The Interpreter and Specializer diagrams ---
 
-interpreter_box = Program("interpreter", Language @ Language, Language)
-specializer_box = Program("specializer", Language @ Language, Language)
-
-@closed.Diagram.from_callable(Language @ Language, Language)
+# Using explicit closed.Ty to avoid monoidal type mismatch in decorators
+L = closed.Ty("ℙ")
+@closed.Diagram.from_callable(L @ L, L)
 def specializer(program, *args):
     """Partial evaluator / Specializer diagram."""
-    return specializer_box(program, *args)
+    return Program("specializer", L @ L, L)(program, *args)
 
-@closed.Diagram.from_callable(Language @ Language, Language)
-def interpreter_diagram(program, *args):
+@closed.Diagram.from_callable(L @ L, L)
+def interpreter(program, *args):
     """Interpreter diagram representation."""
-    return interpreter_box(program, *args)
+    return Program("interpreter", L @ L, L)(program, *args)
 
 # --- Runtime Execution of the Interpreter ---
 

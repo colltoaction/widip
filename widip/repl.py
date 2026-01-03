@@ -1,7 +1,5 @@
 import sys
 import os
-from io import BytesIO
-from pathlib import Path
 from typing import Any
 from functools import partial
 
@@ -9,9 +7,9 @@ from yaml import YAMLError
 from discopy.closed import Diagram
 from nx_yaml import nx_compose_all
 
-from .loader import incidences_to_diagram
+from .yaml import load as load_diagram
 from .drawing import diagram_draw
-from .compiler import SHELL_COMPILER as compiler
+from .computer import SHELL_COMPILER as compiler
 from .io import (
     read_stdin, 
     set_recursion_limit, 
@@ -19,7 +17,9 @@ from .io import (
     stdout_write,
     stdin_read, 
     stdin_isatty, 
-    get_executable
+    get_executable,
+    BytesIO,
+    Path
 )
 from .asyncio import async_read, run_repl, run
 from .exec import widip_runner
@@ -34,7 +34,7 @@ def read_diagram(source: Any) -> Diagram:
         with path.open() as f:
             return read_diagram(f)
     incidences = nx_compose_all(source)
-    return incidences_to_diagram(incidences)
+    return load_diagram(incidences)
 
 
 def reload_diagram(path_str):
