@@ -3,7 +3,7 @@ import asyncio
 from discopy import closed
 from unittest.mock import patch, AsyncMock
 from .exec import Exec, ExecFunctor
-from .io import Process, loop_scope
+from .asyncio import Process, loop_scope
 
 @pytest.mark.asyncio
 async def test_exec_runner():

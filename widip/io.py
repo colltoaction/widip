@@ -1,13 +1,7 @@
 """System I/O operations (stdin/stdout, files, no async)."""
 import sys
-import os
-from pathlib import Path
-from typing import Any, Callable, Sequence, TypeVar
+from typing import Any, TypeVar
 from io import BytesIO
-import contextvars
-from contextlib import contextmanager
-
-from discopy import closed, python
 
 T = TypeVar("T")
 type EventLoop = Any  # Event loop type without importing asyncio
@@ -36,36 +30,29 @@ def value_to_bytes(val: Any) -> bytes:
     return str(val).encode()
 
 
-# --- Event Loop Context ---
+# --- Sync System Wrappers ---
 
-LOOP_VAR: contextvars.ContextVar[EventLoop | None] = contextvars.ContextVar("loop", default=None)
-
-@contextmanager
-def loop_scope(loop: EventLoop | None = None):
-    """Context manager for setting the event loop in the current context."""
-    import asyncio as aio
-    from contextlib import ExitStack
-    
-    with ExitStack() as stack:
-        created = False
-        if loop is None:
-            try:
-                loop = aio.get_running_loop()
-            except RuntimeError:
-                loop = aio.new_event_loop()
-                aio.set_event_loop(loop)
-                created = True
-                stack.callback(loop.close)
-        
-        token = LOOP_VAR.set(loop)
-        stack.callback(LOOP_VAR.reset, token)
-        
-        if created: 
-            sys.setrecursionlimit(10000)
-        
-        yield loop
+def set_recursion_limit(n: int):
+    """Set the system recursion limit."""
+    sys.setrecursionlimit(n)
 
 
-# --- Type Alias ---
+def stdin_isatty() -> bool:
+    """Check if stdin is a TTY."""
+    return sys.stdin.isatty()
 
-Thunk = Any  # Re-export for compatibility
+
+def stdin_read() -> str:
+    """Read all from stdin."""
+    return sys.stdin.read()
+
+
+def stdout_write(data: bytes):
+    """Write bytes to stdout buffer and flush."""
+    sys.stdout.buffer.write(data)
+    sys.stdout.buffer.flush()
+
+
+def get_executable() -> str:
+    """Get the current Python executable path."""
+    return sys.executable

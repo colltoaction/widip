@@ -1,9 +1,9 @@
-from __future__ import annotations
 import asyncio
 import sys
+import os
 from io import BytesIO
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 
 from yaml import YAMLError
 from discopy.closed import Diagram
@@ -11,8 +11,17 @@ from nx_yaml import nx_compose_all
 
 from .loader import incidences_to_diagram
 from .drawing import diagram_draw
-from .computer import interpreter, compiler
-from .io import loop_scope, printer, run_with_watcher, read_stdin
+from .computer import compiler
+from .io import (
+    read_stdin, 
+    set_recursion_limit, 
+    value_to_bytes, 
+    stdout_write,
+    stdin_read, 
+    stdin_isatty, 
+    get_executable
+)
+from .asyncio import async_read, run_repl, setup_hooks
 from .exec import widip_runner
 
 
@@ -44,34 +53,9 @@ def reload_diagram(path_str):
 
 # --- Input Reading (Read) ---
 
-async def read(fd: Any | None, path: Path | None, file_name: str, loop: asyncio.AbstractEventLoop) -> AsyncIterator[tuple[Any, Path | None, Any]]:
-    """Yields parsed diagrams from a file, command string, or shell prompt."""
-    if fd is not None:
-         input_stream = read_stdin()
-         yield fd, path, input_stream
-         return
-
-    async for source_str in prompt_loop(file_name, loop):
-        yield repl_read(source_str), Path(file_name), BytesIO(b"")
-
-
-async def prompt_loop(file_name: str, loop: asyncio.AbstractEventLoop) -> AsyncIterator[str]:
-    """Interactive prompt loop for REPL mode."""
-    while True:
-        try:
-            if not sys.stdin.isatty():
-                 source_str = sys.stdin.read()
-            else:
-                 prompt = f"--- !{file_name}\n"
-                 source_str = await loop.run_in_executor(None, input, prompt)
-        except (EOFError, KeyboardInterrupt):
-            break
-
-        if not source_str: 
-             if not sys.stdin.isatty(): break
-             continue
-        yield source_str
-        if not sys.stdin.isatty(): break
+def read(fd: Any | None, path: Path | None, file_name: str, loop: Any):
+    """Get the async reader iterator."""
+    return async_read(fd, path, file_name, loop, repl_read, read_stdin)
 
 
 # --- Runtime Setup (Environment) ---
@@ -104,35 +88,23 @@ def make_pipeline(runner):
     return lambda fd: runner(compiler(fd, compiler, None))
 
 
-async def eval_diagram(pipeline, source, loop):
-    """Evaluate diagrams through the pipeline."""
-    return await interpreter(pipeline, source, loop, printer)
-
-
-async def eval_with_watch(pipeline, source, loop):
-    """Evaluate with file watching enabled."""
-    await run_with_watcher(
-        interpreter(pipeline, source, loop, printer),
-        reload_fn=reload_diagram
-    )
-
-
 # --- Main Entry Points ---
 
 async def async_repl():
     """Main Read-Eval-Print Loop entry point (async)."""
-    args = env()
+    setup_hooks(
+        set_recursion_limit=set_recursion_limit,
+        value_to_bytes=value_to_bytes,
+        stdout_write=stdout_write,
+        stdin_read=stdin_read,
+        stdin_isatty=stdin_isatty,
+        get_executable=get_executable,
+        fspath=os.fspath,
+        BytesIO=BytesIO,
+        Path=Path
+    )
     
-    with widip_runner(executable=sys.executable) as (runner, loop):
-        # Read
-        source = get_source(args.command_string, args.operands, loop)
-        pipeline = make_pipeline(runner)
-
-        # Eval & Print
-        if args.watch and args.operands:
-            await eval_with_watch(pipeline, source, loop)
-        else:
-            await eval_diagram(pipeline, source, loop)
+    await run_repl(env, get_source, make_pipeline, widip_runner, reload_diagram)
 
 
 def repl():
@@ -140,6 +112,7 @@ def repl():
         asyncio.run(async_repl())
     except KeyboardInterrupt:
         pass
+
 
 if __name__ == "__main__":
     repl()

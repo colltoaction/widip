@@ -8,8 +8,7 @@ from functools import partial
 from discopy import closed, python, utils
 
 from .computer import *
-from .io import run_command, Process, loop_scope
-from .asyncio import unwrap, Thunk
+from .asyncio import unwrap, Thunk, run_command, Process, loop_scope
 from . import widish
 
 T = TypeVar("T")
