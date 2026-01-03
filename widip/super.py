@@ -1,70 +1,52 @@
 from __future__ import annotations
 import sys
-from typing import Any
-from discopy import closed, monoidal
-from .computer import Partial, Language, Program, Data
+from typing import Any, Callable
+from discopy import closed
+from .computer import Partial, Language, Program, Data, Computation
 from .asyncio import unwrap, recurse
 
-# --- DisCoPy Patch for Closed Types ---
-# closed.Diagram uses monoidal.Hypergraph by default, which creates monoidal.Ty
-# identities, causing type errors when combining with closed.Ty.
-# We define a ClosedHypergraph that uses closed.Category.
-
-class ClosedHypergraph(monoidal.Hypergraph):
-    category = closed.Category
-
-# Patch the factory
-closed.Diagram.hypergraph_factory = ClosedHypergraph
-
-# --------------------------------------
+# --- The Interpreter and Specializer diagrams ---
 
 interpreter_box = Program("interpreter", Language @ Language, Language)
 specializer_box = Program("specializer", Language @ Language, Language)
 
-# Undecorated function for logic
-def _specializer_impl(diagram, *args):
-    return Partial(diagram, len(args))
-
 @closed.Diagram.from_callable(Language @ Language, Language)
 def specializer(program, *args):
-    """
-    Partial evaluator / Specializer.
-    This function is called by DisCoPy to generate the diagram structure.
-    It receives 'program' (a wire/box representing the program) and 'args' (wires/boxes representing inputs).
-    """
+    """Partial evaluator / Specializer diagram."""
     return specializer_box(program, *args)
 
+@closed.Diagram.from_callable(Language @ Language, Language)
+def interpreter_diagram(program, *args):
+    """Interpreter diagram representation."""
+    return interpreter_box(program, *args)
 
-def compiler(source):
-    return _specializer_impl(interpreter_box, source)
+# --- Runtime Execution of the Interpreter ---
 
-# The compiler object (as a diagram/box)
-# compiler = specializer(interpreter)
-compiler_diagram = _specializer_impl(specializer_box, interpreter_box)
+async def execution_step(pipeline, input_stream, loop, output_handler, rec, *args):
+    """Execution step for the interpreter."""
+    compiled_process = args[0]
+    inp = (input_stream,) if compiled_process.dom else ()
+    res = await compiled_process(*inp)
+    final = await unwrap(loop, res)
+    await output_handler(rec, final)
+    return final
 
-def compiler_generator():
-    return _specializer_impl(specializer_box, specializer_box)
-
-# --- Consolidated Interpreter Logic ---
-
-async def interpreter(pipeline: Any, 
-                      source: Any, 
-                      loop: Any, 
-                      output_handler: Any):
-    """Unified execution loop. Pure in essence, delegating IO to handlers."""
+async def run_interpreter(pipeline: Callable[[Any], Any], 
+                          source: Any, 
+                          loop: Any, 
+                          output_handler: Callable[[Any, Any], Any]):
+    """Unified execution loop. Runs the compiled pipeline on the source inputs."""
+    from functools import partial
     async for fd, path, input_stream in source:
         try:
+            # The pipeline compiles the YAML (fd) into an executable Process
             runner_process = pipeline(fd)
+            # We pass the runner_process as an arg to the step function via partial or direct arg?
+            # recursive step signature is (rec, *args).
+            # The initial call to recurse passes the initial *args.
             
-            async def compute(rec, *args):
-                    inp = (input_stream,) if runner_process.dom else ()
-                    res = await runner_process(*inp)
-                    # Unwrap returns either the value or a tuple of values
-                    final = await unwrap(loop, res)
-                    await output_handler(rec, final)
-                    return final
-
-            await recurse(compute, None, loop)
+            step = partial(execution_step, pipeline, input_stream, loop, output_handler)
+            await recurse(step, runner_process, loop)
 
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)

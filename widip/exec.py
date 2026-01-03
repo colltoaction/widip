@@ -5,7 +5,7 @@ from functools import partial
 from discopy import closed, python, utils, monoidal, symmetric
 
 from .computer import Language
-from .asyncio import unwrap, Thunk, run_command, loop_scope, AbstractEventLoop, loop_var, pipe_async, tensor_async
+from .asyncio import unwrap, run_command, loop_scope, AbstractEventLoop, loop_var, pipe_async, tensor_async
 from . import widish
 
 T = TypeVar("T")
