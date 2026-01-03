@@ -7,11 +7,13 @@ from contextlib import contextmanager
 from yaml import YAMLError
 from discopy import closed
 
-from .yaml import load as load_diagram, EVENT_TREE_CONSTRUCTOR as load_serialization_tree, Composer
+from .yaml import load as load_diagram
+from .yaml.presentation import CharacterStream
 from .yaml.construct import construct
 from .drawing import diagram_draw
 from .computer import Data, Program, Language
 from .io import (
+    read_diagram_file,
     read_stdin, 
     set_recursion_limit, 
     value_to_bytes, 
@@ -26,27 +28,12 @@ from .asyncio import async_read, run_repl, run, loop_scope
 from .exec import execute
 
 
-# --- Shell Functor ---
-
-@closed.Diagram.from_callable(Language, Language)
-def shell(diagram_source: Any) -> closed.Diagram:
-    """Entry point for compiling YAML into computer diagrams (The Shell Functor)."""
-    serialization_tree = load_serialization_tree((0, diagram_source))
-    res = (Composer >> construct)(serialization_tree)
-    if isinstance(res, (closed.Box, Program, Data)):
-         return closed.Id(res.dom) >> res
-    return res
-
-compiler = shell
 
 # --- File I/O ---
 
 def read_diagram(source: Any) -> closed.Diagram:
     """Parse a stream or file path into a diagram."""
-    from .io import read_diagram_file
-    from .yaml import parse
-    incidences = read_diagram_file(source, parse)
-    return shell(incidences)
+    return read_diagram_file(source, lambda x: load_diagram(CharacterStream(x)))
 
 
 def reload_diagram(path_str):

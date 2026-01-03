@@ -8,11 +8,6 @@ from ..computer import Program, Data, Language
 # Language is now a Ty instance, so we can use it directly
 L = Language
 
-# Functor mapping NodeGraph (Semantic) to Computer (Execution)
-@closed.Diagram.from_callable(L, L)
-def construct(box: Any) -> closed.Diagram:
-    """Functor entry point mapping NodeGraph to Computer diagrams."""
-    return construct_dispatch(box)
 
 @singledispatch
 def construct_dispatch(box: Any) -> closed.Diagram:
@@ -42,3 +37,9 @@ def construct_mapping(box: Mapping) -> closed.Diagram:
     return inside_computer
 
 construct_dispatch.register(Mapping, construct_mapping)
+
+# Functor mapping NodeGraph (Semantic) to Computer (Execution)
+@closed.Diagram.from_callable(L, L)
+def construct(box: Any) -> closed.Diagram:
+    """Functor entry point mapping NodeGraph to Computer diagrams."""
+    return construct_dispatch(box)
