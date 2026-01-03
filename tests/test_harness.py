@@ -2,6 +2,7 @@ import pytest
 import subprocess
 import glob
 import os
+import sys
 
 # Find all test cases
 TEST_DIR = os.path.dirname(__file__)
@@ -43,4 +44,6 @@ def test_case(test_file):
         pass # The assert below will then use proc.stdout (which is e.stdout)
 
     # Assert output
+    if proc.stdout != expected_output:
+         print(f"DEBUG: Stderr for {test_file}:\n{proc.stderr}", file=sys.stderr)
     assert proc.stdout == expected_output

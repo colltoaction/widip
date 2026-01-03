@@ -8,7 +8,7 @@ from functools import partial
 from discopy import closed, python, utils
 
 from .computer import *
-from .io import run_command, Process, loop_scope, setup_loop
+from .io import run_command, Process, loop_scope
 from .thunk import unwrap, Thunk
 from . import widish
 
@@ -68,10 +68,6 @@ async def _exec_wrapper(runner: ExecFunctor, loop: asyncio.AbstractEventLoop, ar
         if func in (widish.run_map, widish.run_seq):
              return await func(runner, ar, *args)
         return await func(ar, *args)
-    
-    # 2. Variable lookup / Gamma (process parameter)
-    if getattr(ar, "name", None) == "gamma":
-        return (runner._executable,)
     
     # 3. Application / Function Call
     # evaluate operator (name) and arguments
