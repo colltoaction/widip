@@ -51,22 +51,4 @@ class Alias(symmetric.Box):
         if cod is None: cod = Node
         super().__init__(name, dom, cod)
 
-class Copy(symmetric.Box):
-    def __init__(self, x, n=2):
-        super().__init__(f"Copy({x}, {n})", x, x ** n)
-        self.n = n
-
-class Merge(symmetric.Box):
-    def __init__(self, x, n=2):
-        super().__init__(f"Merge({x}, {n})", x ** n, x)
-        self.n = n
-
-class Discard(symmetric.Box):
-    def __init__(self, x):
-        super().__init__(f"Discard({x})", x, symmetric.Ty())
-
-class Swap(symmetric.Swap):
-    def __init__(self, x, y):
-        super().__init__(x, y)
-
 Yaml = symmetric.Category()
