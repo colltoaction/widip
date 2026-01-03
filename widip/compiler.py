@@ -1,18 +1,35 @@
+from __future__ import annotations
 from .exec import Exec
 from discopy import closed, monoidal, symmetric
 from . import computer, yaml, loader
 from pathlib import Path
+
+def from_callable(dom: closed.Ty, cod: closed.Ty):
+    """Decorator to convert a Python function into a closed.Diagram."""
+    def decorator(f):
+        if hasattr(closed.Diagram, 'from_callable'):
+            return closed.Diagram.from_callable(f, dom, cod)
+        # Fallback to a Program box if from_callable is missing
+        return computer.Program(f.__name__, dom, cod, (f,))
+    return decorator
 
 def SHELL_COMPILER(diagram, compiler, path):
     atom = None
     res = None
     
     match diagram:
-        # 1. Base cases: already compiled or explicit result types
+        # 0. Compiled Diagrams or Boxes
         case closed.Diagram() | closed.Box():
             return diagram
-            
-        # 2. Specific YAML source types (Must come before generic Diagram/Box checks)
+
+        # 1. Python callables (not yet converted)
+        case _ if callable(diagram) and not isinstance(diagram, (monoidal.Diagram, monoidal.Box)):
+             # Default to 0->1 or 1->1 if unknown? 
+             # Actually, if it's not decorated, we treat it as a Scalar value or Program.
+             atom = computer.Program(getattr(diagram, '__name__', 'func'), 
+                                     computer.Language, computer.Language, (diagram,))
+
+        # 2. Specific YAML source types
         case yaml.Scalar():
             args = (diagram.value,) if diagram.value else ()
             atom = computer.Program(diagram.tag, computer.Language ** len(diagram.dom), computer.Language ** len(diagram.cod), args) if diagram.tag else \
@@ -65,7 +82,14 @@ def SHELL_COMPILER(diagram, compiler, path):
                 
                 left_id = closed.Id(res.cod[:offset])
                 right_id = closed.Id(res.cod[offset + len(compiled.dom):])
-                res = res >> left_id.tensor(compiled, right_id)
+                
+                # AxiomError fix: ensure we stay in closed category and handle offsets correctly
+                try:
+                    layer = left_id.tensor(compiled, right_id)
+                    res = res >> layer
+                except Exception:
+                    # Fallback or strict composition if tensor fails
+                    res = res >> (closed.Id(res.cod[:offset]) @ compiled @ closed.Id(res.cod[offset+len(compiled.dom):]))
             
         case _:
             atom = closed.Id(closed.Ty())
@@ -78,3 +102,5 @@ def SHELL_COMPILER(diagram, compiler, path):
         diagram_draw(Path(path).with_suffix(".shell.yaml"), res)
     
     return res
+
+SHELL_COMPILER.from_callable = from_callable

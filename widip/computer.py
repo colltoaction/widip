@@ -18,34 +18,34 @@ class Curry(closed.Curry):
         super().__init__(arg, n, left)
 
 class Data(closed.Box):
-    def __init__(self, value: Any, dom: closed.Ty, cod: closed.Ty):
+    def __init__(self, value: Any, dom: closed.Ty = closed.Ty(), cod: closed.Ty = closed.Ty()):
         self.value = value
         content = str(value) if value else "-"
         name = f"⌜{content if len(content) < 100 else content[:97] + '...'}⌝"
         super().__init__(name, dom, cod)
 
 class Program(closed.Box):
-    def __init__(self, name: str, dom: closed.Ty, cod: closed.Ty, args: Any = ()):
+    def __init__(self, name: str, dom: closed.Ty = closed.Ty(), cod: closed.Ty = closed.Ty(), args: Any = ()):
         super().__init__(name, dom, cod)
         self.args = args
 
 class Copy(closed.Box):
-    def __init__(self, x: monoidal.Ty, n: int = 2):
+    def __init__(self, x: closed.Ty, n: int = 2):
         super().__init__("Δ", x, x ** n)
         self.draw_as_spider = True
 
 class Merge(closed.Box):
-    def __init__(self, x: monoidal.Ty, n: int = 2):
+    def __init__(self, x: closed.Ty, n: int = 2):
         super().__init__("μ", x ** n, x)
         self.draw_as_spider = True
 
 class Discard(closed.Box):
-    def __init__(self, x: monoidal.Ty):
-        super().__init__("ε", x, monoidal.Ty())
+    def __init__(self, x: closed.Ty):
+        super().__init__("ε", x, closed.Ty())
         self.draw_as_spider = True
 
 class Swap(closed.Box):
-    def __init__(self, x: monoidal.Ty, y: monoidal.Ty):
+    def __init__(self, x: closed.Ty, y: closed.Ty):
         super().__init__("σ", x @ y, y @ x)
         self.draw_as_swap = True
 
