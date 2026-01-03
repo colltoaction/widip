@@ -107,24 +107,19 @@ async def test_print_logic(loop, hooks):
     assert "Hello World" in str(output_captured[0])
 
 @pytest.mark.asyncio
-async def test_params_logic(loop, hooks):
-    """Test passing arguments."""
-    from widip.computer import Program, Language, Copy
-    copy_box = Copy(Language, 2)
+async def test_data_logic(loop, hooks):
+    """Test passing data through."""
+    from widip.computer import Data, Language
+    data_box = Data("test_input", Language, Language)
     output_captured = []
     async def capture_output(rec, val):
         output_captured.append(val)
 
-    input_content = b"test_input"
-    input_stream = BytesIO(input_content)
-
     with widip_runner(hooks=hooks, loop=loop) as (runner, _):
         pipeline = lambda fd: runner(compiler(fd, compiler, None))
         async def source_gen():
-            yield copy_box, Path("test"), input_stream
+            yield data_box, Path("test"), BytesIO(b"")
         await interpreter(pipeline, source_gen(), loop, capture_output)
 
     assert len(output_captured) == 1
-    res_tuple = output_captured[0]
-    assert isinstance(res_tuple, tuple)
-    assert len(res_tuple) == 2
+    assert "test_input" in str(output_captured[0])

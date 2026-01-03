@@ -5,7 +5,7 @@ from io import BytesIO
 from pathlib import Path
 from discopy import closed
 from unittest.mock import patch, AsyncMock
-from .exec import ExecFunctor, Process
+from .exec import compile_exec, Process
 from .asyncio import loop_scope
 from .io import value_to_bytes, get_executable
 
@@ -36,9 +36,8 @@ async def test_exec_runner(hooks):
     loop = asyncio.get_running_loop()
     
     with loop_scope(hooks=hooks, loop=loop):
-        # ExecFunctor converts "exec" box to Process
-        runner = ExecFunctor(hooks=hooks, executable="python3", loop=loop)
-        process = runner(exec_box)
+        # compile_exec converts "exec" box to Process
+        process = compile_exec(exec_box, hooks=hooks, executable="python3", loop=loop)
 
         # The result should be a Process
         assert isinstance(process, Process)

@@ -15,17 +15,6 @@ type EventLoop = asyncio.AbstractEventLoop
 type AbstractEventLoop = asyncio.AbstractEventLoop
 
 
-# Thunk is a zero-argument callable, an awaitable, or the value itself
-type Thunk[T] = Union[Callable[[], Union[Awaitable[T], T]], Awaitable[T], T]
-
-def thunk(f: Callable[..., Any], *args: Any) -> Callable[[], Any]:
-    """Creates a thunk (lazy evaluation wrapper)."""
-    return partial(f, *args)
-
-def run(coro: Awaitable[T]) -> T:
-    """Wrapper for asyncio.run."""
-    return asyncio.run(coro)
-
 # --- Event Loop Context ---
 
 loop_var: contextvars.ContextVar[EventLoop | None] = contextvars.ContextVar("loop", default=None)
