@@ -2,6 +2,8 @@ import asyncio
 import sys
 from pathlib import Path
 from yaml import YAMLError
+from typing import IO
+from io import StringIO
 
 from discopy.utils import tuplify
 
@@ -12,13 +14,16 @@ from .compiler import SHELL_COMPILER
 from .computer import Language
 
 
-def flatten(x):
+def flatten(x: IO | list | tuple | str | None) -> list[str]:
     if x is None: return []
+    if hasattr(x, 'read'):
+        content = x.read()
+        return content.splitlines() if content else []
     if isinstance(x, (list, tuple)):
         res = []
         for item in x: res.extend(flatten(item))
         return res
-    return [x]
+    return [str(x)]
 
 
 async def async_exec_diagram(yaml_d, path, *shell_program_args):
@@ -38,20 +43,41 @@ async def async_exec_diagram(yaml_d, path, *shell_program_args):
     
     # Map shell_program_args to the initial input
     # If the diagram expects input, use shell_program_args or stdin
-    initial_input = shell_program_args if shell_program_args else []
+    initial_args = list(shell_program_args) if shell_program_args else []
     
-    if sys.stdin.isatty():
-        inp = initial_input
-    else:
-        stdin_data = await loop.run_in_executor(None, sys.stdin.read)
-        inp = list(initial_input) + (stdin_data.splitlines() if stdin_data else [])
-
-    # Execute the folded process with the input
-    if not inp and runner_process.dom == Language:
-         inp = ("",)
-
-    if runner_process.dom:
-        res = await unwrap(runner_process(*tuplify(inp)))
+    # Read stdin if available
+    stdin_content = ""
+    if not sys.stdin.isatty():
+        stdin_content = await loop.run_in_executor(None, sys.stdin.read)
+    
+    # Combine args and stdin into one inputs list? 
+    # Or depends on process domain.
+    # If domain is simple IO (length 1), we combine everything into one Stream.
+    # If domain is wider, we might need distribution strategy.
+    # For now, following shelling convention: arguments + stdin -> single input stream
+    
+    combined_input_str = "\n".join(initial_args)
+    if stdin_content:
+        if combined_input_str: combined_input_str += "\n"
+        combined_input_str += stdin_content
+        
+    input_stream = StringIO(combined_input_str)
+    
+    # Input tuple for the process
+    # Just pass the stream as the single input. 
+    # If dom is 0, we pass nothing? 
+    # If dom is > 1, we duplicates? Or pass multiple streams?
+    # Simplest assumption: Main diagram takes 1 IO wire.
+    inp = (input_stream,)
+    
+    # If dom is 0 (State), we don't pass arguments properly? 
+    # But usually shells start with IO.
+    if not runner_process.dom:
+         inp = ()
+         
+    # Execute
+    if inp:
+        res = await unwrap(runner_process(*inp))
     else:
         res = await unwrap(runner_process())
     

@@ -1,3 +1,5 @@
+import asyncio
+from functools import partial
 from typing import Any, Awaitable, Callable, Sequence, IO
 from io import StringIO
 from discopy.utils import tuplify, untuplify
@@ -266,6 +268,12 @@ class Process(python.Function):
 
 Widish = closed.Category(python.Ty, Process)
 
+def shell_runner_ob(ob: closed.Ty) -> type:
+    if ob == Language:
+        return IO
+    return object
+
+
 def shell_runner_ar(ar):
     if isinstance(ar, Data):
         t = _lazy(Process.run_constant, ar)
@@ -295,7 +303,7 @@ def shell_runner_ar(ar):
 class WidishFunctor(closed.Functor):
     def __init__(self):
         super().__init__(
-            lambda ob: object,
+            shell_runner_ob,
             shell_runner_ar,
             dom=Computation,
             cod=Widish

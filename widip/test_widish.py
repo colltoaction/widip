@@ -46,6 +46,11 @@ async def test_exec_runner():
         print(f"DEBUG_TEST: call_args={call_args}", flush=True)
         print(f"DEBUG_TEST: call_args[0]={call_args[0]}", flush=True)
         # name, args, stdin
+        # name, args, stdin
         assert call_args[0][0] == "exec"
         assert call_args[0][1] == ["some_input"] # args
-        assert call_args[0][2] == [] # stdin
+        
+        # Stdin should be a stream (StringIO)
+        stdin_arg = call_args[0][2]
+        assert hasattr(stdin_arg, "read")
+        assert stdin_arg.read() == ""
