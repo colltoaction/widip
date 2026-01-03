@@ -12,7 +12,7 @@ Hello world!
 ## Script
 
 ```
-$ ./examples/shell.yaml
+$ examples/shell.yaml
 73
 23
   ? !grep { grep: }: !wc { -c }

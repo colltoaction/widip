@@ -9,7 +9,8 @@ class Scalar(symmetric.Box):
             dom = Node if tag else symmetric.Ty()
         if cod is None:
             cod = Node
-        name = value if not tag else f"{tag}"
+        
+        name = f"{tag} {value}" if tag and value else (tag or value)
         super().__init__("Scalar", dom, cod, drawing_name=name)
         self._tag, self._value = tag, value
         
@@ -37,8 +38,17 @@ class Scalar(symmetric.Box):
     def value(self):
         return self._value
 
+class Label(symmetric.Box):
+    def __init__(self, name):
+        super().__init__(name, symmetric.Ty(), symmetric.Ty())
+        self.draw_as_spider = False
+        self.color = "white"
+        self.drawing_name = name
+
 class Sequence(monoidal.Bubble):
-    def __init__(self, inside, dom=None, cod=None, n=None, tag=""):
+    def __init__(self, inside, dom=None, cod=None, n=1, tag=""):
+        if tag:
+            inside = inside @ Label(tag)
         if dom is None:
             dom = Node if tag else inside.dom
         if cod is None:
@@ -47,14 +57,16 @@ class Sequence(monoidal.Bubble):
         super().__init__(inside, dom=dom, cod=cod, drawing_name=name)
         self.tag = tag
         self.n = n
-        # Sequences - black bubbles
+        # Sequences - white bubbles
         self.draw_as_spider = False
-        self.color = "black"
+        self.color = "white"
         if tag:
             self.name = name
 
 class Mapping(monoidal.Bubble):
     def __init__(self, inside, dom=None, cod=None, tag=""):
+        if tag:
+            inside = inside @ Label(tag)
         if dom is None:
             dom = Node if tag else inside.dom
         if cod is None:
@@ -62,9 +74,9 @@ class Mapping(monoidal.Bubble):
         name = f"{{{tag}}}" if tag else ""
         super().__init__(inside, dom=dom, cod=cod, drawing_name=name)
         self.tag = tag
-        # Mappings - black bubbles
+        # Mappings - white bubbles
         self.draw_as_spider = False
-        self.color = "black"
+        self.color = "white"
         if tag:
             self.name = name
 
@@ -83,8 +95,8 @@ class Alias(symmetric.Box):
         if dom is None: dom = Node
         if cod is None: cod = Node
         super().__init__(name, dom, cod)
-        # Aliases - blue spiders
-        self.draw_as_spider = True
+        # Aliases - blue boxes
+        self.draw_as_spider = False
         self.color = "blue"
         self.drawing_name = f"*{name}"
 

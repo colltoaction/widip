@@ -59,6 +59,8 @@ def compile_ar(ar):
         return SHELL_COMPILER(ar.arg)
     if isinstance(ar, yaml.Discard):
         return computer.Discard(SHELL_COMPILER(ar.dom))
+    if isinstance(ar, yaml.Label):
+         return closed.Id(closed.Ty())
     if isinstance(ar, yaml.Swap):
         return computer.Swap(SHELL_COMPILER(ar.dom[0:1]), SHELL_COMPILER(ar.dom[1:2]))
 

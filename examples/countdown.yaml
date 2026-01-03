@@ -3,6 +3,7 @@
   !xargs { test, 0, -lt }:
     - !xargs { -I, "{}" , expr, "{}", -, 1 }
     - *countdown
+  ? !echo TestAlias: *countdown
 ---
 15: &countdown2
   !xargs { test, 0, -eq }: Blastoff!
