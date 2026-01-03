@@ -5,7 +5,8 @@ import contextlib
 from pathlib import Path
 
 from .exec import ExecFunctor
-from .interactive import interpreter, read_single, read_shell
+from .io import read_single, read_shell
+from .interactive import interpreter
 from .watch import run_with_watcher
 from .compiler import SHELL_COMPILER
 from .files import repl_read, file_diagram
@@ -17,6 +18,9 @@ def setup_runner():
     asyncio.set_event_loop(loop)
     runner = ExecFunctor(executable=sys.executable, loop=loop)
     try:
+        if __debug__:
+            import matplotlib
+            matplotlib.use('agg')
         yield runner, loop
     except KeyboardInterrupt:
         pass
@@ -29,29 +33,24 @@ def parse_args():
     parser.add_argument("operands", nargs=argparse.REMAINDER)
     return parser.parse_args()
 
-def setup_source(command_string, operands, runner):
+def setup_source(command_string, operands, runner, loop):
     if command_string is not None:
-        return read_single(repl_read(command_string), None, runner, operands), False
+        return read_single(repl_read(command_string), None, operands, loop), False
     elif operands:
         file_name = operands[0]
         fd = file_diagram(file_name)
-        return read_single(fd, Path(file_name), runner, operands[1:]), False
+        return read_single(fd, Path(file_name), operands[1:], loop), False
     else:
-        return read_shell(runner, sys.executable), True
+        return read_shell(sys.executable, loop), True
 
 def main(command_string, operands):
     with setup_runner() as (runner, loop):
-        source, is_shell = setup_source(command_string, operands, runner)
-            
-        coro = interpreter(runner, SHELL_COMPILER, source)
+        source, is_shell = setup_source(command_string, operands, runner, loop)
+        coro = interpreter(runner, SHELL_COMPILER, source, loop)
         if is_shell:
-            coro = run_with_watcher(coro)
+            coro = run_with_watcher(coro, loop)
         loop.run_until_complete(coro)
 
 if __name__ == "__main__":
-    if __debug__:
-        import matplotlib
-        matplotlib.use('agg')
-    
     args = parse_args()
     main(args.command_string, args.operands)

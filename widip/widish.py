@@ -2,93 +2,87 @@ import asyncio
 from functools import partial
 from typing import Awaitable, Callable, Sequence, IO, TypeVar, Generic, Any
 import sys
+import contextvars
+from contextlib import contextmanager
 
-from io import StringIO
+from io import StringIO, BytesIO
 from discopy.utils import tuplify, untuplify
 from discopy import closed, python, utils
 
 from .computer import *
 from .thunk import unwrap, Thunk
+from .io import MultiStreamReader
 
 U = TypeVar("U")
 T = TypeVar("T")
 
-async def _bridge_pipe(f: Callable[..., Thunk[T]], g: Callable[..., Thunk[U]], *args: T) -> U:
-    loop = asyncio.get_running_loop()
-    res = await unwrap(loop, f(*args))
-    
-    def is_failure(x: Any) -> bool:
-        if x is None: return True
-        return False
+# Internal detail: ContextVar to store the loop for factories and processes that don't have it.
+LOOP_VAR: contextvars.ContextVar[asyncio.AbstractEventLoop | None] = contextvars.ContextVar("loop", default=None)
 
-    if is_failure(res):
+@contextmanager
+def loop_scope(loop: asyncio.AbstractEventLoop | None):
+    token = LOOP_VAR.set(loop)
+    try:
+        yield
+    finally:
+        LOOP_VAR.reset(token)
+
+async def _bridge_pipe(loop: asyncio.AbstractEventLoop, f: Callable[..., Thunk[T]], g: Callable[..., Thunk[U]], *args: T) -> U:
+    res = await unwrap(loop, f(*args))
+    if res is None:
         return res # type: ignore
-    
     return await unwrap(loop, g(*utils.tuplify(res)))
 
-async def _tensor_inside(f: Callable[..., Thunk[T]], g: Callable[..., Thunk[U]], n: int, *args: T) -> tuple[T, ...]:
-    # args tuple unpacking is hard to type precisely without Variadic Generics
-    loop = asyncio.get_running_loop()
+async def _tensor_inside(loop: asyncio.AbstractEventLoop, f: Callable[..., Thunk[T]], g: Callable[..., Thunk[U]], n: int, *args: T) -> tuple[T, ...]:
     args1, args2 = args[:n], args[n:]
     res1 = await unwrap(loop, f(*args1))
     res2 = await unwrap(loop, g(*args2))
     return tuplify(res1) + tuplify(res2) # type: ignore
 
-async def _eval_func(f: Callable[..., Thunk[T]], *x: T) -> T:
-    loop = asyncio.get_running_loop()
+async def _eval_func(loop: asyncio.AbstractEventLoop, f: Callable[..., Thunk[T]], *x: T) -> T:
     return await unwrap(loop, f(*x))
 
 
 class Process(python.Function, Generic[T]):
-    def __init__(self, inside: Callable[..., Thunk[T]], dom: closed.Ty, cod: closed.Ty):
+    def __init__(self, inside: Callable[..., Thunk[T]], dom: closed.Ty, cod: closed.Ty, loop: asyncio.AbstractEventLoop | None = None):
         super().__init__(inside, dom, cod)
         self.type_checking = False
+        self.loop = loop
 
     async def __call__(self, *args: T) -> T:
-        # We need to unwrap the result of the internal function
-        ar = getattr(self, "ar", None)
-        loop = asyncio.get_running_loop()
+        loop = self.loop or LOOP_VAR.get()
+        if loop is None:
+            raise RuntimeError(f"Process {self} called without an event loop")
         res = await unwrap(loop, self.inside(*args))
         return res
 
     def then(self, other: 'Process') -> 'Process':
-        return Process(
-            partial(_bridge_pipe, self, other),
-            self.dom,
-            other.cod,
-        )
+        loop = self.loop or getattr(other, 'loop', None) or LOOP_VAR.get()
+        return Process(partial(_bridge_pipe, loop, self, other), self.dom, other.cod, loop=loop)
 
     def tensor(self, other: 'Process') -> 'Process':
-        return Process(
-            partial(_tensor_inside, self, other, len(self.dom)),
-            self.dom + other.dom,
-            self.cod + other.cod
-        )
+        loop = self.loop or getattr(other, 'loop', None) or LOOP_VAR.get()
+        return Process(partial(_tensor_inside, loop, self, other, len(self.dom)), self.dom + other.dom, self.cod + other.cod, loop=loop)
 
     @classmethod
     def eval(cls, base: closed.Ty, exponent: closed.Ty, left: bool = True) -> 'Process':
-        return Process(
-            _eval_func,
-            (exponent << base) @ base,
-            exponent
-        )
+        loop = LOOP_VAR.get()
+        return Process(partial(_eval_func, loop), (exponent << base) @ base, exponent, loop=loop)
 
     @staticmethod
     async def run_constant(ar: Any, *args: T) -> tuple[T, ...]:
         if ar.value:
-            return (StringIO(ar.value), )
+            # Thread raw bytes stream instead of string
+            return (BytesIO(ar.value.encode() if isinstance(ar.value, str) else ar.value), )
         return args
 
     @staticmethod
     async def run_map(runner: closed.Functor, ar: object, *args: object) -> tuple[object, ...]:
-        inner_runner = runner(ar.args[0])
-        res = await inner_runner(*args)
-        return tuple(tuplify(res))
+        return tuple(tuplify(await runner(ar.args[0])(*args)))
 
     @staticmethod
     async def run_seq(runner: closed.Functor, ar: object, *args: object) -> object:
-        inner_runner = runner(ar.args[0])
-        return await inner_runner(*args)
+        return await runner(ar.args[0])(*args)
 
     @staticmethod
     def run_swap(ar: Any, *args: T) -> tuple[T, ...]:
@@ -101,33 +95,23 @@ class Process(python.Function, Generic[T]):
 
     @staticmethod
     async def run_copy(ar: Any, *args: T) -> tuple[T, ...]:
-        n = len(ar.cod)
-        item = args[0] if args else ""
-        if hasattr(item, 'read'):
-            if hasattr(item, 'seek'): item.seek(0)
-            data = item.read()
-        else:
-            data = str(item)
-        return tuple(StringIO(data) for _ in range(n))
+        # Fulfills "don't read here": thread the same stream or data to all branches.
+        # Note: If the input is a stream, it will be shared (consumed by the first reader).
+        item = args[0] if args else b""
+        return tuple(item for _ in range(len(ar.cod)))
 
     @staticmethod
     async def run_discard(ar: Any, *args: T) -> tuple[T, ...]:
-        for arg in args:
-             if hasattr(arg, 'read'): arg.read()
+        # Discarding means not reading
         return ()
 
     @staticmethod
     async def run_merge(ar: Any, *args: T) -> tuple[T, ...]:
-        contents = []
-        for arg in args:
-             if hasattr(arg, 'read'):
-                 if hasattr(arg, 'seek'): arg.seek(0)
-                 contents.append(arg.read())
-             else:
-                 contents.append(str(arg))
-        return (StringIO("".join(contents)),)
-
+        # Fulfills "don't read here": lazily merge multiple inputs without eager read to memory.
+        return (MultiStreamReader(args),)
 
     @staticmethod
-    def run_constant_gamma(ar: Any, *args: T) -> str:
-        return "bin/widish"
+    def run_constant_gamma(ar: Any, *args: Any) -> Any:
+        # Fulfills "thread this variable through Exec(sys.executable)"
+        import sys
+        return BytesIO(sys.executable.encode())

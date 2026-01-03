@@ -1,91 +1,66 @@
 import asyncio
 import sys
-from typing import IO, Callable, Awaitable, TypeVar, Any, Sequence
-from io import StringIO
+import os
+import contextlib
+from typing import Any, Sequence, TypeVar, Union
 from functools import partial
 
 from discopy import closed, python, utils
 
 from .computer import *
-from .widish import Process
+from .widish import Process, LOOP_VAR, loop_scope
 from .thunk import unwrap, Thunk
+from .io import run_command
 
 T = TypeVar("T")
-U = TypeVar("U")
+
+@contextlib.contextmanager
+def setup_loop():
+    """Environment setup: recursion limit and asyncio event loop."""
+    sys.setrecursionlimit(10000)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        if __debug__:
+            import matplotlib
+            matplotlib.use('agg')
+        yield loop
+    finally:
+        loop.close()
+
+@contextlib.contextmanager
+def widip_runner(executable: str = sys.executable, loop: asyncio.AbstractEventLoop | None = None):
+    """Runner setup: creates ExecFunctor and handles KeyboardInterrupt."""
+    runner = ExecFunctor(executable=executable, loop=loop)
+    try:
+        yield runner
+    except KeyboardInterrupt:
+        pass
 
 class Exec(closed.Box):
     def __init__(self, dom: closed.Ty, cod: closed.Ty):
         super().__init__("exec", dom, cod)
 
-def _read_content(item: Any) -> str:
-    if hasattr(item, 'read'):
-        if hasattr(item, 'seek'): item.seek(0)
-        return item.read()
-    return str(item)
-
-async def _unwrap_content(loop, item: Any) -> str:
-     if isinstance(item, (list, tuple)):
-         res = []
-         for i in item:
-             res.append(_read_content(i))
-         return "".join(res)
-     return _read_content(item)
-
-
-async def run_command(runner: 'ExecFunctor', loop: asyncio.AbstractEventLoop, name: str, args: Sequence[str], stdin: IO[str]) -> StringIO:
-    # Explicit loop parameter threading
-    if name in (registry := RECURSION_REGISTRY.get()):
-         item = registry[name]
-         if not callable(item):
-              item = runner(item)
-              # Copy on write
-              new_registry = registry.copy()
-              new_registry[name] = item
-              RECURSION_REGISTRY.set(new_registry)
-         # Unwrap result with explicitly passed loop
-         return await unwrap(loop, item(stdin))
-
-    import subprocess
-    cmd = [name] + list(args)
-    
-    # Read stdin content manually
-    stdin_content = _read_content(stdin)
-    
-    # Use native asyncio subprocess
-    process = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdin=asyncio.subprocess.PIPE,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
-    )
-
-    stdout_data, stderr_data = await process.communicate(input=stdin_content.encode())
-    
-    return StringIO(stdout_data.decode())
-
-
-async def exec_generic(runner: 'ExecFunctor', loop: asyncio.AbstractEventLoop, ar: object, *args: Any) -> tuple[str, list[str], StringIO]:
-    # Pass loop to unwrap
+async def exec_generic(runner: 'ExecFunctor', loop: asyncio.AbstractEventLoop, ar: object, *args: Any) -> tuple[Any, list[Any], Any]:
     resolved = [await unwrap(loop, arg) for arg in args]
     
     if isinstance(ar, Program):
         name, raw_args, stdin_val = ar.name, ar.args, resolved
     elif isinstance(ar, (Exec, Eval)) and resolved:
-        name, raw_args, stdin_val = _read_content(resolved[0]), resolved[1:-1], resolved[-1:]
+        name, raw_args, stdin_val = resolved[0], resolved[1:-1], resolved[-1:]
     else:
-        name, raw_args, stdin_val = str(getattr(ar, 'name', ar)), [], resolved
+        name, raw_args, stdin_val = ar, [], resolved
 
     cmd_args = []
     for arg in raw_args:
         if isinstance(arg, closed.Diagram):
-            # Pass loop
-            arg_res = await unwrap(loop, runner(arg)(*utils.tuplify(stdin_val)))
-            cmd_args.append(await _unwrap_content(loop, arg_res))
+            cmd_args.append(await unwrap(loop, runner(arg)(*utils.tuplify(stdin_val))))
         else:
-            cmd_args.append(await _unwrap_content(loop, arg))
+            cmd_args.append(arg)
 
-    # Return components
-    return name, cmd_args, StringIO(await _unwrap_content(loop, stdin_val))
+    if isinstance(stdin_val, (list, tuple)) and len(stdin_val) == 1:
+        return name, cmd_args, stdin_val[0]
+    return name, cmd_args, stdin_val
 
 
 class ExecFunctor(closed.Functor):
@@ -94,6 +69,7 @@ class ExecFunctor(closed.Functor):
         self._executable, self._loop = executable, loop
 
     def ob_map(self, ob: closed.Ty) -> type:
+        from typing import IO
         return IO if ob == Language else Thunk
 
     def ar_map(self, ar: object) -> Process:
@@ -105,26 +81,23 @@ class ExecFunctor(closed.Functor):
         async def generic_wrapper(*args):
             if func:
                 return await func(ar, *args)
-            
-            # Explicitly thread self._loop to generic handlers
             name, cmd_args, stdin = await exec_generic(self, self._loop, ar, *args)
             return await run_command(self, self._loop, name, cmd_args, stdin)
 
         async def traced_t(*args: Any) -> Any:
-            # Pass self._loop
-            res = await unwrap(self._loop, generic_wrapper(*args))
-            if isinstance(ar, (Data, Eval, Program)):
-                # Manual unwrap using local helper
-                unwrapped_items = [
-                    StringIO(_read_content(i)) if hasattr(i, 'read') else i 
-                    for i in utils.tuplify(res)
-                ]
-                res = utils.untuplify(tuple(unwrapped_items))
-            return res
+            with loop_scope(self._loop):
+                return await unwrap(self._loop, generic_wrapper(*args))
 
-        res = Process(traced_t, self(ar.dom), self(ar.cod))
+        res = Process(traced_t, self(ar.dom), self(ar.cod), loop=self._loop)
         res.ar = ar
         return res
+
+    def __call__(self, ar_or_ob):
+        with loop_scope(self._loop):
+            res = super().__call__(ar_or_ob)
+            if isinstance(res, Process) and res.loop is None:
+                 res.loop = self._loop
+            return res
 
 
 ExecCategory = closed.Category(python.Ty, Process)
