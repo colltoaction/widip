@@ -1,7 +1,8 @@
 from functools import reduce
-from discopy import closed, monoidal
+from discopy import closed, monoidal, symmetric
 from . import computer
 from . import yaml
+from .loader import to_symmetric
 import sys
 
 
@@ -55,8 +56,6 @@ def compile_ar(ar):
         return computer.Copy(SHELL_COMPILER(ar.dom), ar.n)
     if isinstance(ar, yaml.Merge):
         return computer.Merge(SHELL_COMPILER(ar.cod), ar.n)
-    if isinstance(ar, yaml.Stream):
-        return SHELL_COMPILER(ar.inside)
     if isinstance(ar, yaml.Discard):
         return computer.Discard(SHELL_COMPILER(ar.dom))
     if isinstance(ar, yaml.Label):
@@ -66,51 +65,61 @@ def compile_ar(ar):
 
     return ar
 
-class ShellFunctor(closed.Functor):
-    def __init__(self):
-        def ob_map(ob):
-            # Handle Ty objects - iterate through contents
-            if hasattr(ob, "inside"):
-                if not ob:
-                    return closed.Ty()
-                return closed.Ty().tensor(*[ob_map(o) for o in ob.inside])
+def SHELL_COMPILER(ar):
+    if isinstance(ar, yaml.Scalar):
+        res = compile_ar(ar)
+        if isinstance(res, (monoidal.Box, closed.Box)):
+            return closed.Diagram(
+                (monoidal.Layer(closed.Ty(), res, closed.Ty()), ),
+                res.dom, res.cod)
+        return res
+
+    if isinstance(ar, (yaml.Sequence, yaml.Mapping)):
+        inside = SHELL_COMPILER(ar.inside)
+        if ar.tag:
+             static_args = extract_static_args(inside)
+             if static_args is not None:
+                 res = computer.Program(ar.tag, args=static_args, dom=computer.Language, cod=computer.Language)
+             else:
+                 res = computer.Program(ar.tag, args=(inside,), dom=computer.Language, cod=computer.Language)
+        else:
+             res = inside
+        
+        if isinstance(res, (monoidal.Box, closed.Box)):
+            return closed.Diagram(
+                (monoidal.Layer(closed.Ty(), res, closed.Ty()), ),
+                res.dom, res.cod)
+        return res
+
+    if isinstance(ar, symmetric.Diagram):
+        res = closed.Diagram.id(SHELL_COMPILER(ar.dom))
+        for box, offset in ar.boxes_and_offsets:
+            mapped_box = SHELL_COMPILER(box)
+            if not isinstance(mapped_box, closed.Diagram):
+                mapped_box = closed.Diagram((monoidal.Layer(closed.Ty(), mapped_box, closed.Ty()),), mapped_box.dom, mapped_box.cod)
             
-            # Handle atomic objects by name
-            name = getattr(ob, "name", None)
-            if name == "":
-                return computer.Language
-            if name == "IO":
-                return computer.Language
-            if name == "node":
-                return computer.Language
-                
-            # Fallback for already mapped types or objects
-            if ob == computer.Language:
-                return computer.Language
-                
+            left = closed.Id(res.cod[:offset])
+            right = closed.Id(res.cod[offset + len(mapped_box.dom):])
+            res = res >> (left @ mapped_box @ right)
+        return res
+
+    if isinstance(ar, yaml.Ty):
+        if not ar:
             return closed.Ty()
+        return reduce(lambda x, y: x @ y, [SHELL_COMPILER(ob) for ob in ar.inside])
+    
+    if isinstance(ar, yaml.Node):
+        return computer.Language
 
-        def ar_map(ar):
-            res = compile_ar(ar)
-            # Ensure we return a Diagram to avoid TypeErrors in the closed factory
-            if isinstance(res, (monoidal.Box, closed.Box)):
-                return computer.Computation.ar.id(res.dom) >> res
-            return res
-
-        super().__init__(
-            ob_map,
-            ar_map,
-            dom=yaml.Yaml,
-            cod=computer.Computation
-        )
-
-SHELL_COMPILER = ShellFunctor()
-
+    # Handle atomic objects/types
+    res = compile_ar(ar)
+    if isinstance(res, (monoidal.Box, closed.Box)):
+         return closed.Diagram((monoidal.Layer(closed.Ty(), res, closed.Ty()),), res.dom, res.cod)
+    return res
 
 def compile_shell_program(diagram):
     """
     close input parameters (constants)
     drop outputs matching input parameters
     all boxes are io->[io]"""
-    diagram = SHELL_COMPILER(diagram)
-    return diagram
+    return SHELL_COMPILER(to_symmetric(diagram))

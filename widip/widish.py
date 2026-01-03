@@ -12,8 +12,6 @@ async def _bridge_pipe(f, g, *args):
     
     def is_failure(x):
         if x is None: return True
-        if isinstance(x, (list, tuple)):
-            return not x or all(is_failure(i) for i in x)
         return False
 
     if is_failure(res):
@@ -85,15 +83,15 @@ class Process(python.Function):
             n = 1
         return args[:n], args[n:]
 
-    @classmethod
-    async def run_constant(cls, ar, *args):
+    @staticmethod
+    async def run_constant(ar, *args):
         if ar.value:
             return (ar.value, )
-        b, params = cls.split_args(ar, *args)
-        return untuplify(params)
+        n = 1
+        return args[n:] if len(args) > n else ()
 
-    @classmethod
-    async def run_map(cls, ar, *args):
+    @staticmethod
+    async def run_map(ar, *args):
         # Delegates to the internal diagram which handles Copy and tensor
         runner = SHELL_RUNNER(ar.args[0])
         res = await runner(*args)
@@ -101,8 +99,8 @@ class Process(python.Function):
         from .interactive import flatten
         return tuple(flatten(res))
 
-    @classmethod
-    async def run_seq(cls, ar, *args):
+    @staticmethod
+    async def run_seq(ar, *args):
         # Delegates to the internal diagram
         runner = SHELL_RUNNER(ar.args[0])
         return await runner(*args)
@@ -115,16 +113,14 @@ class Process(python.Function):
         right_args = args[n_left : n_left + n_right]
         return untuplify(right_args + left_args)
 
-    @classmethod
-    def run_cast(cls, ar, *args):
-        b, params = cls.split_args(ar, *args)
-        func = b[0]
-        return func
+    @staticmethod
+    def run_cast(ar, *args):
+        val = args[0] if args else None
+        return val
 
-    @classmethod
-    def run_copy(cls, ar, *args):
-        b, params = cls.split_args(ar, *args)
-        val = b[0] if b else params[0] if params else ""
+    @staticmethod
+    def run_copy(ar, *args):
+        val = args[0] if args else ""
         if val is None:
              return (None,) * ar.n
         return (val,) * ar.n
@@ -149,7 +145,6 @@ class Process(python.Function):
         if not isinstance(name, str):
              return await unwrap(name(*(tuplify(args) + tuplify(stdin))))
 
-        # Recurse
         if name in (registry := RECURSION_REGISTRY.get()):
              item = registry[name]
              if not callable(item):
@@ -184,8 +179,8 @@ class Process(python.Function):
         
         return tuple(res_str.splitlines())
 
-    @classmethod
-    async def deferred_exec(cls, ar, *args):
+    @staticmethod
+    async def deferred_exec(ar, *args):
         async def resolve(x):
             if callable(x):
                 return await unwrap(x())
@@ -236,12 +231,12 @@ class Process(python.Function):
             return [x]
         stdin = flatten_lines(stdin)
 
-        return await cls.run_command(name, cmd_args, stdin)
+        return await Process.run_command(name, cmd_args, stdin)
 
-    @classmethod
-    async def run_program(cls, ar, *args):
+    @staticmethod
+    async def run_program(ar, *args):
         # Programs take all inputs from wires as stdin
-        return await cls.run_command(ar.name, ar.args, args)
+        return await Process.run_command(ar.name, ar.args, args)
 
     @staticmethod
     def run_constant_gamma(ar, *args):

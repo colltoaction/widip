@@ -8,7 +8,7 @@ from nx_hif.hif import HyperGraph
 
 import sys
 from . import hif
-from .yaml import Node, Scalar, Sequence, Mapping, Anchor, Alias, Copy, Merge, Discard, Swap, Stream
+from .yaml import Node, Scalar, Sequence, Mapping, Anchor, Alias, Copy, Merge, Discard, Swap
 
 diagram_var: ContextVar[symmetric.Diagram] = ContextVar("diagram")
 inside_tag_var: ContextVar[bool] = ContextVar("inside_tag", default=False)
@@ -31,18 +31,9 @@ def to_symmetric(diag, depth=0):
         
     if isinstance(diag, symmetric.Diagram):
         return diag
-        
-    if isinstance(diag, symmetric.Box):
-        # Convert box to diagram
-        return symmetric.Id(diag.dom) >> diag >> symmetric.Id(diag.cod)
-        
-    # For anything else, try to preserve type information
     if hasattr(diag, 'dom') and hasattr(diag, 'cod'):
-        # Has type info - return identity with same domain
-        return symmetric.Id(diag.dom)
-    
-    # No type info - return empty identity
-    return symmetric.Id(symmetric.Ty())
+        return symmetric.Id(diag.dom) >> diag
+    return diag
 
 def bridge(left, right):
     # Ensure both are symmetric diagrams
@@ -207,7 +198,4 @@ def load_stream(cursor):
     for d in diagrams[1:]:
         result = bridge(to_symmetric(result), to_symmetric(d))
     
-    result = to_symmetric(result)
-    if len(diagrams) > 1:
-        return Stream(result)
-    return result
+    return to_symmetric(result)
