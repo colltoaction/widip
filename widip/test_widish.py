@@ -1,25 +1,43 @@
 import pytest
 import asyncio
+import os
+from io import BytesIO
+from pathlib import Path
 from discopy import closed
 from unittest.mock import patch, AsyncMock
-from .exec import Exec, ExecFunctor
-from .asyncio import Process, loop_scope
+from .exec import ExecFunctor, Process
+from .asyncio import loop_scope
+from .io import value_to_bytes, get_executable
+
+@pytest.fixture
+def hooks():
+    return {
+        'set_recursion_limit': lambda n: None,
+        'value_to_bytes': value_to_bytes,
+        'stdout_write': lambda d: None,
+        'stdin_read': lambda: "",
+        'stdin_isatty': lambda: False,
+        'get_executable': get_executable,
+        'fspath': os.fspath,
+        'BytesIO': BytesIO,
+        'Path': Path
+    }
 
 @pytest.mark.asyncio
-async def test_exec_runner():
+async def test_exec_runner(hooks):
     # Test execution logic.
     # We want to verify that running the process calls run_command with appropriate args.
 
-    # Exec(dom, cod)
+    # Any box named "exec" should be handled by ExecFunctor
     dom = closed.Ty("input")
     cod = closed.Ty("output")
-    exec_box = Exec(dom, cod)
+    exec_box = closed.Box("exec", dom, cod)
 
     loop = asyncio.get_running_loop()
     
-    with loop_scope(loop):
-        # ExecFunctor converts Exec to Process
-        runner = ExecFunctor(loop=loop)
+    with loop_scope(hooks=hooks, loop=loop):
+        # ExecFunctor converts "exec" box to Process
+        runner = ExecFunctor(hooks=hooks, executable="python3", loop=loop)
         process = runner(exec_box)
 
         # The result should be a Process
@@ -28,4 +46,3 @@ async def test_exec_runner():
         # Verify the process has the right types
         assert process.dom is not None
         assert process.cod is not None
-

@@ -1,106 +1,94 @@
 from __future__ import annotations
-import asyncio
 import sys
 import contextlib
-from typing import Any, Sequence, TypeVar, Union
+from typing import Any, Sequence, TypeVar, Union, Iterator, Callable
 from functools import partial
 
-from discopy import closed, python, utils
+from discopy import closed, python, utils, monoidal, symmetric
 
 from .computer import *
-from .asyncio import unwrap, Thunk, run_command, Process, loop_scope
+from .asyncio import unwrap, Thunk, run_command, loop_scope, AbstractEventLoop, loop_var, pipe_async, tensor_async
 from . import widish
 
 T = TypeVar("T")
 
+class Process(python.Function):
+    """Wraps an async function with loop context awareness."""
+    def __init__(self, inside: Callable, dom: closed.Ty, cod: closed.Ty, loop: AbstractEventLoop | None = None):
+        super().__init__(inside, dom, cod)
+        self.loop = loop
+
+    def then(self, other: 'Process') -> 'Process':
+        loop = self.loop or getattr(other, 'loop', None) or loop_var.get()
+        return Process(lambda *args: pipe_async(self.inside, other.inside, loop, *args), 
+                      self.dom, other.cod, loop=loop)
+
+    def tensor(self, other: 'Process') -> 'Process':
+        loop = self.loop or getattr(other, 'loop', None) or loop_var.get()
+        return Process(lambda *args: tensor_async(self.inside, self.dom, other.inside, loop, *args), 
+                      self.dom + other.dom, self.cod + other.cod, loop=loop)
+
+    @classmethod
+    def id(cls, dom: closed.Ty) -> 'Process':
+        return cls(lambda *args: args, dom, dom, loop=loop_var.get())
+
+    @classmethod
+    def get_category(cls) -> closed.Category:
+        return closed.Category(closed.Ty, cls)
+
+    @classmethod
+    def from_callable(cls, diagram: closed.Diagram, ar: Callable[[closed.Box|closed.Diagram], 'Process']) -> 'Process':
+        return closed.Functor(ob=lambda x: x, ar=ar, cod=cls.get_category())(diagram)
+
 @contextlib.contextmanager
-def widip_runner(executable: str = sys.executable, loop: asyncio.AbstractEventLoop | None = None):
+def widip_runner(hooks: dict, executable: str | None = None, loop: AbstractEventLoop | None = None):
     """Runner setup: creates ExecFunctor and handles KeyboardInterrupt."""
-    with loop_scope(loop) as loop:
-        runner = ExecFunctor(executable=executable, loop=loop)
-        try:
-            yield runner, loop
-        except KeyboardInterrupt:
-            pass
-
-class Exec(closed.Box):
-    def __init__(self, dom: closed.Ty, cod: closed.Ty):
-        super().__init__("exec", dom, cod)
-
-async def exec_generic(runner: 'ExecFunctor', loop: asyncio.AbstractEventLoop, ar: object, *args: Any) -> tuple[Any, list[Any], Any]:
-    resolved = [await unwrap(loop, arg) for arg in args]
-    
-    if isinstance(ar, Program):
-        name, raw_args, stdin_val = ar.name, ar.args, resolved
-    elif isinstance(ar, (Exec, Eval)) and resolved:
-        name, raw_args, stdin_val = resolved[0], resolved[1:-1], resolved[-1:]
-    else:
-        name, raw_args, stdin_val = ar, [], resolved
-
-    cmd_args = []
-    for arg in raw_args:
-        if isinstance(arg, closed.Diagram):
-            cmd_args.append(await unwrap(loop, runner(arg)(*utils.tuplify(stdin_val))))
-        else:
-            cmd_args.append(arg)
-
-    if isinstance(stdin_val, (list, tuple)) and len(stdin_val) == 1:
-        return name, cmd_args, stdin_val[0]
-    return name, cmd_args, stdin_val
-
-async def _exec_wrapper(runner: ExecFunctor, loop: asyncio.AbstractEventLoop, ar: Any, *args: Any) -> Any:
-    # Top-level execution wrapper - Lisp-like eval
-    mapping = {
-        Data: widish.run_constant, 
-        Swap: widish.run_swap, 
-        Copy: widish.run_copy,
-        Merge: widish.run_merge, 
-        Discard: widish.run_discard,
-        Partial: widish.run_partial,
-    }
-    
-    # Handle Gamma constant specially if requested via a check
-    # Refactoring suggestion was to make this contain "typical lisp eval code"
-    # This implies evaluating the operator first if it's not a primitive.
-    
-    # 1. Primitive forms (Data, Swap, Copy, Merge, Discard)
-    func = mapping.get(type(ar))
-    if func:
-        if func in (widish.run_map, widish.run_seq):
-             return await func(runner, ar, *args)
-        return await func(ar, *args)
-    
-    # 3. Application / Function Call
-    # evaluate operator (name) and arguments
-    name, cmd_args, stdin = await exec_generic(runner, loop, ar, *args)
-    
-    # 4. Apply
-    return await run_command(runner, loop, name, cmd_args, stdin)
-
+    exec_path = executable or hooks['get_executable']()
+    with loop_scope(hooks, loop) as loop:
+        runner = ExecFunctor(hooks=hooks, executable=exec_path, loop=loop)
+        yield runner, loop
 
 class ExecFunctor(closed.Functor):
-    def __init__(self, executable: Any = None, loop: asyncio.AbstractEventLoop | None = None):
-        super().__init__(self.ob_map, self.ar_map, dom=Computation, cod=ExecCategory)
-        self._executable, self._loop = executable, loop
+    """Compiles a diagram into a runnable Process."""
+    def __init__(self, hooks: dict, executable: str, loop: AbstractEventLoop):
+        super().__init__(ob=lambda x: x, ar=lambda f: f, cod=Process.get_category())
+        self.hooks = hooks
+        self.executable = executable
+        self.loop = loop
 
-    def ob_map(self, ob: closed.Ty) -> type:
-        from typing import IO
-        return object if ob == Language else Thunk
+    def __call__(self, diag: closed.Diagram) -> Process:
+        # Resolve classes from computer and yaml modules for case matching
+        import widip.computer as comp
+        import widip.yaml as yaml
 
-    def ar_map(self, ar: object) -> Process:
-        async def traced_t(*args: Any) -> Any:
-            with loop_scope(self._loop):
-                return await unwrap(self._loop, _exec_wrapper(self, self._loop, ar, *args))
+        def ar(box):
+            if isinstance(box, comp.Data):
+                return Process(lambda *_: box.value, box.dom, box.cod, loop=self.loop)
+            if isinstance(box, comp.Program):
+                return Process(lambda *args: run_command(self, self.loop, box.name, args, None, self.hooks), 
+                             box.dom, box.cod, loop=self.loop)
+            if isinstance(box, yaml.Scalar):
+                return Process(lambda *_: box.value, box.dom, box.cod, loop=self.loop)
+            if box.name == "exec":
+                return Process(lambda name, *args: run_command(self, self.loop, name, args, None, self.hooks), 
+                             box.dom, box.cod, loop=self.loop)
+            if isinstance(box, (yaml.Sequence, yaml.Mapping)):
+                inside = getattr(box, 'diagram', None) or getattr(box, 'inside', None)
+                if inside is not None: return self(inside)
+                return Process(lambda *args: args, box.dom, box.cod, loop=self.loop)
+            if isinstance(box, yaml.Anchor):
+                return self(box.inside)
 
-        res = Process(traced_t, self(ar.dom), self(ar.cod), loop=self._loop)
-        res.ar = ar
-        return res
+            # Default: treat box as command
+            return Process(lambda name, *args: run_command(self, self.loop, name, args, None, self.hooks), 
+                         box.dom, box.cod, loop=self.loop)
 
-    def __call__(self, ar_or_ob):
-        with loop_scope(self._loop):
-            res = super().__call__(ar_or_ob)
-            if isinstance(res, Process) and res.loop is None:
-                 res.loop = self._loop
-            return res
+        return Process.from_callable(diag, ar)
 
-ExecCategory = closed.Category(python.Ty, Process)
+def flatten(val: Any) -> Iterator[Any]:
+    """Recursively flatten tuples and lists."""
+    if isinstance(val, (tuple, list)):
+        for i in val:
+            yield from flatten(i)
+    else:
+        yield val

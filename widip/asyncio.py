@@ -12,30 +12,26 @@ from discopy import closed, python, utils
 
 T = TypeVar("T")
 type EventLoop = asyncio.AbstractEventLoop
+type AbstractEventLoop = asyncio.AbstractEventLoop
 
-# --- System Hooks (Decoupled) ---
 
-_HOOKS: dict[str, Any] = {
-    'value_to_bytes': lambda x: str(x).encode(),
-    'stdout_write': lambda d: None,
-    'stdin_read': lambda: "",
-    'stdin_isatty': lambda: False,
-    'get_executable': lambda: "python3",
-    'fspath': lambda x: str(x),
-    'set_recursion_limit': lambda n: None,
-}
+# Thunk is a zero-argument callable, an awaitable, or the value itself
+type Thunk[T] = Union[Callable[[], Union[Awaitable[T], T]], Awaitable[T], T]
 
-def setup_hooks(**kwargs):
-    """Register system hooks to decouple from sync I/O and sys module."""
-    _HOOKS.update(kwargs)
+def thunk(f: Callable[..., Any], *args: Any) -> Callable[[], Any]:
+    """Creates a thunk (lazy evaluation wrapper)."""
+    return partial(f, *args)
 
+def run(coro: Awaitable[T]) -> T:
+    """Wrapper for asyncio.run."""
+    return asyncio.run(coro)
 
 # --- Event Loop Context ---
 
 loop_var: contextvars.ContextVar[EventLoop | None] = contextvars.ContextVar("loop", default=None)
 
 @contextmanager
-def loop_scope(loop: EventLoop | None = None):
+def loop_scope(hooks: dict, loop: EventLoop | None = None):
     """Context manager for setting the event loop in the current context."""
     with ExitStack() as stack:
         created = False
@@ -52,7 +48,7 @@ def loop_scope(loop: EventLoop | None = None):
         stack.callback(loop_var.reset, token)
         
         if created: 
-             fn = _HOOKS.get('set_recursion_limit')
+             fn = hooks.get('set_recursion_limit')
              if fn: fn(10000)
         
         yield loop
@@ -76,16 +72,6 @@ def recursion_scope():
     finally:
         if token:
             memo_var.reset(token)
-
-
-# --- Thunk Type and Operations ---
-
-# Thunk is a zero-argument callable, an awaitable, or the value itself
-Thunk = Union[Callable[[], Union[Awaitable[T], T]], Awaitable[T], T]
-
-def thunk(f: Callable[..., T], *args: Any) -> Callable[[], T]:
-    """Creates a thunk (lazy evaluation wrapper)."""
-    return partial(f, *args)
 
 
 # --- Unwrapping ---
@@ -200,39 +186,17 @@ async def tensor_async(left_fn, left_dom, right_fn, loop, *args):
     return utils.tuplify(res1) + utils.tuplify(res2)
 
 
-# --- Process Wrapper ---
-
-class Process(python.Function):
-    """Wraps an async function with loop context awareness."""
-    def __init__(self, inside: Callable, dom: closed.Ty, cod: closed.Ty, loop: EventLoop | None = None):
-        super().__init__(inside, dom, cod)
-        self.loop = loop
-
-    def then(self, other: 'Process') -> 'Process':
-        loop = self.loop or getattr(other, 'loop', None) or loop_var.get()
-        return Process(lambda *args: pipe_async(self.inside, other.inside, loop, *args), 
-                      self.dom, other.cod, loop=loop)
-
-    def tensor(self, other: 'Process') -> 'Process':
-        loop = self.loop or getattr(other, 'loop', None) or loop_var.get()
-        return Process(lambda *args: tensor_async(self.inside, self.dom, other.inside, loop, *args), 
-                      self.dom + other.dom, self.cod + other.cod, loop=loop)
-
-    @classmethod
-    def eval(cls, base: closed.Ty, exponent: closed.Ty, left: bool = True) -> 'Process':
-        return cls(lambda f, *x: unwrap(loop_var.get(), f(*x)), 
-                  (exponent << base) @ base, exponent)
 
 
 # --- Async Stream Operations ---
 
-async def read_multi_stream(streams_list: list, index: list[int], n: int = -1) -> bytes:
+async def read_multi_stream(streams_list: list, index: list[int], hooks: dict, n: int = -1) -> bytes:
     """Read from multiple streams sequentially."""
-    from io import BytesIO
+    BytesIO = hooks['BytesIO']
     while index[0] < len(streams_list):
         stream = streams_list[index[0]]
         if not hasattr(stream, 'read'):
-            val = str(stream).encode()
+            val = hooks['value_to_bytes'](stream)
             streams_list[index[0]] = BytesIO(val)
             stream = streams_list[index[0]]
 
@@ -267,14 +231,14 @@ async def drain_stream(stream: Any):
 
 # --- Stream Factories ---
 
-def make_multi_stream_reader(streams: Iterator[Any]):
+def make_multi_stream_reader(streams: Iterator[Any], hooks: dict):
     """Create a multi-stream reader that lazily reads from multiple streams."""
     streams_list = list(streams)
     index = [0]
     
     class MultiStreamReader:
         def read(self, n: int = -1):
-            return read_multi_stream(streams_list, index, n)
+            return read_multi_stream(streams_list, index, hooks, n)
             
     return MultiStreamReader()
 
@@ -292,15 +256,15 @@ def make_subprocess_stream(stream: Any, process: asyncio.subprocess.Process, fee
 
 # --- Subprocess and I/O Operations ---
 
-async def to_bytes(item: Any, loop: EventLoop) -> bytes:
+async def to_bytes(item: Any, loop: EventLoop, hooks: dict) -> bytes:
     """Convert any value to bytes asynchronously."""
     val = await unwrap(loop, item)
     if isinstance(val, (list, tuple)):
-        return b"".join([await to_bytes(i, loop) for i in val])
-    return _HOOKS['value_to_bytes'](val)
+        return b"".join([await to_bytes(i, loop, hooks) for i in val])
+    return hooks['value_to_bytes'](val)
 
 
-async def feed_stdin(loop: EventLoop, stdin: Any, process: asyncio.subprocess.Process):
+async def feed_stdin(loop: EventLoop, stdin: Any, process: asyncio.subprocess.Process, hooks: dict):
     """Feed data to subprocess stdin asynchronously."""
     try:
          in_stream = await unwrap(loop, stdin)
@@ -331,13 +295,16 @@ async def feed_stdin(loop: EventLoop, stdin: Any, process: asyncio.subprocess.Pr
     except Exception:
          pass
     finally:
-         if process.stdin.can_write_eof():
-              process.stdin.write_eof()
-         process.stdin.close()
+         try:
+              if process.stdin.can_write_eof():
+                   process.stdin.write_eof()
+              process.stdin.close()
+         except Exception:
+              pass
 
 
 async def run_command(runner: Callable, loop: EventLoop, 
-                     name: Any, args: Sequence[Any], stdin: Any) -> Any:
+                     name: Any, args: Sequence[Any], stdin: Any, hooks: dict) -> Any:
     """Starts an async subprocess and returns its output stream."""
     from .computer import get_anchor, set_anchor
     
@@ -350,34 +317,34 @@ async def run_command(runner: Callable, loop: EventLoop,
          return await unwrap(loop, item(stdin))
 
     # Execute subprocess
-    name_str = (await to_bytes(name, loop)).decode()
-    args_str = [(await to_bytes(a, loop)).decode() for a in args]
+    name_str = (await to_bytes(name, loop, hooks)).decode()
+    args_str = [(await to_bytes(a, loop, hooks)).decode() for a in args]
     
     process = await asyncio.create_subprocess_exec(
-        _HOOKS['fspath'](name_str), *args_str,
+        hooks['fspath'](name_str), *args_str,
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE
     )
     
-    task = loop.create_task(feed_stdin(loop, stdin, process))
+    task = loop.create_task(feed_stdin(loop, stdin, process, hooks))
     return make_subprocess_stream(process.stdout, process, task)
 
 
-async def drain_to_stdout(stream: Any):
+async def drain_to_stdout(stream: Any, hooks: dict):
     """Lazily read and print from a stream to stdout."""
     async for chunk in drain_stream(stream):
-        _HOOKS['stdout_write'](chunk)
+        hooks['stdout_write'](chunk)
 
 
-async def printer(rec: Any, val: Any):
+async def printer(rec: Any, val: Any, hooks: dict):
     """Print output handler."""
     if hasattr(val, 'read'):
-        await drain_to_stdout(val)
+        await drain_to_stdout(val, hooks)
     elif isinstance(val, (list, tuple)):
         for item in val:
             if hasattr(item, 'read'):
-                await drain_to_stdout(item)
+                await drain_to_stdout(item, hooks)
             else:
                 print(item)
     else:
@@ -411,12 +378,12 @@ async def run_with_watcher(coro, reload_fn):
 
 # --- Async REPL Logic ---
 
-async def prompt_loop(file_name: str, loop: EventLoop) -> AsyncIterator[str]:
+async def prompt_loop(file_name: str, loop: EventLoop, hooks: dict) -> AsyncIterator[str]:
     """Interactive prompt loop for REPL mode."""
     while True:
         try:
-            if not _HOOKS['stdin_isatty']():
-                 source_str = _HOOKS['stdin_read']()
+            if not hooks['stdin_isatty']():
+                 source_str = hooks['stdin_read']()
             else:
                  prompt = f"--- !{file_name}\n"
                  source_str = await loop.run_in_executor(None, input, prompt)
@@ -424,24 +391,24 @@ async def prompt_loop(file_name: str, loop: EventLoop) -> AsyncIterator[str]:
             break
 
         if not source_str: 
-             if not _HOOKS['stdin_isatty'](): break
+             if not hooks['stdin_isatty'](): break
              continue
         yield source_str
-        if not _HOOKS['stdin_isatty'](): break
+        if not hooks['stdin_isatty'](): break
 
 
 async def async_read(fd: Any | None, path: Path | None, file_name: str, loop: EventLoop, 
-                     parse_fn: Callable[[str], Any], read_stdin_fn: Callable[[], Any]) -> AsyncIterator[tuple[Any, Path | None, Any]]:
+                     parse_fn: Callable[[str], Any], read_stdin_fn: Callable[[], Any], hooks: dict) -> AsyncIterator[tuple[Any, Path | None, Any]]:
     """Yields parsed diagrams from a file, command string, or shell prompt."""
     if fd is not None:
          input_stream = read_stdin_fn()
          yield fd, path, input_stream
          return
 
-    async for source_str in prompt_loop(file_name, loop):
-        from io import BytesIO
-        from pathlib import Path
-        yield parse_fn(source_str), Path(file_name), BytesIO(b"")
+    async for source_str in prompt_loop(file_name, loop, hooks):
+        BytesIO = hooks['BytesIO']
+        Path_type = hooks['Path']
+        yield parse_fn(source_str), Path_type(file_name), BytesIO(b"")
 
 
 async def eval_diagram(pipeline: Callable, source: AsyncIterator, loop: EventLoop, output_handler: Callable):
@@ -459,16 +426,17 @@ async def eval_with_watch(pipeline: Callable, source: AsyncIterator, loop: Event
     )
 
 
-async def run_repl(env_fn: Callable, get_source_fn: Callable, make_pipeline_fn: Callable, 
-                   widip_runner_ctx: Callable, reload_fn: Callable):
+async def run_repl(env_fn: Callable, runner_ctx: Callable, get_params_fn: Callable, read_fn: Callable,
+                   make_pipeline_fn: Callable, reload_fn: Callable, hooks: dict):
     """Orchestrate the async REPL execution."""
     args = env_fn()
-    
-    with widip_runner_ctx(executable=_HOOKS['get_executable']()) as (runner, loop):
-        source = get_source_fn(args.command_string, args.operands, loop)
+    with runner_ctx(hooks=hooks, executable=hooks['get_executable']()) as (runner, loop):
+        params = get_params_fn(args.command_string, args.operands, hooks)
+        source = read_fn(*params, loop, hooks)
         pipeline = make_pipeline_fn(runner)
+        output_handler = partial(printer, hooks=hooks)
 
         if args.watch and args.operands:
-            await eval_with_watch(pipeline, source, loop, printer, reload_fn)
+            await eval_with_watch(pipeline, source, loop, output_handler, reload_fn)
         else:
-            await eval_diagram(pipeline, source, loop, printer)
+            await eval_diagram(pipeline, source, loop, output_handler)
