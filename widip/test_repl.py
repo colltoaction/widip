@@ -5,7 +5,7 @@ from pathlib import Path
 from io import BytesIO
 
 from discopy import closed
-from widip.repl import read, env, get_source, eval_print, repl_read, file_diagram
+from widip.repl import read, env, get_source, eval_diagram, repl_read, file_diagram
 from widip.computer import interpreter, compiler
 from widip.exec import widip_runner
 

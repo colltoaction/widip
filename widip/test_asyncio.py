@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 
-from widip.thunk import *
+from widip.asyncio import *
 
 
 async def async_val(val):

@@ -2,7 +2,7 @@ import asyncio
 from discopy import closed
 from widip.widish import SHELL_RUNNER, Constant, Process
 from widip.computer import Language
-from widip.thunk import unwrap
+from widip.async_ import unwrap
 
 async def main():
     # Setup Gamma (dom=Ty())

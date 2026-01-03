@@ -9,7 +9,7 @@ from discopy import closed, python, utils
 
 from .computer import *
 from .io import run_command, Process, loop_scope
-from .thunk import unwrap, Thunk
+from .asyncio import unwrap, Thunk
 from . import widish
 
 T = TypeVar("T")

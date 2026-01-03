@@ -6,7 +6,7 @@ from pathlib import Path
 from discopy import closed, monoidal, symmetric
 from . import yaml, loader
 
-from .thunk import unwrap, recurse
+from .asyncio import unwrap, recurse
 import sys
 
 # Symbols are represented by ℙ
