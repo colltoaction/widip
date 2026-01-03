@@ -1,6 +1,7 @@
 import asyncio
 from functools import partial
-from typing import Any, Awaitable, Callable, Sequence, IO
+from typing import Awaitable, Callable, Sequence, IO, TypeVar, Generic
+
 from io import StringIO
 from discopy.utils import tuplify, untuplify
 from discopy import closed, python, utils
@@ -8,49 +9,48 @@ from discopy import closed, python, utils
 from .computer import *
 from .thunk import unwrap
 
-async def _bridge_pipe(f: Callable[..., Awaitable[Any]], g: Callable[..., Awaitable[Any]], *args: Any) -> Any:
+U = TypeVar("U")
+T = TypeVar("T")
+
+async def _bridge_pipe(f: Callable[..., Awaitable[T]], g: Callable[..., Awaitable[U]], *args: T) -> U:
     res = await unwrap(f(*args))
     
-    def is_failure(x: Any) -> bool:
+    def is_failure(x: object) -> bool:
         if x is None: return True
         return False
 
     if is_failure(res):
-        return res
+        return res # type: ignore
     
     return await unwrap(g(*utils.tuplify(res)))
 
-async def _tensor_inside(f: Callable[..., Awaitable[Any]], g: Callable[..., Awaitable[Any]], n: int, *args: Any) -> Any:
+async def _tensor_inside(f: Callable[..., Awaitable[T]], g: Callable[..., Awaitable[U]], n: int, *args: object) -> tuple[T, ...]:
+    # args tuple unpacking is hard to type precisely without Variadic Generics
     args1, args2 = args[:n], args[n:]
     res1 = await unwrap(f(*args1))
     res2 = await unwrap(g(*args2))
-    return tuplify(res1) + tuplify(res2)
+    return tuplify(res1) + tuplify(res2) # type: ignore
 
-async def _eval_func(f: Callable[..., Awaitable[Any]], *x: Any) -> Any:
+async def _eval_func(f: Callable[..., Awaitable[T]], *x: object) -> T:
     return await unwrap(f(*x))
 
-def _lazy(func: Callable[..., Awaitable[Any]], ar: Any) -> Callable[..., Awaitable[Any]]:
-    """Returns a function that returns a partial application of func."""
-    async def wrapper(*args: Any) -> Any:
-        return partial(func, ar, *args)
-    return wrapper
 
-class Process(python.Function):
-    def __init__(self, inside: Callable[..., Awaitable[Any]], dom: Any, cod: Any):
+
+class Process(python.Function, Generic[T]):
+    def __init__(self, inside: Callable[..., Awaitable[T]], dom: closed.Ty, cod: closed.Ty):
         super().__init__(inside, dom, cod)
         self.type_checking = False
 
-    async def __call__(self, *args: Any) -> Any:
+    async def __call__(self, *args: object) -> T:
         # We need to unwrap the result of the internal function
         ar = getattr(self, "ar", None)
+        # print(f"DEBUG: Process call ar={ar}", file=sys.stderr)
         res = await unwrap(self.inside(*args))
         
         # Feedback trace: print results of all atomic boxes
-        if ar and isinstance(ar, (Data, Eval, Program)):
-             from .interactive import flatten
-             # Flatten reads streams if necessary? 
-             # For now, assume flatten handles generic objects or we skip trace for simplicity during refactor
-             pass
+        from .exec import trace_output
+        res = await trace_output(ar, res)
+
         return res
 
     def then(self, other: 'Process') -> 'Process':
@@ -68,245 +68,81 @@ class Process(python.Function):
         )
 
     @classmethod
-    def eval(cls, base: Any, exponent: Any, left: bool = True) -> 'Process':
+    def eval(cls, base: closed.Ty, exponent: closed.Ty, left: bool = True) -> 'Process':
         return Process(
             _eval_func,
             (exponent << base) @ base,
             exponent
         )
 
-    @staticmethod
-    def split_args(ar: Any, *args: Any) -> tuple[tuple[Any, ...], tuple[Any, ...]]:
-        try:
-            n = len(ar.dom)
-        except TypeError:
-            n = 1
-        return args[:n], args[n:]
+
 
     @staticmethod
-    async def run_constant(ar: Any, *args: Any) -> tuple[Any, ...]:
+    async def run_constant(ar: object, *args: object) -> tuple[IO, ...]:
         if ar.value:
             return (StringIO(ar.value), )
         n = 1
         return args[n:] if len(args) > n else ()
 
     @staticmethod
-    async def run_map(ar: Any, *args: Any) -> tuple[Any, ...]:
-        runner = SHELL_RUNNER(ar.args[0])
-        res = await runner(*args)
+    async def run_map(runner: closed.Functor, ar: object, *args: object) -> tuple[object, ...]:
+        inner_runner = runner(ar.args[0])
+        res = await inner_runner(*args)
         return tuple(tuplify(res))
 
     @staticmethod
-    async def run_seq(ar: Any, *args: Any) -> Any:
-        runner = SHELL_RUNNER(ar.args[0])
-        return await runner(*args)
+    async def run_seq(runner: closed.Functor, ar: object, *args: object) -> object:
+        inner_runner = runner(ar.args[0])
+        return await inner_runner(*args)
 
     @staticmethod
-    def run_swap(ar: Any, *args: Any) -> tuple[Any, ...]:
-        n_left = len(ar.left)
-        n_right = len(ar.right)
-        left_args = args[:n_left]
-        right_args = args[n_left : n_left + n_right]
-        return untuplify(right_args + left_args)
+    def run_swap(ar: object, *args: object) -> tuple[object, ...]:
+        n = len(ar.left)
+        return args[n:] + args[:n]
 
     @staticmethod
-    def run_cast(ar: Any, *args: Any) -> Any:
+    def run_cast(ar: object, *args: object) -> object:
         return args[0] if args else None
 
     @staticmethod
-    def run_copy(ar: Any, *args: Any) -> tuple[Any, ...]:
+    async def run_copy(ar: object, *args: object) -> tuple[IO | None, ...]:
         val = args[0] if args else None
         if val is None:
              return (None,) * ar.n
         
         # If val is IO stream, read and replicate
+        from .exec import safe_read_str
         if hasattr(val, 'read'):
-             data = val.read()
+             data = await safe_read_str(val)
              return tuple(StringIO(data) for _ in range(ar.n))
         return (val,) * ar.n
 
     @staticmethod
-    def run_discard(ar: Any, *args: Any) -> tuple[Any, ...]:
+    async def run_discard(ar: object, *args: object) -> tuple[object, ...]:
         # Consume stream to avoid leaks/buffering issues?
+        from .exec import safe_read_str
         for arg in args:
-             if hasattr(arg, 'read'): arg.read()
+             await safe_read_str(arg)
         return ()
 
     @staticmethod
-    def run_merge(ar: Any, *args: Any) -> tuple[Any, ...]:
+    async def run_merge(ar: object, *args: object) -> tuple[IO, ...]:
         # Merge streams into one
         contents = []
+        from .exec import safe_read_str
+        contents = []
         for arg in args:
-             if hasattr(arg, 'read'):
-                 contents.append(arg.read())
-             else:
-                 contents.append(str(arg) if arg is not None else "")
+             contents.append(await safe_read_str(arg))
         return (StringIO("".join(contents)),)
 
-    @staticmethod
-    async def _exec_subprocess(name: str, args: tuple[str, ...], stdin: IO[str]) -> IO[str]:
-        process: asyncio.subprocess.Process = await asyncio.create_subprocess_exec(
-            name, *args,
-            stdout=asyncio.subprocess.PIPE,
-            stdin=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        # Read from input stream
-        content = stdin.read()
-        input_data: bytes | None = content.encode() if content else None
-        
-        stdout_data: bytes | None
-        stderr_data: bytes | None
-        stdout_data, stderr_data = await process.communicate(input=input_data)
-        
-        if process.returncode != 0:
-             return StringIO("") # or failure indication? For now empty stream
 
-        if stdout_data is None:
-             return StringIO("")
 
-        return StringIO(stdout_data.decode())
+
+
+
 
     @staticmethod
-    async def run_command(name: Any, args: Any, stdin: IO[str]) -> IO[str]:
-        from .widish import SHELL_RUNNER
-        from .compiler import SHELL_COMPILER
-        
-        # stdin is a single stream now
-        
-        if not isinstance(name, str):
-             # Name is a box? Eval case for name?
-             # For simplicity, assume name is string for command execution
-             return StringIO("")
-
-        if name in (registry := RECURSION_REGISTRY.get()):
-             item = registry[name]
-             if not callable(item):
-                  compiled = SHELL_COMPILER(item)
-                  runner = SHELL_RUNNER(compiled)
-                  registry[name] = runner
-                  RECURSION_REGISTRY.set(dict(registry))
-             else:
-                  runner = item
-             # Pass stdin stream as argument
-             return await runner(stdin)
-
-        if name.endswith(".yaml"):
-            str_args = tuple(map(str, args))
-            args = (name, ) + str_args
-            name = "bin/widish"
-            
-        str_args = tuple(map(str, args))
-        return await Process._exec_subprocess(name, str_args, stdin)
-
-    @staticmethod
-    async def deferred_exec(ar: Any, *args: Any) -> Any:
-        async def resolve(x: Any) -> Any:
-            if callable(x):
-                return await unwrap(x())
-            return x
-
-        resolved = []
-        for x in args:
-            res = await resolve(x)
-            resolved.append(res)
-        
-        if ar.name:
-             name = ar.name
-             cmd_args = resolved
-             stdin_wires = []
-        else:
-             if not resolved: return StringIO("")
-             name = resolved[0]
-             # Eval wrapping name? If name is stream, read it.
-             if hasattr(name, 'read'): name = name.read().strip()
-             
-             stdin_wires = resolved[-1]
-             # If stdin_wires is list (from multiple wires), flattening needed?
-             # Resolved[-1] is usually tuple from previous box
-             if isinstance(stdin_wires, (tuple, list)):
-                  pass 
-             else:
-                   stdin_wires = [stdin_wires]
-                   
-             cmd_args = resolved[1:-1]
-
-        # Unwrap arguments (if streams, read them?)
-        # Arguments to command are usually strings.
-        final_args = []
-        for arg in cmd_args:
-             if isinstance(arg, (tuple, list)):
-                  arg = arg[0] if arg else ""
-             if hasattr(arg, 'read'):
-                  final_args.append(arg.read().strip())
-             else:
-                  final_args.append(str(arg))
-             
-        # Prepare Stdin Stream
-        # Concat multiple input streams
-        stdin_contents = []
-        if isinstance(stdin_wires, (tuple, list)):
-             for w in stdin_wires:
-                  if hasattr(w, 'read'): stdin_contents.append(w.read())
-                  else: stdin_contents.append(str(w) if w else "")
-        else:
-              if hasattr(stdin_wires, 'read'): stdin_contents.append(stdin_wires.read())
-              else: stdin_contents.append(str(stdin_wires) if stdin_wires else "")
-              
-        stdin_stream = StringIO("".join(stdin_contents))
-
-        return await Process.run_command(name, final_args, stdin_stream)
-
-    @staticmethod
-    async def run_program(ar: Any, *args: Any) -> Any:
-        # Programs take all inputs from wires as stdin
-        return await Process.run_command(ar.name, ar.args, args)
-
-    @staticmethod
-    def run_constant_gamma(ar: Any, *args: Any) -> str:
+    def run_constant_gamma(ar: object, *args: object) -> str:
         return "bin/widish"
 
-Widish = closed.Category(python.Ty, Process)
 
-def shell_runner_ob(ob: closed.Ty) -> type:
-    if ob == Language:
-        return IO
-    return object
-
-
-def shell_runner_ar(ar):
-    if isinstance(ar, Data):
-        t = _lazy(Process.run_constant, ar)
-    elif isinstance(ar, Swap):
-        t = partial(Process.run_swap, ar)
-    elif isinstance(ar, Copy):
-        t = partial(Process.run_copy, ar)
-    elif isinstance(ar, Merge):
-        t = partial(Process.run_merge, ar)
-    elif isinstance(ar, Discard):
-        t = partial(Process.run_discard, ar)
-    elif isinstance(ar, Exec):
-         t = _lazy(Process.deferred_exec, ar)
-    elif isinstance(ar, Program):
-         t = _lazy(Process.run_program, ar)
-    elif isinstance(ar, Eval):
-         t = _lazy(Process.deferred_exec, ar)
-    else:
-        t = _lazy(Process.deferred_exec, ar)
-
-    dom = SHELL_RUNNER(ar.dom)
-    cod = SHELL_RUNNER(ar.cod)
-    res = Process(t, dom, cod)
-    res.ar = ar
-    return res
-
-class WidishFunctor(closed.Functor):
-    def __init__(self):
-        super().__init__(
-            shell_runner_ob,
-            shell_runner_ar,
-            dom=Computation,
-            cod=Widish
-        )
-
-SHELL_RUNNER = WidishFunctor()

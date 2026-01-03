@@ -8,7 +8,8 @@ from io import StringIO
 from discopy.utils import tuplify
 
 from .files import file_diagram, repl_read
-from .widish import SHELL_RUNNER, Process
+from .exec import EXEC as SHELL_RUNNER
+from .widish import Process
 from .thunk import unwrap
 from .compiler import SHELL_COMPILER
 from .computer import Language
