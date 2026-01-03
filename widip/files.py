@@ -16,9 +16,8 @@ def repl_read(stream):
 def reload_diagram(path_str):
     print(f"reloading {path_str}", file=sys.stderr)
     try:
-        fd = file_diagram(path_str)
+        fd = file_diagram(path_str).simplify()
         diagram_draw(Path(path_str), fd)
-        diagram_draw(Path(path_str+".2"), fd)
     except YAMLError as e:
         print(e, file=sys.stderr)
 

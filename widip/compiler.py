@@ -2,6 +2,7 @@ from functools import reduce
 from discopy import closed, monoidal
 from . import computer
 from . import yaml
+import sys
 
 
 def extract_static_args(diag):
@@ -20,7 +21,7 @@ def compile_ar(ar):
             # Use Data for tag to pass name without executing
             prog = computer.Data(value=ar.tag, dom=closed.Ty(), cod=computer.Language)
             data = computer.Data(value=ar.value, dom=closed.Ty(), cod=computer.Language)
-            term = (prog @ data) @ closed.Id(computer.Language)
+            term = (prog @ data) @ computer.Id(computer.Language)
             return term >> computer.Eval(computer.Language @ computer.Language, computer.Language)
         else:
             return computer.Data(value=ar.value, dom=closed.Ty(), cod=computer.Language)
@@ -54,26 +55,48 @@ def compile_ar(ar):
         return computer.Program(ar.name, dom=computer.Language, cod=computer.Language)
 
     if isinstance(ar, yaml.Copy):
-        return computer.Copy(computer.Language, ar.n)
+        return computer.Copy(SHELL_COMPILER(ar.dom), ar.n)
     if isinstance(ar, yaml.Merge):
-        return computer.Merge(computer.Language, ar.n)
+        return computer.Merge(SHELL_COMPILER(ar.cod), ar.n)
     if isinstance(ar, yaml.Discard):
-        return computer.Discard(computer.Language)
+        return computer.Discard(SHELL_COMPILER(ar.dom))
     if isinstance(ar, yaml.Swap):
-        return computer.Swap(computer.Language, computer.Language)
+        return computer.Swap(SHELL_COMPILER(ar.dom[0:1]), SHELL_COMPILER(ar.dom[1:2]))
 
     return ar
 
 class ShellFunctor(closed.Functor):
     def __init__(self):
         def ob_map(ob):
-            if ob == yaml.Node:
+            # Handle Ty objects - iterate through contents
+            if hasattr(ob, "inside"):
+                if not ob:
+                    return closed.Ty()
+                return closed.Ty().tensor(*[ob_map(o) for o in ob.inside])
+            
+            # Handle atomic objects by name
+            name = getattr(ob, "name", None)
+            if name == "":
                 return computer.Language
+            if name == "IO":
+                return computer.Language
+                
+            # Fallback for already mapped types or objects
+            if ob == computer.Language:
+                return computer.Language
+                
             return closed.Ty()
+
+        def ar_map(ar):
+            res = compile_ar(ar)
+            # Ensure we return a Diagram to avoid TypeErrors in the closed factory
+            if isinstance(res, (monoidal.Box, closed.Box)):
+                return computer.Computation.ar.id(res.dom) >> res
+            return res
 
         super().__init__(
             ob_map,
-            compile_ar,
+            ar_map,
             dom=yaml.Yaml,
             cod=computer.Computation
         )

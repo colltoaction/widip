@@ -1,16 +1,18 @@
-DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
-DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
-DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
-DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
-DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
-DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
-DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
-DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
-DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
-DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
-DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
-DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
-DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=countdown dom=Ty() cod=IO
+DEBUG_OB_MAP: ob=monoidal.Ty(cat.Ob('')) name='Ty()'
+DEBUG_OB_MAP: ob=monoidal.Ty(cat.Ob('')) name='Ty()'
+DEBUG_OB_MAP: ob=monoidal.Ty(cat.Ob('')) name='Ty()'
+DEBUG_OB_MAP: ob=monoidal.Ty(cat.Ob('')) name='Ty()'
+DEBUG_OB_MAP: ob=monoidal.Ty(cat.Ob('')) name='Ty()'
+DEBUG_OB_MAP: ob=monoidal.Ty(cat.Ob('')) name='Ty()'
+DEBUG_OB_MAP: ob=monoidal.Ty(cat.Ob('')) name='Ty()'
+DEBUG_OB_MAP: ob=monoidal.Ty(cat.Ob('')) name='Ty()'
+DEBUG_OB_MAP: ob=monoidal.Ty(cat.Ob('')) name='Ty()'
+DEBUG_OB_MAP: ob=monoidal.Ty(cat.Ob('')) name='Ty()'
+DEBUG_OB_MAP: ob=monoidal.Ty(cat.Ob('')) name='Ty()'
+DEBUG_OB_MAP: ob=monoidal.Ty(cat.Ob('')) name='Ty()'
+DEBUG_OB_MAP: ob=monoidal.Ty(cat.Ob('')) name='Ty()'
+DEBUG_OB_MAP: ob=monoidal.Ty(cat.Ob('')) name='Ty()'
+DEBUG_OB_MAP: ob=monoidal.Ty(cat.Ob('')) name='Ty()'
 Traceback (most recent call last):
   File "<frozen runpy>", line 198, in _run_module_as_main
   File "<frozen runpy>", line 88, in _run_code
@@ -29,32 +31,19 @@ Traceback (most recent call last):
   File "/home/colltoaction/miniconda3/lib/python3.13/asyncio/base_events.py", line 725, in run_until_complete
     return future.result()
            ~~~~~~~~~~~~~^^
-  File "/home/colltoaction/GitHub/widip/widip/interactive.py", line 68, in async_widish_main
-    fd = file_diagram(file_name)
-  File "/home/colltoaction/GitHub/widip/widip/files.py", line 38, in file_diagram
-    fd = repl_read(path.open())
-  File "/home/colltoaction/GitHub/widip/widip/files.py", line 13, in repl_read
-    return incidences_to_diagram(incidences)
-  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 100, in incidences_to_diagram
-    return _incidences_to_diagram(cursor)
-  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 110, in _incidences_to_diagram
-    ob = load_stream(cursor)
-  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 134, in load_stream
-    return reduce(lambda a, b: a @ b, diagrams, closed.Id(Language))
-  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 112, in _incidences_to_diagram
-    ob = load_document(cursor)
-  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 130, in load_document
-    return _incidences_to_diagram(root) if root else closed.Id(Language)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 118, in _incidences_to_diagram
-    ob = load_mapping(cursor, tag)
-  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 65, in load_mapping
-    diagrams_list = list(map(_incidences_to_diagram, nodes))
-  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 118, in _incidences_to_diagram
-    ob = load_mapping(cursor, tag)
-  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 79, in load_mapping
-    items.append(key >> val)
-                 ~~~~^^~~~~
+  File "/home/colltoaction/GitHub/widip/widip/interactive.py", line 73, in async_widish_main
+    await async_exec_diagram(fd, path, *shell_program_args)
+  File "/home/colltoaction/GitHub/widip/widip/interactive.py", line 31, in async_exec_diagram
+    compiled_d = SHELL_COMPILER(yaml_d)
+  File "/home/colltoaction/miniconda3/lib/python3.13/site-packages/discopy/closed.py", line 382, in __call__
+    return super().__call__(other)
+           ~~~~~~~~~~~~~~~~^^^^^^^
+  File "/home/colltoaction/miniconda3/lib/python3.13/site-packages/discopy/monoidal.py", line 1129, in __call__
+    return super().__call__(other)
+           ~~~~~~~~~~~~~~~~^^^^^^^
+  File "/home/colltoaction/miniconda3/lib/python3.13/site-packages/discopy/cat.py", line 912, in __call__
+    result = result >> self(box)
+             ~~~~~~~^^~~~~~~~~~~
   File "/home/colltoaction/miniconda3/lib/python3.13/site-packages/discopy/utils.py", line 606, in <lambda>
     __rshift__ = __llshift__ = lambda self, other: self.then(other)
                                                    ~~~~~~~~~^^^^^^^
@@ -70,4 +59,4 @@ Traceback (most recent call last):
   File "/home/colltoaction/miniconda3/lib/python3.13/site-packages/discopy/utils.py", line 708, in assert_iscomposable
     raise AxiomError(messages.NOT_COMPOSABLE.format(
         left, right, left.cod, right.dom))
-discopy.utils.AxiomError: Scalar does not compose with countdown: IO != Ty().
+discopy.utils.AxiomError: ⌜10⌝ does not compose with Discard(Ty()): IO != Ty().
