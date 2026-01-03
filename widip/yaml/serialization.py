@@ -1,5 +1,5 @@
-
-# --- Anchor Registry ---
+from __future__ import annotations
+from typing import Any
 import contextvars
 from contextlib import contextmanager
 

@@ -5,7 +5,8 @@ from io import BytesIO
 from pathlib import Path
 from discopy import closed
 from unittest.mock import patch, AsyncMock
-from .exec import compile_exec, Process
+from . import Process
+from .exec import compile_exec
 from .asyncio import loop_scope
 from .io import value_to_bytes, get_executable
 

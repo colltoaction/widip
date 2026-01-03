@@ -1,6 +1,5 @@
 from typing import Any
 from discopy import symmetric
-
 from nx_hif.hif import hif_node_incidences, hif_edge_incidences, hif_node
 
 class CharacterStream(symmetric.Box):
@@ -10,29 +9,64 @@ class CharacterStream(symmetric.Box):
         self.source = source
         super().__init__("CharacterStream", symmetric.Ty(), symmetric.Ty("CharacterStream"))
 
-    @staticmethod
-    def get_node_data(index, node) -> dict:
-        """Returns the data associated with the node at the cursor's position."""
-        return hif_node(node, index)
+Index = symmetric.Ty("Index")
+Node = symmetric.Ty("Node")
+Cursor = Index @ Node
+Key = symmetric.Ty("Key")
+Data = symmetric.Ty("Data")
 
-    @staticmethod
-    def step(index, node, key: str) -> tuple | None:
-        """Advances the cursor along a specific edge key (e.g., 'next', 'forward')."""
-        incidences = tuple(hif_node_incidences(node, index, key=key))
-        if not incidences:
-            return None
-        ((edge, _, _, _), ) = incidences
-        start = tuple(hif_edge_incidences(node, edge, key="start"))
-        if not start:
-            return None
-        ((_, neighbor, _, _), ) = start
+class GetNodeData(symmetric.Box):
+    """Returns the data associated with the node at the cursor's position."""
+    def __init__(self):
+        super().__init__("get_node_data", Cursor, Data)
 
-        return (neighbor, node)
+class Step(symmetric.Box):
+    """Advances the cursor along a specific edge key (e.g., 'next', 'forward')."""
+    def __init__(self):
+        super().__init__("step", Cursor @ Key, Cursor)
 
-    @staticmethod
-    def iterate(index, node):
-        """Yields a sequence of (index, node) by following 'next' then 'forward' edges."""
-        curr = CharacterStream.step(index, node, "next")
-        while curr:
-            yield curr
-            curr = CharacterStream.step(curr[0], curr[1], "forward")
+class Iterate(symmetric.Box):
+    """Yields a sequence of (index, node) by following 'next' then 'forward' edges."""
+    def __init__(self):
+        super().__init__("iterate", Cursor, Cursor)
+
+
+# --- Presentation Boxes ---
+
+class Scalar(symmetric.Box):
+    def __init__(self, value: Any, tag: str = "", anchor: str | None = None):
+        name = f"Scalar({value})"
+        self.value = value
+        self.tag = tag
+        self.anchor = anchor
+        super().__init__(name, symmetric.Ty(), symmetric.Ty("Scalar"))
+
+class Sequence(symmetric.Box):
+    def __init__(self, tag: str = "", anchor: str | None = None):
+        self.tag = tag
+        self.anchor = anchor
+        super().__init__("Sequence", symmetric.Ty(), symmetric.Ty("Sequence"))
+
+class Mapping(symmetric.Box):
+    def __init__(self, tag: str = "", anchor: str | None = None):
+        self.tag = tag
+        self.anchor = anchor
+        super().__init__("Mapping", symmetric.Ty(), symmetric.Ty("Mapping"))
+
+class Alias(symmetric.Box):
+    def __init__(self, anchor: str):
+        self.anchor = anchor
+        super().__init__(f"Alias({anchor})", symmetric.Ty(), symmetric.Ty("Alias"))
+
+class Document(symmetric.Box):
+    def __init__(self):
+        super().__init__("Document", symmetric.Ty(), symmetric.Ty("Document"))
+
+class Stream(symmetric.Box):
+    def __init__(self):
+        super().__init__("Stream", symmetric.Ty(), symmetric.Ty("Stream"))
+
+class Anchor(symmetric.Box):
+    def __init__(self, anchor: str):
+        self.anchor = anchor
+        super().__init__(f"Anchor({anchor})", symmetric.Ty(), symmetric.Ty("Anchor"))
