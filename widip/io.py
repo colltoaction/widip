@@ -2,6 +2,7 @@
 import sys
 from typing import Any, TypeVar
 from io import BytesIO
+from pathlib import Path
 
 T = TypeVar("T")
 type EventLoop = Any  # Event loop type without importing asyncio
@@ -28,6 +29,22 @@ def value_to_bytes(val: Any) -> bytes:
         res = val.read()
         return res if isinstance(res, (bytes, bytearray)) else str(res).encode()
     return str(val).encode()
+
+
+# --- File and Diagram Parsing ---
+
+def read_diagram_file(source: Any, parser_fn) -> Any:
+    """Parse a stream or file path using a parser function.
+    
+    This handles file opening recursion. The actual parsing logic (HIF/YAML)
+    is delegated to parser_fn (which should accept a file-like object or stream).
+    """
+    if isinstance(source, (str, Path)):
+        path = Path(source)
+        with path.open() as f:
+            return read_diagram_file(f, parser_fn)
+    # If it's a stream, apply parser
+    return parser_fn(source)
 
 
 # --- Sync System Wrappers ---

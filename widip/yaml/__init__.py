@@ -2,23 +2,30 @@ from __future__ import annotations
 from typing import Any
 from discopy import closed, symmetric
 from .composer import Composer, loader
-from .construct import construct
 from .serialization import Scalar, Sequence, Mapping, Anchor, Alias, Document, Stream, Node
-from ..computer import Language, Program, Data
+from .parse import parse
+from .construct import construct
+from ..computer import Language
 
-# Pre-configured loader for standard YAML serialization classes
-load_serialization_tree = loader(Scalar, Sequence, Mapping, Anchor, Alias, Document, Stream, Node)
+# Standard serialization loader factory
+_loader_factory = loader(Scalar, Sequence, Mapping, Anchor, Alias, Document, Stream, Node)
 
+def load(node: Any) -> symmetric.Diagram:
+    """Load YAML HIF into Semantic NodeGraph diagram."""
+    # Pipeline: HIF Node -> Serialization Tree -> Semantic NodeGraph
+    return _loader_factory((0, node)) >> Composer
 
-def load(node: Any, computer_types: Any = None) -> symmetric.Diagram | closed.Diagram:
-    """Full YAML loading pipeline.
-    
-    If computer_types is provided, returns the full Computer Diagram via 'shell'.
-    Otherwise, returns the intermediate Semantic NodeGraph via Composer.
-    """
-    serialization_tree = load_serialization_tree((0, node))
+# Expose a diagram.from_callable for the full pipeline (Shell/Compiler)
+@closed.Diagram.from_callable(Language, Language)
+def shell(diagram_source: Any) -> closed.Diagram:
+    """The Shell Functor: HIF -> Semantic -> Computer."""
+    # Pipeline: HIF -> Semantic
+    # Note: diagram_source might be HIF node iterator (incidences) OR raw python object if pre-parsed?
+    # load() expects HIF node from nx_yaml.
+    # We call load() to get Semantic.
+    semantic = load(diagram_source)
+    # Pipeline: Semantic -> Computer (Process-ready)
+    return construct(semantic)
 
-    if computer_types:
-        return (Composer >> construct)(serialization_tree)
-        
-    return Composer(serialization_tree)
+# Alias for external use
+compiler = shell

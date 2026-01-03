@@ -6,9 +6,9 @@ from contextlib import contextmanager
 
 from yaml import YAMLError
 from discopy import closed
-from nx_yaml import nx_compose_all
 
-from .yaml import load as load_diagram, load_serialization_tree, Composer, construct
+from .yaml import load as load_diagram, EVENT_TREE_CONSTRUCTOR as load_serialization_tree, Composer
+from .yaml.construct import construct
 from .drawing import diagram_draw
 from .computer import Data, Program, Language
 from .io import (
@@ -43,11 +43,9 @@ compiler = shell
 
 def read_diagram(source: Any) -> closed.Diagram:
     """Parse a stream or file path into a diagram."""
-    if isinstance(source, (str, Path)):
-        path = Path(source)
-        with path.open() as f:
-            return read_diagram(f)
-    incidences = nx_compose_all(source)
+    from .io import read_diagram_file
+    from .yaml import parse
+    incidences = read_diagram_file(source, parse)
     return shell(incidences)
 
 
