@@ -9,8 +9,6 @@ Hello world!
 
 ![](hello-world.svg)
 
-![](hello-world.shell.svg)
-
 ## Script
 
 ```
@@ -22,8 +20,6 @@ $ ./examples/shell.yaml
 ```
 
 ![IMG](shell.svg)
-
-![IMG](shell.shell.svg)
 
 ## Countdown
 Recursive countdown orchestration. It uses `test` for termination, `expr` for arithmetic, and a built-in feedback trace in the `widish` runtime to print values during recursion.

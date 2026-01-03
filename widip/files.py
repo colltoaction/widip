@@ -38,16 +38,17 @@ def file_diagram(file_name) -> Diagram:
     return fd
 
 def diagram_draw(path, fd):
+    # Calculate figsize based on diagram dimensions
+    # Tighter layout: reduced base dimensions and scaling factors
+    width = max(3, 1 + fd.width * 0.5)
+    height = max(2, 1 + len(fd) * 0.4)
+    
     # SVG output - vector format, scales perfectly
     fd.draw(path=str(path.with_suffix(".svg")),
             aspect="auto",
-            figsize=(8, 3),
-            textpad=(0.25, 0.08),
+            figsize=(width, height),
+            textpad=(0.1, 0.05),
             fontsize=11,
             fontsize_types=8)
-    
-    # Optionally also generate TikZ/LaTeX output
-    # tikz_code = fd.to_tikz()
-    # path.with_suffix(".tex").write_text(tikz_code)
 
 files_f = Functor(lambda x: Ty(""), files_ar)

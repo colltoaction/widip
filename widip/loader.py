@@ -8,7 +8,7 @@ from nx_hif.hif import HyperGraph
 
 import sys
 from . import hif
-from .yaml import Node, Scalar, Sequence, Mapping, Anchor, Alias, Copy, Merge, Discard, Swap
+from .yaml import Node, Scalar, Sequence, Mapping, Anchor, Alias, Copy, Merge, Discard, Swap, Stream
 
 diagram_var: ContextVar[symmetric.Diagram] = ContextVar("diagram")
 inside_tag_var: ContextVar[bool] = ContextVar("inside_tag", default=False)
@@ -206,4 +206,4 @@ def load_stream(cursor):
     result = diagrams[0]
     for d in diagrams[1:]:
         result = bridge(to_symmetric(result), to_symmetric(d))
-    return to_symmetric(result)
+    return Stream(to_symmetric(result))

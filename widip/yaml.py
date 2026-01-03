@@ -13,9 +13,7 @@ class Scalar(symmetric.Box):
         super().__init__("Scalar", dom, cod, drawing_name=name)
         self._tag, self._value = tag, value
         
-        # Calculate box width using max line length split by "\n"
-        lines = name.split('\n')
-        self.drawing_width = max(len(l) for l in lines) if lines else 1
+        self._tag, self._value = tag, value
         
         # Visual styling - white background for readability
         if tag:
@@ -46,8 +44,6 @@ class Sequence(monoidal.Bubble):
         if cod is None:
             cod = inside.cod
         super().__init__(inside, dom=dom, cod=cod)
-        self.tag = tag
-        self.n = n
         self.n = n
         # Sequences - black bubbles
         self.draw_as_spider = False
@@ -62,7 +58,6 @@ class Mapping(monoidal.Bubble):
         if cod is None:
             cod = inside.cod
         super().__init__(inside, dom=dom, cod=cod)
-        self.tag = tag
         self.tag = tag
         # Mappings - black bubbles
         self.draw_as_spider = False
@@ -95,7 +90,7 @@ class Copy(symmetric.Box):
         self.n = n
         # Copy - green spider
         self.draw_as_spider = True
-        self.drawing_name = ""
+        self.drawing_name = "Δ"
         self.color = "green"
 
 class Merge(symmetric.Box):
@@ -127,5 +122,13 @@ class Swap(symmetric.Swap):
         self.draw_as_swap = True
         self.symmetric = True
         self.color = "yellow"
+
+class Stream(monoidal.Bubble):
+    def __init__(self, inside):
+        super().__init__(inside, dom=inside.dom, cod=inside.cod)
+        # Stream - black bubble
+        self.draw_as_spider = False
+        self.color = "black"
+        self.drawing_name = "Stream"
 
 Yaml = symmetric.Category()

@@ -58,6 +58,8 @@ def compile_ar(ar):
         return computer.Copy(SHELL_COMPILER(ar.dom), ar.n)
     if isinstance(ar, yaml.Merge):
         return computer.Merge(SHELL_COMPILER(ar.cod), ar.n)
+    if isinstance(ar, yaml.Stream):
+        return SHELL_COMPILER(ar.arg)
     if isinstance(ar, yaml.Discard):
         return computer.Discard(SHELL_COMPILER(ar.dom))
     if isinstance(ar, yaml.Swap):

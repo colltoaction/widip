@@ -1,13 +1,13 @@
-JPG_FILES := $(shell git ls-files '*.jpg')
-YAML_FILES := $(JPG_FILES:.jpg=.yaml)
+YAML_FILES := $(shell find examples -name '*.yaml')
+SVG_FILES := $(YAML_FILES:.yaml=.svg)
 
 .PHONY: all clean
 
-all: $(JPG_FILES)
+all: $(SVG_FILES)
 
-%.jpg: %.yaml
+%.svg: %.yaml
 	@echo "Generating $@..."
-	@echo $< | bin/yaml/shell.yaml
+	@echo "10" | python3 -m widip $<
 
 clean:
-	rm -f $(JPG_FILES)
+	rm -f $(SVG_FILES)

@@ -140,6 +140,7 @@ class Process(python.Function):
 
     @staticmethod
     async def run_command(name, args, stdin):
+        print(f"DEBUG: run_command name={name!r} type={type(name)}")
         from .widish import SHELL_RUNNER
         from .compiler import SHELL_COMPILER
         
