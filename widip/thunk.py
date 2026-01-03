@@ -1,16 +1,18 @@
 from collections.abc import Iterator, Callable, Awaitable
 from contextlib import contextmanager
 from functools import partial
-from typing import Any
+from typing import Any, TypeVar
 import asyncio
 import contextvars
 import inspect
+
+T = TypeVar("T")
 
 Memo = dict[int, tuple[Any, asyncio.Future]]
 memo_var: contextvars.ContextVar[Memo | None] = contextvars.ContextVar("memo", default=None)
 path_var: contextvars.ContextVar[frozenset[int] | None] = contextvars.ContextVar("path", default=None)
 
-type Thunk[T] = Callable[[], T] | Awaitable[T]
+type Thunk[T] = Callable[..., Awaitable[T]] | Awaitable[T] | T
 
 @contextmanager
 def recursion_scope():
@@ -29,27 +31,27 @@ def thunk[T](f: Callable[..., T], *args: Any) -> Callable[[], T]:
     """Creates a thunk (lazy evaluation wrapper)."""
     return partial(partial, f, *args)
 
-def is_awaitable(x):
+def is_awaitable(x: Any) -> bool:
     return inspect.iscoroutine(x) or inspect.isawaitable(x)
 
-def is_callable(x):
-    return inspect.isroutine(x) or callable(x)
+def is_callable(x: Any) -> bool:
+    return callable(x) and not isinstance(x, (list, tuple, dict, str))
 
-async def callable_unwrap(func, *args, **kwargs):
+async def callable_unwrap(func: Callable, *args: Any, **kwargs: Any) -> Any:
     result = func(*args, **kwargs)
     return await awaitable_unwrap(result)
 
-async def awaitable_unwrap(aw):
+async def awaitable_unwrap(aw: Any) -> Any:
     while is_awaitable(aw):
         aw = await aw
     return aw
 
-async def thunk_map(b, *args):
+async def thunk_map(b: Iterator[Callable], *args: Any) -> tuple:
     coroutines = [unwrap(kv(*args)) for kv in b]
     results = await asyncio.gather(*coroutines)
     return sum(results, ())
 
-async def thunk_reduce(b, *args):
+async def thunk_reduce(b: Iterator[Callable], *args: Any) -> Any:
     for f in b:
         args = await unwrap(args)
         args = f(*args)
@@ -85,7 +87,7 @@ def recurse(f: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 @recurse
-async def unwrap(recurse: Callable[[Any], Any], x: Any) -> Any:
+async def unwrap(recurse: Callable[[Any], Awaitable[Any]], x: Any) -> Any:
     """Step function for unwrap logic."""
     while True:
         if is_callable(x):

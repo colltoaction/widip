@@ -2,113 +2,82 @@ import asyncio
 import sys
 from pathlib import Path
 from yaml import YAMLError
-from typing import IO
+from typing import IO, Callable, Any, AsyncIterator
 from io import StringIO
 
-from discopy.utils import tuplify
-
-from .files import file_diagram, repl_read
-from .exec import EXEC as SHELL_RUNNER, flatten
-from .widish import Process
+from .exec import flatten, ExecFunctor
 from .thunk import unwrap
-from .compiler import SHELL_COMPILER
-from .computer import Language
+from .files import repl_read
 
 
-def prepare_input_stream(args: list[str], stdin_content: str) -> IO[str]:
-    combined_input_str = "\n".join(args)
-    if stdin_content:
-        if combined_input_str: combined_input_str += "\n"
-        combined_input_str += stdin_content
-    return StringIO(combined_input_str)
-
-
-async def async_exec_diagram(yaml_d, path, *shell_program_args):
-    loop = asyncio.get_running_loop()
-    
-    # Debug drawing logic
-    if __debug__ and path is not None:
-        from .files import diagram_draw
-        diagram_draw(path, yaml_d)
-
-    compiled_d = SHELL_COMPILER(yaml_d)
-    
-    if __debug__ and path is not None:
-        from .files import diagram_draw
-        diagram_draw(path.with_suffix(".shell.yaml"), compiled_d)
-    
-    runner_process = SHELL_RUNNER(compiled_d)
-    
-    # Read stdin if available (buffered approach is simpler and less intrusive)
-    stdin_content = ""
-    if not sys.stdin.isatty():
-        stdin_content = await loop.run_in_executor(None, sys.stdin.read)
-    
-    input_stream = prepare_input_stream(list(shell_program_args) if shell_program_args else [], stdin_content)
-    
-    inp = (input_stream,)
-    if not runner_process.dom:
-         inp = ()
-
-         
-    # Execute
-    if inp:
-        res = await unwrap(runner_process(*inp))
-    else:
-        res = await unwrap(runner_process())
-    
-    # Output handling
+async def printer(res: Any):
     filtered = await flatten(res)
     if filtered:
         print(*filtered, sep="\n", flush=True)
 
 
-async def async_command_main(command_string, *shell_program_args):
-    fd = repl_read(command_string)
-    # No file path associated with command string
-    await async_exec_diagram(fd, None, *shell_program_args)
+async def reader(source: AsyncIterator[tuple[Any, Path | None, IO[str]]]) -> tuple[Any, Path | None, IO[str]]:
+    try:
+        return await anext(source)
+    except StopAsyncIteration:
+        raise EOFError
 
 
-async def async_widish_main(file_name, *shell_program_args):
-    fd = file_diagram(file_name)
-    path = Path(file_name)
-    await async_exec_diagram(fd, path, *shell_program_args)
+async def read_single(fd: Any, path: Path | None, runner: ExecFunctor, args: list[str]) -> AsyncIterator[tuple[Any, Path | None, IO[str]]]:
+    if not sys.stdin.isatty():
+        stdin_content = await runner.loop.run_in_executor(None, sys.stdin.read)
+    else:
+        stdin_content = ""
+    combined = "\n".join(args)
+    if stdin_content:
+        if combined: combined += "\n"
+        combined += stdin_content
+    yield fd, path, StringIO(combined)
 
 
-async def async_shell_main(file_name):
-    path = Path(file_name)
-    loop = asyncio.get_running_loop()
-
+async def read_shell(runner: ExecFunctor, file_name: str) -> AsyncIterator[tuple[Any, Path | None, IO[str]]]:
+    loop = runner.loop
     while True:
         try:
             if not sys.stdin.isatty():
-                source = await loop.run_in_executor(None, sys.stdin.read)
-                if not source:
-                    break
+                source_str = await loop.run_in_executor(None, sys.stdin.read)
+                if not source_str: break
             else:
                 prompt = f"--- !{file_name}\n"
-                source = await loop.run_in_executor(None, input, prompt)
-
-            yaml_d = repl_read(source)
-            if __debug__:
-                from .files import diagram_draw
-                diagram_draw(path, yaml_d)
-            source_d = SHELL_COMPILER(yaml_d)
-            compiled_d = source_d
-            # compiled_d = SHELL_COMPILER(source_d)
-            # if __debug__:
-            #     diagram_draw(path.with_suffix(".shell.yaml"), compiled_d)
-            constants = tuple(x.name for x in compiled_d.dom)
-            result = await unwrap(SHELL_RUNNER(compiled_d)(*constants))
-            print(*(tuplify(result)), sep="\n")
-
-            if not sys.stdin.isatty():
-                break
+                source_str = await loop.run_in_executor(None, input, prompt)
+            
+            yield repl_read(source_str), Path(file_name), StringIO("")
+            if not sys.stdin.isatty(): break
         except EOFError:
-            if sys.stdin.isatty():
-                print("⌁", file=sys.stderr)
             break
+
+
+async def interpreter(runner: ExecFunctor, compiler: Callable, source: AsyncIterator[tuple[Any, Path | None, IO[str]]]):
+    async for fd, path, input_stream in source:
+        try:
+            if isinstance(path, Path) and __debug__:
+                from .files import diagram_draw
+                diagram_draw(path, fd)
+
+            compiled_d = compiler(fd, path=path)
+            runner_process = runner(compiled_d)
+            
+            # Domain defines input handling
+            if runner_process.dom:
+                inp = (input_stream,)
+            elif isinstance(input_stream, StringIO) and not input_stream.getvalue():
+                # pass constants from dom
+                inp = tuple(x.name for x in compiled_d.dom)
+            else:
+                inp = ()
+
+            res = await unwrap(runner_process(*inp))
+            await printer(res)
+
         except KeyboardInterrupt:
             print(file=sys.stderr)
         except YAMLError as e:
             print(e, file=sys.stderr)
+        except Exception as e:
+            print(f"Error: {e}", file=sys.stderr)
+            if __debug__: raise e

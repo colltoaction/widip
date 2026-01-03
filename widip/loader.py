@@ -11,9 +11,20 @@ from . import hif
 from .yaml import Node, Scalar, Sequence, Mapping, Anchor, Alias
 
 # Symmetric category structural boxes (markov.Copy/Merge/Discard are incompatible)
-Copy = lambda x, n=2: symmetric.Box(f"Copy({x}, {n})", x, x ** n)
-Merge = lambda x, n=2: symmetric.Box(f"Merge({x}, {n})", x ** n, x)
-Discard = lambda x: symmetric.Box(f"Discard({x})", x, symmetric.Ty())
+class Copy(symmetric.Box):
+    def __init__(self, x, n=2):
+        super().__init__(f"Copy({x}, {n})", x, x ** n)
+        self.n = n
+
+class Merge(symmetric.Box):
+    def __init__(self, x, n=2):
+        super().__init__(f"Merge({x}, {n})", x ** n, x)
+        self.n = n
+
+class Discard(symmetric.Box):
+    def __init__(self, x):
+        super().__init__(f"Discard({x})", x, symmetric.Ty())
+
 Swap = symmetric.Swap
 
 diagram_var: ContextVar[symmetric.Diagram] = ContextVar("diagram")
@@ -27,19 +38,10 @@ def load_container(cursor):
     finally:
         diagram_var.reset(token)
 
-def to_symmetric(diag, depth=0):
-    """Convert any diagram to symmetric"""
-    if depth > 10:
-        # Prevent infinite recursion - try to preserve type info
-        if hasattr(diag, 'dom') and hasattr(diag, 'cod'):
-            return symmetric.Id(diag.dom)
-        return symmetric.Id(symmetric.Ty())
-        
+def to_symmetric(diag):
     if isinstance(diag, symmetric.Diagram):
         return diag
-    if hasattr(diag, 'dom') and hasattr(diag, 'cod'):
-        return symmetric.Id(diag.dom) >> diag
-    return diag
+    return symmetric.Id(diag.dom) >> diag
 
 def bridge(left, right):
     # Ensure both are symmetric diagrams

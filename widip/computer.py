@@ -1,71 +1,56 @@
 from __future__ import annotations
-import sys
 import contextvars
-from collections.abc import Callable
 from typing import Any
 from discopy import closed, monoidal
 
 
-# We use closed.Ty for the objects because they support exponential types (<<, >>)
-Language = closed.Ty("IO")
+# Symbols are represented by ℙ
+Language = closed.Ty("ℙ")
 
 RECURSION_REGISTRY: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("recursion", default={})
 
-class Eval(closed.Box):
-    def __init__(self, base, exponent):
-        super().__init__("eval", (exponent << base) @ base, exponent)
-        self.base = base
-        self.exponent = exponent
+class Eval(closed.Eval):
+    def __init__(self, base: closed.Ty, exponent: closed.Ty):
+        super().__init__(base, exponent)
 
-class Curry(closed.Box):
-    def __init__(self, arg, n=1, left=True):
-        if left:
-             dom = arg.dom[:n]
-             cod = arg.cod << arg.dom[n:]
-        else:
-             dom = arg.dom[len(arg.dom)-n:]
-             cod = arg.cod >> arg.dom[:len(arg.dom)-n]
-        super().__init__("curry", dom, cod)
-        self.arg = arg
-        self.n = n
-        self.left = left
+class Curry(closed.Curry):
+    def __init__(self, arg: closed.Diagram, n: int = 1, left: bool = True):
+        super().__init__(arg, n, left)
 
 class Data(closed.Box):
-    def __init__(self, dom=None, cod=None, value=None):
-        if dom is None: dom = closed.Ty()
-        if cod is None: cod = Language
+    def __init__(self, value: Any, dom: closed.Ty, cod: closed.Ty):
         self.value = value
-        name = f"⌜{value}⌝" if value else "⌜-⌝"
-        super().__init__(name, dom, cod)
+        if isinstance(value, str):
+            content = value if len(value) < 100 else value[:97] + "..."
+        elif value is None:
+            content = "-"
+        else:
+            content = type(value).__name__
+        super().__init__(f"⌜{content}⌝", dom, cod)
 
 class Program(closed.Box):
-    def __init__(self, name, args=(), dom=None, cod=None):
-        if dom is None: dom = Language
-        if cod is None: cod = Language
+    def __init__(self, name: str, dom: closed.Ty, cod: closed.Ty, args: Any = ()):
         super().__init__(name, dom, cod)
         self.args = args
 
 class Copy(closed.Box):
-    def __init__(self, x, n=2):
-        super().__init__(f"Copy({x}, {n})", x, x ** n)
-        self.n = n
+    def __init__(self, x: monoidal.Ty, n: int = 2):
+        super().__init__("Δ", x, x ** n)
+        self.draw_as_spider = True
 
 class Merge(closed.Box):
-    def __init__(self, x, n=2):
-        name = f"Merge({x}" + ("" if n == 2 else f", {n}") + ")"
-        super().__init__(name, x ** n, x)
-        self.n = n
-
-class Exec(closed.Box):
-    def __init__(self, dom, cod):
-        super().__init__("exec", dom, cod)
+    def __init__(self, x: monoidal.Ty, n: int = 2):
+        super().__init__("μ", x ** n, x)
+        self.draw_as_spider = True
 
 class Discard(closed.Box):
-    def __init__(self, x):
-        super().__init__(f"Discard({x})", x, closed.Ty())
+    def __init__(self, x: monoidal.Ty):
+        super().__init__("ε", x, monoidal.Ty())
+        self.draw_as_spider = True
 
 class Swap(closed.Box):
-    def __init__(self, x, y):
-        super().__init__(f"Swap({x}, {y})", x @ y, y @ x)
+    def __init__(self, x: monoidal.Ty, y: monoidal.Ty):
+        super().__init__("σ", x @ y, y @ x)
+        self.draw_as_swap = True
 
 Computation = closed.Category()

@@ -46,11 +46,6 @@ class Process(python.Function, Generic[T]):
         ar = getattr(self, "ar", None)
         # print(f"DEBUG: Process call ar={ar}", file=sys.stderr)
         res = await unwrap(self.inside(*args))
-        
-        # Feedback trace: print results of all atomic boxes
-        from .exec import trace_output
-        res = await trace_output(ar, res)
-
         return res
 
     def then(self, other: 'Process') -> 'Process':
@@ -81,8 +76,7 @@ class Process(python.Function, Generic[T]):
     async def run_constant(ar: Any, *args: T) -> tuple[T, ...]:
         if ar.value:
             return (StringIO(ar.value), )
-        n = 1
-        return args[n:] if len(args) > n else ()
+        return args
 
     @staticmethod
     async def run_map(runner: closed.Functor, ar: object, *args: object) -> tuple[object, ...]:
@@ -106,16 +100,10 @@ class Process(python.Function, Generic[T]):
 
     @staticmethod
     async def run_copy(ar: Any, *args: T) -> tuple[T, ...]:
-        val = args[0] if args else None
-        if val is None:
-             return (None,) * ar.n
-        
-        # If val is IO stream, read and replicate
+        n = len(ar.cod)
         from .exec import safe_read_str
-        if hasattr(val, 'read'):
-             data = await safe_read_str(val)
-             return tuple(StringIO(data) for _ in range(ar.n))
-        return (val,) * ar.n
+        data = await safe_read_str(args[0]) if args else ""
+        return tuple(StringIO(data) for _ in range(n))
 
     @staticmethod
     async def run_discard(ar: Any, *args: T) -> tuple[T, ...]:
