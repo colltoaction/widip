@@ -53,65 +53,87 @@ def compile_ar(ar):
         return computer.Program(ar.name, dom=computer.Language, cod=computer.Language)
 
     if isinstance(ar, LoaderCopy):
-        return computer.Copy(SHELL_COMPILER(ar.dom), ar.n)
+        return computer.Copy(map_ob(ar.dom), ar.n)
     if isinstance(ar, LoaderMerge):
-        return computer.Merge(SHELL_COMPILER(ar.cod), ar.n)
+        return computer.Merge(map_ob(ar.cod), ar.n)
     if isinstance(ar, LoaderDiscard):
-        return computer.Discard(SHELL_COMPILER(ar.dom))
+        return computer.Discard(map_ob(ar.dom))
     if isinstance(ar, yaml.Label):
         return closed.Id(closed.Ty())
     if isinstance(ar, LoaderSwap):
-        return computer.Swap(SHELL_COMPILER(ar.dom[0:1]), SHELL_COMPILER(ar.dom[1:2]))
+        return computer.Swap(map_ob(ar.dom[0:1]), map_ob(ar.dom[1:2]))
 
     return ar
 
-class ShellFunctor(symmetric.Functor):
-    def __init__(self):
-        def ob_map(ob):
-            # Handle Ty objects - iterate through contents
-            if hasattr(ob, "inside"):
-                if not ob:
-                    return closed.Ty()
-                return closed.Ty().tensor(*[ob_map(o) for o in ob.inside])
-            
-            # Handle atomic objects by name
-            name = getattr(ob, "name", None)
-            if name == "":
-                return computer.Language
-            if name == "IO":
-                return computer.Language
-                
-            # Fallback for already mapped types or objects
-            if ob == computer.Language:
-                return computer.Language
-                
+def map_ob(ob):
+    """Map symmetric.Ty to closed.Ty"""
+    if hasattr(ob, "inside"):
+        if not ob:
             return closed.Ty()
-
-        def ar_map(ar):
-            res = compile_ar(ar)
-            # Wrap result in closed.Diagram to ensure factory compatibility
-            if isinstance(res, closed.Box):
-                return closed.Diagram.id(res.dom) >> res
-            if isinstance(res, closed.Diagram):
-                return res
-            # For other types, try to wrap
-            if hasattr(res, 'dom') and hasattr(res, 'cod'):
-                return closed.Diagram.id(closed.Ty()) >> closed.Box(str(res), res.dom, res.cod)
-            return res
-
-        super().__init__(
-            ob_map,
-            ar_map,
-            cod=computer.Computation
-        )
-
-SHELL_COMPILER = ShellFunctor()
+        return closed.Ty().tensor(*[map_ob(o) for o in ob.inside])
+    
+    name = getattr(ob, "name", None)
+    if name in ("", "IO", "node"):
+        return computer.Language
+    if ob == computer.Language:
+        return computer.Language
+    return closed.Ty()
 
 
-def compile_shell_program(diagram):
-    """
-    close input parameters (constants)
-    drop outputs matching input parameters
-    all boxes are io->[io]"""
-    diagram = SHELL_COMPILER(diagram)
-    return diagram
+def SHELL_COMPILER(diagram):
+    """Transform a symmetric.Diagram to a closed.Diagram with compiled boxes"""
+    # First check if it's a diagram with boxes (iterate through them)
+    if hasattr(diagram, 'boxes') and hasattr(diagram, 'offsets'):
+        boxes = diagram.boxes
+        offsets = diagram.offsets
+        
+        # Empty diagram or identity
+        if not boxes:
+            return closed.Diagram.id(map_ob(diagram.dom))
+        
+        result = closed.Diagram.id(map_ob(diagram.dom))
+        
+        for box, offset in zip(boxes, offsets):
+            # Compile the box using compile_ar directly
+            compiled = compile_ar(box)
+            
+            if isinstance(compiled, closed.Diagram):
+                compiled_box = compiled
+            elif isinstance(compiled, closed.Box):
+                compiled_box = closed.Diagram.id(compiled.dom) >> compiled
+            else:
+                # Fallback: wrap in closed.Box
+                compiled_box = closed.Diagram.id(map_ob(box.dom)) >> closed.Box(str(box), map_ob(box.dom), map_ob(box.cod))
+            
+            # Get the identity for left/right padding
+            left_ty = result.cod[:offset]
+            right_ty = result.cod[offset + len(compiled_box.dom):]
+            
+            left_id = closed.Diagram.id(left_ty)
+            right_id = closed.Diagram.id(right_ty)
+            
+            # Compose: result >> (left_id @ compiled_box @ right_id)
+            layer = left_id @ compiled_box @ right_id
+            result = result >> layer
+        
+        return result
+    
+    # Handle atomic boxes 
+    res = compile_ar(diagram)
+    if isinstance(res, closed.Diagram):
+        return res
+    if isinstance(res, closed.Box):
+        return closed.Diagram.id(res.dom) >> res
+    # Handle tuple returns or other types
+    if isinstance(res, tuple):
+        # Tuples might be multiple results - take first element
+        if res and isinstance(res[0], (closed.Diagram, closed.Box)):
+            return SHELL_COMPILER(res[0])
+        return closed.Diagram.id(closed.Ty())
+    # Fallback: wrap in closed.Box if it has dom/cod
+    if hasattr(diagram, 'dom') and hasattr(diagram, 'cod'):
+        return closed.Diagram.id(map_ob(diagram.dom)) >> closed.Box(str(diagram), map_ob(diagram.dom), map_ob(diagram.cod))
+    # Last resort: identity
+    return closed.Diagram.id(closed.Ty())
+
+

@@ -1,48 +1,43 @@
-# Shell examples
+# Shell Examples
 
-## Hello world!
+## Hello World
 
+A simple example that outputs a string.
+
+```bash
+python -m widip examples/hello-world.yaml
+# Expected: Hello world!
 ```
-$ ./examples/hello-world.yaml
-Hello world!
-```
 
-![](hello-world.svg)
+<img src="hello-world.shell.svg" width="400">
 
 ## Script
 
-```
-$ examples/shell.yaml
-73
-23
-  ? !grep { grep: }: !wc { -c }
-  ? !tail { -2 }
+Demonstrates parallel fan-out with a mapping. Reads its own source file and computes multiple statistics.
+
+```bash
+python -m widip examples/shell.yaml
+# Expected: byte count, grep matches, and last 2 lines
 ```
 
-![IMG](shell.svg)
+<img src="shell.shell.svg" width="500">
 
 ## Countdown
-Recursive countdown orchestration. It uses `test` for termination, `expr` for arithmetic, and a built-in feedback trace in the `widish` runtime to print values during recursion.
 
-```
-$ echo "10" | python3 -m widip examples/countdown.yaml
-10
-9
-8
-7
-6
-5
-4
-3
-2
-1
-Liftoff!
+Recursive countdown orchestration using `test` for termination, `expr` for arithmetic, and anchor/alias for recursion.
+
+```bash
+echo "5" | python -m widip examples/countdown.yaml
+# Expected: 5 4 3 2 1 Liftoff!
 ```
 
-![Countdown Diagram](countdown.svg)
+<img src="countdown.shell.svg" width="600">
 
-# Working with the CLI
-Open terminal and run `widip` to start an interactive session. The program `bin/yaml/shell.yaml` prompts for one command per line, so when we hit `↵ Enter` it is evaluated. When hitting `⌁ Ctrl+D` the environment exits.
+---
+
+## Working with the CLI
+
+Open terminal and run `widip` to start an interactive session:
 
 ```yaml
 --- !bin/yaml/shell.yaml
@@ -50,19 +45,14 @@ Open terminal and run `widip` to start an interactive session. The program `bin/
 Hello world!
 ```
 
-# Other examples
+---
 
-## React
-The first example in https://react.dev/ in diagrammatic style.
+## Other Examples
 
-![](react.svg)
+### Rosetta Code
+Standard programming tasks from [rosettacode.org](https://rosettacode.org):
+- [rosetta/](rosetta/) - FizzBuzz, Factorial, Fibonacci, etc.
 
-## Sweet expressions
-`fibfast` function from https://wiki.c2.com/?SweetExpressions.
-
-![](sweet-expressions.svg)
-
-## Rosetta code
-
-* https://rosettacode.org
-* [rosetta](rosetta) examples directory
+### Advent of Code 2025
+Solutions for [AoC 2025](https://adventofcode.com/2025):
+- [aoc2025/](aoc2025/) - Days 1-3 implemented as shell pipelines

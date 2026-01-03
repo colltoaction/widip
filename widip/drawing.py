@@ -28,115 +28,103 @@ class ComplexityProfile:
         - Boxes should be wide enough for code.
         - Text should fit tightly in boxes.
         - Diagram should fill the SVG canvas with minimal margins.
+        - Maintain reasonable aspect ratio (not too tall/thin).
         """
         # 1. Determine Target Font Size (points)
         # Using a slightly faster decay for font size to keep large diagrams manageable
-        fsize = 120 / (math.pow(self.rn, 0.18))
-        fsize = max(38, min(180, fsize))
+        # Adjusted for small diagrams (few boxes with short names) to use larger fonts
+        base_fsize = 120 / (math.pow(max(1, self.rn), 0.18))
+        # Boost for very simple diagrams with short labels
+        if self.max_cpw < 8 and self.rn < 10:
+            base_fsize = base_fsize * 1.2
+        fsize = max(32, min(180, base_fsize))
         
         # 2. Derive Multipliers (Inches per DisCoPy Grid Unit)
-        # pts per char (monospace): usually 0.6*fsize, but we use more for 'bold' look
-        pts_per_char = fsize * 0.85 
-        pts_per_line = fsize * 2.5 # Tighter vertical spacing for dense diagrams
+        # pts per char (monospace): 0.6*fsize typical, increased for readability
+        pts_per_char = fsize * 0.8
+        # Reduced vertical spacing for compact diagrams
+        pts_per_line = fsize * 1.8  # Was 2.5 - more compact now
         
         # Non-linear horizontal scaling: Wires shouldn't be pushed apart linearly 
         # by long text. We use a diminishing returns model.
         # Floor effective_cpw to ensure minimal box visibility
         effective_cpw = min(14, self.max_cpw) + 0.1 * max(0, self.max_cpw - 14)
+        # Minimum effective width for very short command names
+        effective_cpw = max(6, effective_cpw)
         
         # Grid unit size in inches
         # We add a constant to ensure minimal size for spiders/empty units
-        w_mult = (effective_cpw * pts_per_char) / 72.0 + 0.3
-        h_mult = (self.max_lpl * pts_per_line) / 72.0 + 0.2
+        w_mult = (effective_cpw * pts_per_char) / 72.0 + 0.4  # Increased min width
+        h_mult = (self.max_lpl * pts_per_line) / 72.0 + 0.15  # Reduced height
         
         # 3. Calculate Figsize (Inches)
         # We want zero margin. DisCoPy adds some internal axis padding.
         width = (self.d_width * w_mult)
         height = (self.d_height * h_mult)
         
+        # 4. Apply aspect ratio constraints for very sequential diagrams
+        # Prevent diagrams from being too tall and thin
+        if self.d_width == 1 and self.d_height > 3:
+            # For single-wire sequential diagrams, limit height and boost width
+            max_aspect = 2.5  # height should be at most 2.5x width
+            if height > width * max_aspect:
+                h_mult = (width * max_aspect) / self.d_height
+                height = self.d_height * h_mult
+        
         return {
             "figsize": (width, height),
             "fontsize": int(fsize),
-            "textpad": (0.1, 0.2), # tight vertical centering
-            "fontsize_types": max(14, int(fsize * 0.45))
+            "textpad": (0.1, 0.15),  # Tighter vertical centering
+            "fontsize_types": max(12, int(fsize * 0.4))
         }
 
 def get_recursive_stats(d, visited=None):
     """
-    Finds the maximum content density required per grid unit.
-    Returns (max_cpw, max_lpl, box_count)
+    Collects diagram stats: max chars per wire, max lines per box, box count.
     """
     if visited is None:
         visited = set()
-        
-    def is_bubble(obj):
-        return isinstance(obj, monoidal.Bubble)
-
-    max_cpw = 1.0 
-    max_lpl = 1.0 
-    box_count = 0
     
-    def get_final_name(box):
-        cls_name = type(box).__name__
-        if cls_name == "Scalar":
-             tag, val = getattr(box, "tag", ""), getattr(box, "value", "")
-             if not tag and not val: return ""
-             return f"{tag} {val}" if tag and val else (tag or val)
-        if cls_name == "Alias": return f"*{box.name}"
-        if cls_name == "Anchor": return f"&{box.name}"
-        if cls_name == "Label": return box.name
-        if cls_name == "Copy": return "Δ"
-        if cls_name == "Merge": return "μ"
-        if cls_name == "Discard": return "ε" if box.dom.name != "" else ""
-        if cls_name == "Swap": return ""
-        if cls_name == "Sequence": return f"[{getattr(box, 'tag', '')}]"
-        if cls_name == "Mapping": return f"{{{getattr(box, 'tag', '')}}}"
-        return str(getattr(box, "drawing_name", getattr(box, "name", "")))
-
+    max_cpw, max_lpl, box_count = 1.0, 1.0, 0
+    
+    def get_label(box):
+        """Get display label for a box."""
+        name = getattr(box, "drawing_name", getattr(box, "name", ""))
+        return str(name) if name else ""
+    
     def walk(obj):
         nonlocal max_cpw, max_lpl, box_count
-        obj_id = id(obj)
-        name = get_final_name(obj)
-        is_alias = isinstance(name, str) and name.startswith("*")
-
-        if obj_id in visited:
-            if is_alias:
-                box_count += 30
-                max_cpw = max(max_cpw, 10.0)
-                max_lpl = max(max_lpl, 1.0)
+        if id(obj) in visited:
             return
-            
-        visited.add(obj_id)
-
-        if is_bubble(obj):
+        visited.add(id(obj))
+        
+        # Handle bubbles
+        if isinstance(obj, monoidal.Bubble):
             walk(obj.inside)
-            # Bubbles also have a title/name
-            lines = name.split('\n')
-            max_cpw = max(max_cpw, max(len(l) for l in lines) if lines else 0)
             return
-
-        if hasattr(obj, "boxes") and obj.boxes and (len(obj.boxes) == 1 and obj.boxes[0] is obj):
-             # Atomic Box
-             lines = str(name).split('\n')
-             l_w = max(1, max(len(l) for l in lines) if lines else 0)
-             l_h = max(1, len(lines))
-             
-             wires = max(len(obj.dom), len(obj.cod)) if hasattr(obj, "dom") else 1
-             cpw = l_w / max(1, wires)
-             
-             max_cpw = max(max_cpw, cpw)
-             max_lpl = max(max_lpl, float(l_h))
-             box_count += 30 if str(name).startswith("*") else 1
-             return
-
+        
+        # Handle atomic boxes
+        if hasattr(obj, "boxes") and obj.boxes and len(obj.boxes) == 1 and obj.boxes[0] is obj:
+            label = get_label(obj)
+            lines = label.split('\n') if label else [""]
+            wires = max(1, len(getattr(obj, "dom", [])), len(getattr(obj, "cod", [])))
+            max_cpw = max(max_cpw, max(len(l) for l in lines) / wires)
+            max_lpl = max(max_lpl, len(lines))
+            box_count += 1
+            return
+        
+        # Recurse into containers
         if hasattr(obj, "__iter__"):
-             for layer in obj:
-                  if hasattr(layer, "boxes"):
-                      for b in layer.boxes: walk(b)
-        elif hasattr(obj, "inside"): walk(obj.inside)
+            for layer in obj:
+                if hasattr(layer, "boxes"):
+                    for b in layer.boxes:
+                        walk(b)
+        elif hasattr(obj, "inside"):
+            walk(obj.inside)
         elif hasattr(obj, "boxes"):
-             for b in obj.boxes: walk(b)
-
+            for b in obj.boxes:
+                walk(b)
+    
     walk(d)
     return max_cpw, max_lpl, box_count
 
