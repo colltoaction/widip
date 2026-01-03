@@ -9,6 +9,7 @@ from .files import file_diagram, repl_read
 from .widish import SHELL_RUNNER, Process
 from .thunk import unwrap
 from .compiler import SHELL_COMPILER
+from .computer import Language
 
 
 def flatten(x):
@@ -27,7 +28,6 @@ async def async_exec_diagram(yaml_d, path, *shell_program_args):
         from .files import diagram_draw
         diagram_draw(path, yaml_d)
 
-    constants = tuple(x.name for x in yaml_d.dom)
     compiled_d = SHELL_COMPILER(yaml_d)
     
     if __debug__ and path is not None:
@@ -47,6 +47,9 @@ async def async_exec_diagram(yaml_d, path, *shell_program_args):
         inp = list(initial_input) + (stdin_data.splitlines() if stdin_data else [])
 
     # Execute the folded process with the input
+    if not inp and runner_process.dom == Language:
+         inp = ("",)
+
     if runner_process.dom:
         res = await unwrap(runner_process(*tuplify(inp)))
     else:

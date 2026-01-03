@@ -1,83 +1,72 @@
-"""
-This module implements the computational model described in "Programs as Diagrams" (arXiv:2208.03817).
-It defines the core boxes (Data, Sequential, Concurrent) representing the computation category.
-"""
+from __future__ import annotations
+import sys
+import contextvars
+from collections.abc import Callable
+from typing import Any
+from discopy import closed, monoidal
 
-from discopy import closed, symmetric, markov, traced
 
-
+# We use closed.Ty for the objects because they support exponential types (<<, >>)
+# But we stay in a monoidal category for the arrows to simplify composition.
 Language = closed.Ty("IO")
 
-class Eval(closed.Box):
-    def __init__(self, A, B):
-        drawing_name = "{}" + f": {A} -> {B}"
-        super().__init__("", Language @ A, B, drawing_name=drawing_name)
+RECURSION_REGISTRY: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("recursion", default={})
 
-class Program(closed.Box):
-    def __init__(self, name, args=None, dom=None, cod=None):
-        if dom is None: dom = Language
-        if cod is None: cod = Language
-        super().__init__(name, dom, cod)
-        self.args = args or ()
+class Eval(monoidal.Box):
+    def __init__(self, base, exponent):
+        super().__init__("eval", (exponent << base) @ base, exponent)
+        self.base = base
+        self.exponent = exponent
 
-class Constant(closed.Box):
-    def __init__(self, name="Γ", dom=None, cod=None):
-        if dom is None: dom = Language
-        if cod is None: cod = Language
-        super().__init__(name, dom, cod)
+class Curry(monoidal.Box):
+    def __init__(self, arg, n=1, left=True):
+        if left:
+             dom = arg.dom[:n]
+             cod = arg.cod << arg.dom[n:]
+        else:
+             dom = arg.dom[len(arg.dom)-n:]
+             cod = arg.cod >> arg.dom[:len(arg.dom)-n]
+        super().__init__("curry", dom, cod)
+        self.arg = arg
+        self.n = n
+        self.left = left
 
-
-class Data(closed.Box):
+class Data(monoidal.Box):
     def __init__(self, dom=None, cod=None, value=None):
-        if dom is None: dom = Language
+        if dom is None: dom = monoidal.Ty()
         if cod is None: cod = Language
         self.value = value
         name = f"⌜{value}⌝" if value else "⌜-⌝"
         super().__init__(name, dom, cod)
 
-class Sequential(closed.Box):
-    def __init__(self, dom, cod):
-        super().__init__("(;)", dom, cod)
+class Program(monoidal.Box):
+    def __init__(self, name, args=(), dom=None, cod=None):
+        if dom is None: dom = Language
+        if cod is None: cod = Language
+        super().__init__(name, dom, cod)
+        self.args = args
 
-class Concurrent(closed.Box):
-    def __init__(self, dom, cod):
-        super().__init__("(||)", dom, cod)
-
-class Pair(closed.Box):
-    def __init__(self, dom, cod):
-        super().__init__("⌈−,−⌉", dom, cod)
-
-class Cast(closed.Box):
-    def __init__(self, dom, cod):
-        super().__init__("Cast", dom, cod)
-
-class Swap(closed.Box):
-    def __init__(self, left, right):
-        closed.Box.__init__(self, "σ", left @ right, right @ left)
-        self.left, self.right = left, right
-
-class Copy(closed.Box):
+class Copy(monoidal.Box):
     def __init__(self, x, n=2):
-        name = f"Copy({x}" + ("" if n == 2 else f", {n}") + ")"
-        closed.Box.__init__(self, name, x, x ** n)
+        super().__init__(f"Copy({x}, {n})", x, x ** n)
         self.n = n
 
-class Discard(closed.Box):
-    def __init__(self, dom):
-        name = f"Discard({dom})"
-        closed.Box.__init__(self, name, dom, closed.Ty())
+class Merge(monoidal.Box):
+    def __init__(self, x, n=2):
+        name = f"Merge({x}" + ("" if n == 2 else f", {n}") + ")"
+        super().__init__(name, x ** n, x)
+        self.n = n
 
-class Trace(closed.Box):
-    def __init__(self, arg, left=False):
-        dom = arg.dom[:-1] if not left else arg.dom[1:]
-        cod = arg.cod[:-1] if not left else arg.cod[1:]
-        closed.Box.__init__(self, "Trace", dom, cod)
-        self.arg = arg
-        self.left = left
-
-class Exec(closed.Box):
+class Exec(monoidal.Box):
     def __init__(self, dom, cod):
         super().__init__("exec", dom, cod)
 
+class Discard(monoidal.Box):
+    def __init__(self, x):
+        super().__init__(f"Discard({x})", x, monoidal.Ty())
 
-Computation = closed.Category(closed.Ty, closed.Diagram)
+class Swap(monoidal.Box):
+    def __init__(self, x, y):
+        super().__init__(f"Swap({x}, {y})", x @ y, y @ x)
+
+Computation = monoidal.Category()

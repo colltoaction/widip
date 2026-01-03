@@ -1,0 +1,73 @@
+DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
+DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
+DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
+DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
+DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
+DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
+DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
+DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
+DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
+DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
+DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
+DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=Id(IO) dom=IO cod=IO
+DEBUG_LOAD_MAP: key=Scalar dom=Ty() cod=IO val=countdown dom=Ty() cod=IO
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/colltoaction/GitHub/widip/widip/__main__.py", line 51, in <module>
+    main()
+    ~~~~^^
+  File "/home/colltoaction/GitHub/widip/widip/__main__.py", line 41, in main
+    asyncio.run(async_widish_main(file_name, *file_args))
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/colltoaction/miniconda3/lib/python3.13/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/home/colltoaction/miniconda3/lib/python3.13/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/colltoaction/miniconda3/lib/python3.13/asyncio/base_events.py", line 725, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/home/colltoaction/GitHub/widip/widip/interactive.py", line 68, in async_widish_main
+    fd = file_diagram(file_name)
+  File "/home/colltoaction/GitHub/widip/widip/files.py", line 38, in file_diagram
+    fd = repl_read(path.open())
+  File "/home/colltoaction/GitHub/widip/widip/files.py", line 13, in repl_read
+    return incidences_to_diagram(incidences)
+  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 100, in incidences_to_diagram
+    return _incidences_to_diagram(cursor)
+  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 110, in _incidences_to_diagram
+    ob = load_stream(cursor)
+  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 134, in load_stream
+    return reduce(lambda a, b: a @ b, diagrams, closed.Id(Language))
+  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 112, in _incidences_to_diagram
+    ob = load_document(cursor)
+  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 130, in load_document
+    return _incidences_to_diagram(root) if root else closed.Id(Language)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 118, in _incidences_to_diagram
+    ob = load_mapping(cursor, tag)
+  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 65, in load_mapping
+    diagrams_list = list(map(_incidences_to_diagram, nodes))
+  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 118, in _incidences_to_diagram
+    ob = load_mapping(cursor, tag)
+  File "/home/colltoaction/GitHub/widip/widip/loader.py", line 79, in load_mapping
+    items.append(key >> val)
+                 ~~~~^^~~~~
+  File "/home/colltoaction/miniconda3/lib/python3.13/site-packages/discopy/utils.py", line 606, in <lambda>
+    __rshift__ = __llshift__ = lambda self, other: self.then(other)
+                                                   ~~~~~~~~~^^^^^^^
+  File "/home/colltoaction/miniconda3/lib/python3.13/site-packages/discopy/cat.py", line 328, in then
+    return self.factory(inside, dom, cod)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/colltoaction/miniconda3/lib/python3.13/site-packages/discopy/monoidal.py", line 522, in __init__
+    super().__init__(inside, dom, cod, _scan=_scan)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/colltoaction/miniconda3/lib/python3.13/site-packages/discopy/cat.py", line 236, in __init__
+    assert_iscomposable(f, g)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/colltoaction/miniconda3/lib/python3.13/site-packages/discopy/utils.py", line 708, in assert_iscomposable
+    raise AxiomError(messages.NOT_COMPOSABLE.format(
+        left, right, left.cod, right.dom))
+discopy.utils.AxiomError: Scalar does not compose with countdown: IO != Ty().

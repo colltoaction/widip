@@ -9,6 +9,16 @@ from .thunk import unwrap
 
 async def _bridge_pipe(f, g, *args):
     res = await unwrap(f(*args))
+    
+    def is_failure(x):
+        if x is None: return True
+        if isinstance(x, (list, tuple)):
+            return not x or all(is_failure(i) for i in x)
+        return False
+
+    if is_failure(res):
+        return res
+    
     return await unwrap(g(*utils.tuplify(res)))
 
 async def _tensor_inside(f, g, n, *args):
@@ -30,6 +40,19 @@ class Process(python.Function):
     def __init__(self, inside, dom, cod):
         super().__init__(inside, dom, cod)
         self.type_checking = False
+
+    async def __call__(self, *args):
+        # We need to unwrap the result of the internal function
+        ar = getattr(self, "ar", None)
+        res = await unwrap(self.inside(*args))
+        
+        # Feedback trace: print results of all atomic boxes
+        if ar and isinstance(ar, (Data, Eval, Program)):
+             from .interactive import flatten
+             filtered = flatten(res)
+             if filtered:
+                 print(*filtered, sep="\n", flush=True)
+        return res
 
     def then(self, other):
         return Process(
@@ -64,36 +87,25 @@ class Process(python.Function):
 
     @classmethod
     async def run_constant(cls, ar, *args):
-        b, params = cls.split_args(ar, *args)
-        if not params:
+        if ar.value:
             return (ar.value, )
+        b, params = cls.split_args(ar, *args)
         return untuplify(params)
 
     @classmethod
     async def run_map(cls, ar, *args):
-        b, params = cls.split_args(ar, *args)
-        
-        async def run_branch(kv):
-             # kv is Task (partial). unwrap it.
-             # Wait, kv might be the partial itself.
-             res = await unwrap(kv(*tuplify(params)))
-             return tuplify(res) # Ensure tuple for sum
-
-        results = await asyncio.gather(*(run_branch(kv) for kv in b))
-        # Filter out branches where all results are None
-        active = [r for r in results if any(x is not None for x in r)]
-        return sum(active, ())
+        # Delegates to the internal diagram which handles Copy and tensor
+        runner = SHELL_RUNNER(ar.args[0])
+        res = await runner(*args)
+        # Filter out None values (failed branches)
+        from .interactive import flatten
+        return tuple(flatten(res))
 
     @classmethod
     async def run_seq(cls, ar, *args):
-        b, params = cls.split_args(ar, *args)
-        if not b:
-            return params
-
-        res = await unwrap(b[0](*tuplify(params)))
-        for func in b[1:]:
-            res = await unwrap(func(*tuplify(res)))
-        return res
+        # Delegates to the internal diagram
+        runner = SHELL_RUNNER(ar.args[0])
+        return await runner(*args)
 
     @staticmethod
     def run_swap(ar, *args):
@@ -122,8 +134,12 @@ class Process(python.Function):
         return ()
 
     @staticmethod
+    def run_merge(ar, *args):
+        from .interactive import flatten
+        return tuple(flatten(args))
+
+    @staticmethod
     async def run_command(name, args, stdin):
-        from .yaml import RECURSION_REGISTRY
         from .widish import SHELL_RUNNER
         from .compiler import SHELL_COMPILER
         
@@ -253,7 +269,9 @@ def shell_runner_ar(ar):
 
     dom = SHELL_RUNNER(ar.dom)
     cod = SHELL_RUNNER(ar.cod)
-    return Process(t, dom, cod)
+    res = Process(t, dom, cod)
+    res.ar = ar
+    return res
 
 class WidishFunctor(closed.Functor):
     def __init__(self):

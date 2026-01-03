@@ -1,75 +1,81 @@
 from functools import reduce
-from discopy import closed
-from .computer import *
-from .yaml import *
+from discopy import closed, monoidal
+from . import computer
+from . import yaml
 
 
 def extract_static_args(diag):
     # Check if all boxes are plumbing or data
-    if all(isinstance(box, (Data, Copy, Swap, Discard)) for box in diag.boxes):
-        return tuple(box.value for box in diag.boxes if isinstance(box, Data))
+    if all(isinstance(box, (computer.Data, computer.Copy, computer.Swap, computer.Discard)) for box in diag.boxes):
+        return tuple(box.value for box in diag.boxes if isinstance(box, computer.Data))
     return None
 
 def compile_ar(ar):
-    if isinstance(ar, Scalar):
+    if isinstance(ar, yaml.Scalar):
         if ar.tag == "exec":
-            return Exec(Language, Language)
+            return computer.Exec(computer.Language, computer.Language)
         if ar.tag:
             # construct Program @ Data(value) >> Eval
             # This ensures dom is empty, allowing pipe inputs to pass as extra args (Stdin)
             # Use Data for tag to pass name without executing
-            prog = Data(value=ar.tag, dom=closed.Ty(), cod=Language)
-            data = Data(value=ar.value, dom=closed.Ty(), cod=Language)
-            term = (prog @ data) @ closed.Id(Language)
-            return term >> Eval(Language @ Language, Language)
+            prog = computer.Data(value=ar.tag, dom=closed.Ty(), cod=computer.Language)
+            data = computer.Data(value=ar.value, dom=closed.Ty(), cod=computer.Language)
+            term = (prog @ data) @ closed.Id(computer.Language)
+            return term >> computer.Eval(computer.Language @ computer.Language, computer.Language)
         else:
-            return Data(value=ar.value, dom=Language, cod=Language)
+            return computer.Data(value=ar.value, dom=closed.Ty(), cod=computer.Language)
 
-    # ... (Sequence and Mapping logic remains similar but recursively compiled)
-
-    if isinstance(ar, Sequence):
-        # We rely on the functor to recurse, but we might need to be careful about types
-        args_diag = tuple(SHELL_COMPILER(x) for x in ar.args)
-        # ... logic ...
+    if isinstance(ar, yaml.Sequence):
+        # Recurse into the bubble contents
+        diag = SHELL_COMPILER(ar.arg)
         if ar.tag:
-             combined = reduce(lambda a, b: a >> b, args_diag)
-             static_args = extract_static_args(combined)
+             static_args = extract_static_args(diag)
              if static_args is not None:
-                 return Program(ar.tag, args=static_args, dom=Language, cod=Language)
-             return Program(ar.tag, args=args_diag, dom=Language, cod=Language)
-        return args_diag[0] if args_diag else Discard(Language)
+                 return computer.Program(ar.tag, args=static_args, dom=computer.Language, cod=computer.Language)
+             return computer.Program(ar.tag, args=(diag,), dom=computer.Language, cod=computer.Language)
+        return diag
 
-    if isinstance(ar, Mapping):
-        ob = SHELL_COMPILER(ar.args[0])
+    if isinstance(ar, yaml.Mapping):
+        diag = SHELL_COMPILER(ar.arg)
         if ar.tag:
-            static_args = extract_static_args(ob)
+            static_args = extract_static_args(diag)
             if static_args is not None:
-                return Program(ar.tag, args=static_args, dom=Language, cod=Language)
-            return Program(ar.tag, args=(ob, ), dom=Language, cod=Language)
-        return ob
-    if isinstance(ar, Anchor):
-        from .yaml import RECURSION_REGISTRY
-        anchors = RECURSION_REGISTRY.get().copy()
-        anchors[ar.name] = ar.args[0]
-        RECURSION_REGISTRY.set(anchors)
-        return Program(ar.name, args=(SHELL_COMPILER(ar.args[0]), ), dom=Language, cod=Language)
-    if isinstance(ar, Alias):
-        return Program(ar.name, dom=Language, cod=Language)
-    if isinstance(ar, Copy):
-        return Copy(Language, ar.n)
-    if isinstance(ar, Discard):
-        return Discard(Language)
-    if isinstance(ar, Swap):
-        return Swap(Language, Language)
+                return computer.Program(ar.tag, args=static_args, dom=computer.Language, cod=computer.Language)
+            return computer.Program(ar.tag, args=(diag, ), dom=computer.Language, cod=computer.Language)
+        return diag
+
+    if isinstance(ar, yaml.Anchor):
+        anchors = computer.RECURSION_REGISTRY.get().copy()
+        anchors[ar.name] = ar.arg
+        computer.RECURSION_REGISTRY.set(anchors)
+        return computer.Program(ar.name, args=(SHELL_COMPILER(ar.arg), ), dom=computer.Language, cod=computer.Language)
+
+    if isinstance(ar, yaml.Alias):
+        return computer.Program(ar.name, dom=computer.Language, cod=computer.Language)
+
+    if isinstance(ar, yaml.Copy):
+        return computer.Copy(computer.Language, ar.n)
+    if isinstance(ar, yaml.Merge):
+        return computer.Merge(computer.Language, ar.n)
+    if isinstance(ar, yaml.Discard):
+        return computer.Discard(computer.Language)
+    if isinstance(ar, yaml.Swap):
+        return computer.Swap(computer.Language, computer.Language)
+
     return ar
 
 class ShellFunctor(closed.Functor):
     def __init__(self):
+        def ob_map(ob):
+            if ob == yaml.Node:
+                return computer.Language
+            return closed.Ty()
+
         super().__init__(
-            lambda ob: Language, 
+            ob_map,
             compile_ar,
-            dom=Yaml,
-            cod=Computation
+            dom=yaml.Yaml,
+            cod=computer.Computation
         )
 
 SHELL_COMPILER = ShellFunctor()
