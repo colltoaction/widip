@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
   "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="432pt" height="216pt" viewBox="0 0 432 216" xmlns="http://www.w3.org/2000/svg" version="1.1">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="288pt" height="216pt" viewBox="0 0 288 216" xmlns="http://www.w3.org/2000/svg" version="1.1">
  <metadata>
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-01-03T01:44:04.929927</dc:date>
+    <dc:date>2026-01-03T02:01:12.943162</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -22,8 +22,8 @@
  <g id="figure_1">
   <g id="patch_1">
    <path d="M 0 216 
-L 432 216 
-L 432 0 
+L 288 216 
+L 288 0 
 L 0 0 
 z
 " style="fill: #ffffff"/>
@@ -31,28 +31,28 @@ z
   <g id="axes_1">
    <g id="patch_2">
     <path d="M 0 216 
-L 432 216 
-L 432 0 
+L 288 216 
+L 288 0 
 L 0 0 
 z
-" clip-path="url(#p57fffe02dd)" style="fill: #ffffff; stroke: #ffffff; stroke-linejoin: miter"/>
+" clip-path="url(#p0551353993)" style="fill: #ffffff; stroke: #ffffff; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
-    <path d="M 216 162 
-Q 216 216 216 216 
-" clip-path="url(#p57fffe02dd)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
+    <path d="M 144 162 
+Q 144 216 144 216 
+" clip-path="url(#p0551353993)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
-    <path d="M 108 162 
-L 108 54 
-L 324 54 
-L 324 162 
+    <path d="M 72 162 
+L 72 54 
+L 216 54 
+L 216 162 
 z
-" clip-path="url(#p57fffe02dd)" style="fill: #ffffff; stroke: #000000; stroke-linejoin: miter"/>
+" clip-path="url(#p0551353993)" style="fill: #ffffff; stroke: #000000; stroke-linejoin: miter"/>
    </g>
    <g id="text_1">
     <!-- Hello world! -->
-    <g transform="translate(182.961328 111.035313) scale(0.11 -0.11)">
+    <g transform="translate(107.957813 111.31125) scale(0.12 -0.12)">
      <defs>
       <path id="DejaVuSans-48" d="M 628 4666 
 L 1259 4666 
@@ -215,8 +215,8 @@ z
   </g>
  </g>
  <defs>
-  <clipPath id="p57fffe02dd">
-   <rect x="0" y="0" width="432" height="216"/>
+  <clipPath id="p0551353993">
+   <rect x="0" y="0" width="288" height="216"/>
   </clipPath>
  </defs>
 </svg>

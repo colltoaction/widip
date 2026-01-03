@@ -43,13 +43,15 @@ class Sequence(monoidal.Bubble):
             dom = Node if tag else inside.dom
         if cod is None:
             cod = inside.cod
-        super().__init__(inside, dom=dom, cod=cod)
+        name = f"[{tag}]" if tag else ""
+        super().__init__(inside, dom=dom, cod=cod, drawing_name=name)
+        self.tag = tag
         self.n = n
         # Sequences - black bubbles
         self.draw_as_spider = False
         self.color = "black"
         if tag:
-            self.drawing_name = f"[{tag}]"
+            self.name = name
 
 class Mapping(monoidal.Bubble):
     def __init__(self, inside, dom=None, cod=None, tag=""):
@@ -57,22 +59,24 @@ class Mapping(monoidal.Bubble):
             dom = Node if tag else inside.dom
         if cod is None:
             cod = inside.cod
-        super().__init__(inside, dom=dom, cod=cod)
+        name = f"{{{tag}}}" if tag else ""
+        super().__init__(inside, dom=dom, cod=cod, drawing_name=name)
         self.tag = tag
         # Mappings - black bubbles
         self.draw_as_spider = False
         self.color = "black"
         if tag:
-            self.drawing_name = f"{{{tag}}}"
+            self.name = name
 
 class Anchor(monoidal.Bubble):
     def __init__(self, name, inside):
-        super().__init__(inside, dom=inside.dom, cod=inside.cod)
+        dname = f"&{name}"
+        super().__init__(inside, dom=inside.dom, cod=inside.cod, drawing_name=dname)
         self.name = name
         # Anchors - blue bubbles
         self.draw_as_spider = False
         self.color = "blue"
-        self.drawing_name = f"&{name}"
+        self.name = dname
 
 class Alias(symmetric.Box):
     def __init__(self, name, dom=None, cod=None):
@@ -111,8 +115,10 @@ class Discard(symmetric.Box):
         # handle Ty() and Ty("")
         if x == symmetric.Ty() or x == Node:
             self.drawing_name = ""
+            self.color = "white"
         else:
             self.drawing_name = "×"
+            self.color = "red" 
 
 class Swap(symmetric.Swap):
     def __init__(self, x, y):
@@ -125,10 +131,10 @@ class Swap(symmetric.Swap):
 
 class Stream(monoidal.Bubble):
     def __init__(self, inside):
-        super().__init__(inside, dom=inside.dom, cod=inside.cod)
-        # Stream - black bubble
+        super().__init__(inside, dom=inside.dom, cod=inside.cod, drawing_name="Stream")
+        # Stream - white bubble
         self.draw_as_spider = False
-        self.color = "black"
-        self.drawing_name = "Stream"
+        self.color = "white"
+        self.name = "Stream"
 
 Yaml = symmetric.Category()

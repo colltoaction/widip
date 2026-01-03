@@ -206,4 +206,8 @@ def load_stream(cursor):
     result = diagrams[0]
     for d in diagrams[1:]:
         result = bridge(to_symmetric(result), to_symmetric(d))
-    return Stream(to_symmetric(result))
+    
+    result = to_symmetric(result)
+    if len(diagrams) > 1:
+        return Stream(result)
+    return result

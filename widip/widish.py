@@ -140,7 +140,6 @@ class Process(python.Function):
 
     @staticmethod
     async def run_command(name, args, stdin):
-        print(f"DEBUG: run_command name={name!r} type={type(name)}")
         from .widish import SHELL_RUNNER
         from .compiler import SHELL_COMPILER
         
@@ -212,6 +211,18 @@ class Process(python.Function):
              name = resolved[0]
              stdin = resolved[-1]
              cmd_args = resolved[1:-1]
+
+        # Unwrap name if it is a list/tuple (e.g. from Data box or ar.name)
+        if isinstance(name, (list, tuple)):
+            if len(name) == 1:
+                name = name[0]
+            elif not name:
+                return (None,)
+        
+        # Unwrap arguments
+        cmd_args = [x[0] if isinstance(x, (list, tuple)) and len(x) == 1 else x for x in cmd_args]
+             
+        # Ensure stdin is a collection of lines
 
         # Ensure stdin is a collection of lines
         if isinstance(stdin, str): stdin = (stdin,)

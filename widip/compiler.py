@@ -16,13 +16,10 @@ def compile_ar(ar):
         if ar.tag == "exec":
             return computer.Exec(computer.Language, computer.Language)
         if ar.tag:
-            # construct Program @ Data(value) >> Eval
-            # This ensures dom is empty, allowing pipe inputs to pass as extra args (Stdin)
-            # Use Data for tag to pass name without executing
-            prog = computer.Data(value=ar.tag, dom=closed.Ty(), cod=computer.Language)
-            data = computer.Data(value=ar.value, dom=closed.Ty(), cod=computer.Language)
-            term = (prog @ data) @ computer.Id(computer.Language)
-            return term >> computer.Eval(computer.Language @ computer.Language, computer.Language)
+            # Use Program box directly for tagged scalars
+            # This avoids type mismatches with Eval and handles static args correctly
+            args = (ar.value,) if ar.value else ()
+            return computer.Program(ar.tag, args=args, dom=computer.Language, cod=computer.Language)
         else:
             return computer.Data(value=ar.value, dom=closed.Ty(), cod=computer.Language)
 
@@ -81,6 +78,8 @@ class ShellFunctor(closed.Functor):
             if name == "":
                 return computer.Language
             if name == "IO":
+                return computer.Language
+            if name == "node":
                 return computer.Language
                 
             # Fallback for already mapped types or objects

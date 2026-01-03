@@ -37,18 +37,45 @@ def file_diagram(file_name) -> Diagram:
     fd = repl_read(path.open())
     return fd
 
-def diagram_draw(path, fd):
-    # Calculate figsize based on diagram dimensions
-    # Tighter layout: reduced base dimensions and scaling factors
-    width = max(3, 1 + fd.width * 0.5)
-    height = max(2, 1 + len(fd) * 0.4)
+def get_recursive_dims(d):
+    """Recursively calculate effective width and height of a diagram."""
+    if not hasattr(d, "boxes"):
+        return 1, 1
     
+    total_w = d.width
+    total_h = len(d)
+    
+    for box in d.boxes:
+        if hasattr(box, "inside"):
+            iw, ih = get_recursive_dims(box.inside)
+            # Add inner complexity to height (bubbles expand vertically)
+            total_h += ih
+            # Width is harder to estimate perfectly without layout, but adding some fraction helps
+            total_w += max(0, iw - 1) * 0.5
+
+    return total_w, total_h
+
+def diagram_draw(path, fd):
+    # Calculate figsize based on recursive diagram dimensions
+    rw, rh = get_recursive_dims(fd)
+    
+    width = max(4, 2 + rw * 0.5)
+    height = max(3, 1 + rh * 0.5)
+    
+    # Calculate density for textpad
+    # Higher density (more boxes per unit area) needs smaller padding
+    density = (len(fd) * fd.width) / (width * height)
+    pad = max(0.05, min(0.3, 0.3 - density * 0.1))
+    
+    # Dynamic fontsize
+    fsize = max(10, min(12, 120 / max(rh, rw)))
+
     # SVG output - vector format, scales perfectly
     fd.draw(path=str(path.with_suffix(".svg")),
             aspect="auto",
             figsize=(width, height),
-            textpad=(0.1, 0.05),
-            fontsize=11,
-            fontsize_types=8)
+            textpad=(pad, pad),
+            fontsize=fsize,
+            fontsize_types=int(fsize * 0.7))
 
 files_f = Functor(lambda x: Ty(""), files_ar)
