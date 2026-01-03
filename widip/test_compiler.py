@@ -2,7 +2,7 @@ import pytest
 from discopy import closed
 from .yaml import Sequence, Mapping, Scalar
 from .compiler import SHELL_COMPILER
-from .computer import Sequential, Pair, Concurrent, Data, Program, Exec
+from .computer import Sequential, Pair, Concurrent, Data, Program, Exec, Eval
 
 # Helper to create dummy scalars for testing
 def mk_scalar(name):
@@ -44,3 +44,38 @@ def test_exec_compilation():
     assert c.dom == closed.Ty("ls")
     expected_cod = closed.Ty("exec") >> closed.Ty("exec")
     assert c.cod == expected_cod
+
+@pytest.mark.parametrize("tag, name", [
+    ("cat", "file.txt"),
+    ("echo", "hello"),
+])
+def test_program_compilation(tag, name):
+    s = Scalar(tag, name)
+    c = SHELL_COMPILER(s)
+    # !cmd compiles to a Diagram involving Program and Eval
+    assert isinstance(c, closed.Diagram)
+    # It should contain a Program box with name=tag
+    boxes = c.boxes
+    programs = [b for b in boxes if isinstance(b, Program)]
+    assert len(programs) >= 1
+    assert programs[0].name == tag
+
+    # It should contain Eval box (implied by execution)
+    evals = [b for b in boxes if isinstance(b, Eval)]
+    assert len(evals) >= 1
+
+def test_tr_compilation():
+    # Test the specific case from aoc2025
+    s = Scalar("tr", "{LR, -+}")
+    c = SHELL_COMPILER(s)
+    assert isinstance(c, closed.Diagram)
+    programs = [b for b in c.boxes if isinstance(b, Program)]
+    assert len(programs) >= 1
+    assert programs[0].name == "tr"
+    # Check if arguments are handled?
+    # Arguments usually flow via wires or Data boxes.
+    # If "{LR, -+}" is the value of Scalar.
+    # It might be in the domain type or a Data box.
+    # Let's inspect domain
+    # dom should reflect the input value
+    assert c.dom == closed.Ty("{LR, -+}")
