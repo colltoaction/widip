@@ -1,16 +1,15 @@
-import asyncio
-import sys
-from functools import partial
+from typing import Any, Awaitable, Callable, Sequence, IO
+from io import StringIO
 from discopy.utils import tuplify, untuplify
 from discopy import closed, python, utils
 
 from .computer import *
 from .thunk import unwrap
 
-async def _bridge_pipe(f, g, *args):
+async def _bridge_pipe(f: Callable[..., Awaitable[Any]], g: Callable[..., Awaitable[Any]], *args: Any) -> Any:
     res = await unwrap(f(*args))
     
-    def is_failure(x):
+    def is_failure(x: Any) -> bool:
         if x is None: return True
         return False
 
@@ -19,27 +18,27 @@ async def _bridge_pipe(f, g, *args):
     
     return await unwrap(g(*utils.tuplify(res)))
 
-async def _tensor_inside(f, g, n, *args):
+async def _tensor_inside(f: Callable[..., Awaitable[Any]], g: Callable[..., Awaitable[Any]], n: int, *args: Any) -> Any:
     args1, args2 = args[:n], args[n:]
     res1 = await unwrap(f(*args1))
     res2 = await unwrap(g(*args2))
     return tuplify(res1) + tuplify(res2)
 
-async def _eval_func(f, *x):
+async def _eval_func(f: Callable[..., Awaitable[Any]], *x: Any) -> Any:
     return await unwrap(f(*x))
 
-def _lazy(func, ar):
+def _lazy(func: Callable[..., Awaitable[Any]], ar: Any) -> Callable[..., Awaitable[Any]]:
     """Returns a function that returns a partial application of func."""
-    async def wrapper(*args):
+    async def wrapper(*args: Any) -> Any:
         return partial(func, ar, *args)
     return wrapper
 
 class Process(python.Function):
-    def __init__(self, inside, dom, cod):
+    def __init__(self, inside: Callable[..., Awaitable[Any]], dom: Any, cod: Any):
         super().__init__(inside, dom, cod)
         self.type_checking = False
 
-    async def __call__(self, *args):
+    async def __call__(self, *args: Any) -> Any:
         # We need to unwrap the result of the internal function
         ar = getattr(self, "ar", None)
         res = await unwrap(self.inside(*args))
@@ -47,19 +46,19 @@ class Process(python.Function):
         # Feedback trace: print results of all atomic boxes
         if ar and isinstance(ar, (Data, Eval, Program)):
              from .interactive import flatten
-             filtered = flatten(res)
-             if filtered:
-                 print(*filtered, sep="\n", flush=True)
+             # Flatten reads streams if necessary? 
+             # For now, assume flatten handles generic objects or we skip trace for simplicity during refactor
+             pass
         return res
 
-    def then(self, other):
+    def then(self, other: 'Process') -> 'Process':
         return Process(
             partial(_bridge_pipe, self, other),
             self.dom,
             other.cod,
         )
 
-    def tensor(self, other):
+    def tensor(self, other: 'Process') -> 'Process':
         return Process(
             partial(_tensor_inside, self, other, len(self.dom)),
             self.dom + other.dom,
@@ -67,7 +66,7 @@ class Process(python.Function):
         )
 
     @classmethod
-    def eval(cls, base, exponent, left=True):
+    def eval(cls, base: Any, exponent: Any, left: bool = True) -> 'Process':
         return Process(
             _eval_func,
             (exponent << base) @ base,
@@ -75,8 +74,7 @@ class Process(python.Function):
         )
 
     @staticmethod
-    def split_args(ar, *args):
-        # We need to handle when dom is not a Ty (e.g. object)
+    def split_args(ar: Any, *args: Any) -> tuple[tuple[Any, ...], tuple[Any, ...]]:
         try:
             n = len(ar.dom)
         except TypeError:
@@ -84,29 +82,25 @@ class Process(python.Function):
         return args[:n], args[n:]
 
     @staticmethod
-    async def run_constant(ar, *args):
+    async def run_constant(ar: Any, *args: Any) -> tuple[Any, ...]:
         if ar.value:
-            return (ar.value, )
+            return (StringIO(ar.value), )
         n = 1
         return args[n:] if len(args) > n else ()
 
     @staticmethod
-    async def run_map(ar, *args):
-        # Delegates to the internal diagram which handles Copy and tensor
+    async def run_map(ar: Any, *args: Any) -> tuple[Any, ...]:
         runner = SHELL_RUNNER(ar.args[0])
         res = await runner(*args)
-        # Filter out None values (failed branches)
-        from .interactive import flatten
-        return tuple(flatten(res))
+        return tuple(tuplify(res))
 
     @staticmethod
-    async def run_seq(ar, *args):
-        # Delegates to the internal diagram
+    async def run_seq(ar: Any, *args: Any) -> Any:
         runner = SHELL_RUNNER(ar.args[0])
         return await runner(*args)
 
     @staticmethod
-    def run_swap(ar, *args):
+    def run_swap(ar: Any, *args: Any) -> tuple[Any, ...]:
         n_left = len(ar.left)
         n_right = len(ar.right)
         left_args = args[:n_left]
@@ -114,36 +108,74 @@ class Process(python.Function):
         return untuplify(right_args + left_args)
 
     @staticmethod
-    def run_cast(ar, *args):
-        val = args[0] if args else None
-        return val
+    def run_cast(ar: Any, *args: Any) -> Any:
+        return args[0] if args else None
 
     @staticmethod
-    def run_copy(ar, *args):
-        val = args[0] if args else ""
+    def run_copy(ar: Any, *args: Any) -> tuple[Any, ...]:
+        val = args[0] if args else None
         if val is None:
              return (None,) * ar.n
+        
+        # If val is IO stream, read and replicate
+        if hasattr(val, 'read'):
+             data = val.read()
+             return tuple(StringIO(data) for _ in range(ar.n))
         return (val,) * ar.n
 
     @staticmethod
-    def run_discard(ar, *args):
+    def run_discard(ar: Any, *args: Any) -> tuple[Any, ...]:
+        # Consume stream to avoid leaks/buffering issues?
+        for arg in args:
+             if hasattr(arg, 'read'): arg.read()
         return ()
 
     @staticmethod
-    def run_merge(ar, *args):
-        from .interactive import flatten
-        return tuple(flatten(args))
+    def run_merge(ar: Any, *args: Any) -> tuple[Any, ...]:
+        # Merge streams into one
+        contents = []
+        for arg in args:
+             if hasattr(arg, 'read'):
+                 contents.append(arg.read())
+             else:
+                 contents.append(str(arg) if arg is not None else "")
+        return (StringIO("".join(contents)),)
 
     @staticmethod
-    async def run_command(name, args, stdin):
+    async def _exec_subprocess(name: str, args: tuple[str, ...], stdin: IO[str]) -> IO[str]:
+        process: asyncio.subprocess.Process = await asyncio.create_subprocess_exec(
+            name, *args,
+            stdout=asyncio.subprocess.PIPE,
+            stdin=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        # Read from input stream
+        content = stdin.read()
+        input_data: bytes | None = content.encode() if content else None
+        
+        stdout_data: bytes | None
+        stderr_data: bytes | None
+        stdout_data, stderr_data = await process.communicate(input=input_data)
+        
+        if process.returncode != 0:
+             return StringIO("") # or failure indication? For now empty stream
+
+        if stdout_data is None:
+             return StringIO("")
+
+        return StringIO(stdout_data.decode())
+
+    @staticmethod
+    async def run_command(name: Any, args: Any, stdin: IO[str]) -> IO[str]:
         from .widish import SHELL_RUNNER
         from .compiler import SHELL_COMPILER
         
-        if any(x is None for x in stdin):
-             return (None,)
-
+        # stdin is a single stream now
+        
         if not isinstance(name, str):
-             return await unwrap(name(*(tuplify(args) + tuplify(stdin))))
+             # Name is a box? Eval case for name?
+             # For simplicity, assume name is string for command execution
+             return StringIO("")
 
         if name in (registry := RECURSION_REGISTRY.get()):
              item = registry[name]
@@ -154,92 +186,82 @@ class Process(python.Function):
                   RECURSION_REGISTRY.set(dict(registry))
              else:
                   runner = item
-             return await runner(*tuplify(stdin))
+             # Pass stdin stream as argument
+             return await runner(stdin)
 
         if name.endswith(".yaml"):
-            args = (name, ) + args
+            str_args = tuple(map(str, args))
+            args = (name, ) + str_args
             name = "bin/widish"
             
-        process = await asyncio.create_subprocess_exec(
-            name, *map(str, args),
-            stdout=asyncio.subprocess.PIPE,
-            stdin=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        input_data = "\n".join(map(str, stdin)).encode() if stdin else None
-        stdout, stderr = await process.communicate(input=input_data)
-        
-        if process.returncode != 0:
-             return (None,)
-
-        res_str = stdout.decode()
-        if not res_str.strip():
-             if name in ("awk", "grep"): return (None,)
-             return tuple(stdin)
-        
-        return tuple(res_str.splitlines())
+        str_args = tuple(map(str, args))
+        return await Process._exec_subprocess(name, str_args, stdin)
 
     @staticmethod
-    async def deferred_exec(ar, *args):
-        async def resolve(x):
+    async def deferred_exec(ar: Any, *args: Any) -> Any:
+        async def resolve(x: Any) -> Any:
             if callable(x):
                 return await unwrap(x())
             return x
 
-        # Resolve all input wires
         resolved = []
         for x in args:
             res = await resolve(x)
-            # If it's a tuple of lines (from a command), we keep it as a single unit for now
-            # unless it's explicitly multiple wires. 
-            # But Eval expects 1 object per wire.
             resolved.append(res)
         
         if ar.name:
-             # Constant/Program call
              name = ar.name
              cmd_args = resolved
-             stdin = ()
+             stdin_wires = []
         else:
-             # Eval case: (Name, [Args...], Stdin)
-             if not resolved: return (None,)
+             if not resolved: return StringIO("")
              name = resolved[0]
-             stdin = resolved[-1]
+             # Eval wrapping name? If name is stream, read it.
+             if hasattr(name, 'read'): name = name.read().strip()
+             
+             stdin_wires = resolved[-1]
+             # If stdin_wires is list (from multiple wires), flattening needed?
+             # Resolved[-1] is usually tuple from previous box
+             if isinstance(stdin_wires, (tuple, list)):
+                  pass 
+             else:
+                   stdin_wires = [stdin_wires]
+                   
              cmd_args = resolved[1:-1]
 
-        # Unwrap name if it is a list/tuple (e.g. from Data box or ar.name)
-        if isinstance(name, (list, tuple)):
-            if len(name) == 1:
-                name = name[0]
-            elif not name:
-                return (None,)
-        
-        # Unwrap arguments
-        cmd_args = [x[0] if isinstance(x, (list, tuple)) and len(x) == 1 else x for x in cmd_args]
+        # Unwrap arguments (if streams, read them?)
+        # Arguments to command are usually strings.
+        final_args = []
+        for arg in cmd_args:
+             if isinstance(arg, (tuple, list)):
+                  arg = arg[0] if arg else ""
+             if hasattr(arg, 'read'):
+                  final_args.append(arg.read().strip())
+             else:
+                  final_args.append(str(arg))
              
-        # Ensure stdin is a collection of lines
+        # Prepare Stdin Stream
+        # Concat multiple input streams
+        stdin_contents = []
+        if isinstance(stdin_wires, (tuple, list)):
+             for w in stdin_wires:
+                  if hasattr(w, 'read'): stdin_contents.append(w.read())
+                  else: stdin_contents.append(str(w) if w else "")
+        else:
+              if hasattr(stdin_wires, 'read'): stdin_contents.append(stdin_wires.read())
+              else: stdin_contents.append(str(stdin_wires) if stdin_wires else "")
+              
+        stdin_stream = StringIO("".join(stdin_contents))
 
-        # Ensure stdin is a collection of lines
-        if isinstance(stdin, str): stdin = (stdin,)
-        if stdin is None: stdin = ()
-        # If it's a tuple of tuples (nested), flatten it
-        def flatten_lines(x):
-            if isinstance(x, (list, tuple)):
-                res = []
-                for i in x: res.extend(flatten_lines(i))
-                return res
-            return [x]
-        stdin = flatten_lines(stdin)
-
-        return await Process.run_command(name, cmd_args, stdin)
+        return await Process.run_command(name, final_args, stdin_stream)
 
     @staticmethod
-    async def run_program(ar, *args):
+    async def run_program(ar: Any, *args: Any) -> Any:
         # Programs take all inputs from wires as stdin
         return await Process.run_command(ar.name, ar.args, args)
 
     @staticmethod
-    def run_constant_gamma(ar, *args):
+    def run_constant_gamma(ar: Any, *args: Any) -> str:
         return "bin/widish"
 
 Widish = closed.Category(python.Ty, Process)

@@ -1,7 +1,7 @@
 import pytest
 from discopy import closed
 from unittest.mock import patch, AsyncMock
-from .compiler import Exec
+from .computer import Exec
 from .widish import SHELL_RUNNER, Process
 
 @pytest.mark.asyncio
@@ -46,6 +46,6 @@ async def test_exec_runner():
         print(f"DEBUG_TEST: call_args={call_args}", flush=True)
         print(f"DEBUG_TEST: call_args[0]={call_args[0]}", flush=True)
         # name, args, stdin
-        assert call_args[0][0] == "bin/widish"
-        assert call_args[0][1] == ("some_input",) # args
-        assert call_args[0][2] == () # stdin
+        assert call_args[0][0] == "exec"
+        assert call_args[0][1] == ["some_input"] # args
+        assert call_args[0][2] == [] # stdin

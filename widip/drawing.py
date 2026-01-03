@@ -37,11 +37,11 @@ class ComplexityProfile:
         # Boost for very simple diagrams with short labels
         if self.max_cpw < 8 and self.rn < 10:
             base_fsize = base_fsize * 1.2
-        fsize = max(32, min(180, base_fsize))
+        fsize = max(24, min(60, base_fsize))
         
         # 2. Derive Multipliers (Inches per DisCoPy Grid Unit)
         # pts per char (monospace): 0.6*fsize typical, increased for readability
-        pts_per_char = fsize * 0.8
+        pts_per_char = fsize * 0.7
         # Reduced vertical spacing for compact diagrams
         pts_per_line = fsize * 1.8  # Was 2.5 - more compact now
         
@@ -188,7 +188,7 @@ def diagram_draw(path: Path, fd):
                    color = "#ffffff"
          elif cls_name == "Alias" or name_str.startswith("*"):
                   final_name = f"*{getattr(box, 'name', name_str.lstrip('*'))}"
-                  color = "#3498db" # vibrant blue
+                  color = "#3498db" # vibrant blue 
                   draw_as_spider = True
          elif cls_name == "Anchor" or name_str.startswith("&"):
                   final_name = f"&{getattr(box, 'name', name_str.lstrip('&'))}"
@@ -197,9 +197,18 @@ def diagram_draw(path: Path, fd):
          elif cls_name == "Label":
                   final_name = name_str
                   color = "#ffffff"
-         elif cls_name in ["Program", "Data"]:
+         elif cls_name == "Data" or name_str.startswith("⌜"):
                   final_name = name_str
-                  color = "#ffffff"
+                  color = "#fff9c4" # Light yellow for Data
+         elif cls_name == "Eval" or name_str == "eval":
+                  final_name = "exec" # Using 'exec' to represent evaluation
+                  color = "#ffccbc" # Light orange/red
+         elif cls_name == "Curry" or name_str == "curry":
+                  final_name = "Λ"
+                  color = "#d1c4e9" # Light purple
+         elif cls_name == "Program":
+                  final_name = name_str
+                  color = "#ffffff" # Programs are white standard boxes
          elif cls_name == "Copy" or name_str.startswith("Copy("):
                   final_name = "Δ"
                   color = "#2ecc71" # vibrant green

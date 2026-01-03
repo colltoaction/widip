@@ -186,9 +186,7 @@ def _incidences_to_diagram(cursor):
             raise Exception(f"Kind \"{kind}\" doesn't match any.")
 
     if anchor and kind != 'alias':
-        # For anchors, just return the diagram - don't wrap in bubble
-        # The anchor name is stored but we return the inner diagram
-        return ob
+        return Anchor(anchor, ob)
     return ob
 
 def load_document(cursor):

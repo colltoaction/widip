@@ -2,7 +2,7 @@ import pytest
 from discopy import closed
 from .yaml import Sequence, Mapping, Scalar
 from .compiler import SHELL_COMPILER
-from .computer import Sequential, Pair, Concurrent, Data, Program, Exec
+from .computer import Data, Program, Exec
 
 # Helper to create dummy scalars for testing
 def mk_scalar(name):
@@ -37,9 +37,13 @@ def test_exec_compilation():
     s = Scalar("exec", "ls")
     c = SHELL_COMPILER(s)
 
-    assert isinstance(c, Exec)
-    # Language is closed.Ty("IO"), so we assert c.dom is that
+    # SHELL_COMPILER returns a Diagram wrapping the box
+    assert isinstance(c, closed.Diagram)
+    assert len(c.boxes) == 1
+    box = c.boxes[0]
+    assert isinstance(box, Exec)
+    
+    # Language is closed.Ty("IO")
     from .computer import Language
-    assert c.dom == Language
-    expected_cod = closed.Ty("exec") >> closed.Ty("exec")
-    # assert c.cod == expected_cod # This might be strict on names, ignore for now if flaky
+    assert box.dom == Language
+    # expected_cod = closed.Ty("exec") >> closed.Ty("exec")
