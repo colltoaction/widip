@@ -59,7 +59,6 @@ Computation = closed.Category()
 
 
 
-@closed.Diagram.from_callable(closed.Ty(), closed.Ty())
 def compiler(diagram, comp, path):
     res = None
     match diagram:
@@ -132,7 +131,6 @@ def compiler(diagram, comp, path):
     
     return res
 
-@closed.Diagram.from_callable(closed.Ty(), closed.Ty())
 async def interpreter(pipeline: Any, 
                       source: Any, 
                       loop: Any, 

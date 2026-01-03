@@ -84,7 +84,7 @@ class ExecFunctor(closed.Functor):
 
     def ob_map(self, ob: closed.Ty) -> type:
         from typing import IO
-        return IO if ob == Language else Thunk
+        return object if ob == Language else Thunk
 
     def ar_map(self, ar: object) -> Process:
         async def traced_t(*args: Any) -> Any:

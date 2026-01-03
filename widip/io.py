@@ -44,6 +44,12 @@ def loop_scope(loop: asyncio.AbstractEventLoop | None = None):
 
 # --- Process Execution (Impure) ---
 
+class Process(python.Function):
+    """Wraps an async function with loop context awareness."""
+    def __init__(self, inside: Callable, dom: closed.Ty, cod: closed.Ty, loop: asyncio.AbstractEventLoop | None = None):
+        super().__init__(inside, dom, cod)
+        self.loop = loop
+
     def then(self, other: 'Process') -> 'Process':
         loop = self.loop or getattr(other, 'loop', None) or LOOP_VAR.get()
         return Process(lambda *args: _bridge_pipe(self, other, loop, *args), self.dom, other.cod, loop=loop)
@@ -51,6 +57,10 @@ def loop_scope(loop: asyncio.AbstractEventLoop | None = None):
     def tensor(self, other: 'Process') -> 'Process':
         loop = self.loop or getattr(other, 'loop', None) or LOOP_VAR.get()
         return Process(lambda *args: _tensor_inside(self, other, loop, *args), self.dom + other.dom, self.cod + other.cod, loop=loop)
+
+    def __call__(self, *args):
+        # Override call to prevent type checking failure on wrapped types
+        return self.inside(*args)
 
 async def _bridge_pipe(self, other, loop, *args):
     res = await unwrap(loop, self.inside(*args))
