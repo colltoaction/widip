@@ -2,14 +2,15 @@ import sys
 import os
 from typing import Any
 from functools import partial
+from contextlib import contextmanager
 
 from yaml import YAMLError
-from discopy.closed import Diagram
+from discopy import closed
 from nx_yaml import nx_compose_all
 
-from .yaml import load as load_diagram
+from .yaml import load as load_diagram, load_serialization_tree, Composer, construct
 from .drawing import diagram_draw
-from .computer import SHELL_COMPILER as compiler
+from .computer import Data, Program, Language
 from .io import (
     read_stdin, 
     set_recursion_limit, 
@@ -21,20 +22,33 @@ from .io import (
     BytesIO,
     Path
 )
-from .asyncio import async_read, run_repl, run
-from .exec import widip_runner
+from .asyncio import async_read, run_repl, run, loop_scope
+from .exec import execute
 
 
-# --- File I/O (merged from files.py) ---
+# --- Shell Functor ---
 
-def read_diagram(source: Any) -> Diagram:
+@closed.Diagram.from_callable(Language, Language)
+def shell(diagram_source: Any) -> closed.Diagram:
+    """Entry point for compiling YAML into computer diagrams (The Shell Functor)."""
+    serialization_tree = load_serialization_tree((0, diagram_source))
+    res = (Composer >> construct)(serialization_tree)
+    if isinstance(res, (closed.Box, Program, Data)):
+         return closed.Id(res.dom) >> res
+    return res
+
+compiler = shell
+
+# --- File I/O ---
+
+def read_diagram(source: Any) -> closed.Diagram:
     """Parse a stream or file path into a diagram."""
     if isinstance(source, (str, Path)):
         path = Path(source)
         with path.open() as f:
             return read_diagram(f)
     incidences = nx_compose_all(source)
-    return load_diagram(incidences)
+    return shell(incidences)
 
 
 def reload_diagram(path_str):
@@ -49,14 +63,14 @@ def reload_diagram(path_str):
         print(e, file=sys.stderr)
 
 
-# --- Input Reading (Read) ---
+# --- Input Reading ---
 
 def read(fd: Any | None, path: Path | None, file_name: str, loop: Any, hooks: dict):
     """Get the async reader iterator."""
     return async_read(fd, path, file_name, loop, read_diagram, read_stdin, hooks)
 
 
-# --- Runtime Setup (Environment) ---
+# --- Runtime Setup ---
 
 def env_fn():
     import argparse
@@ -67,27 +81,44 @@ def env_fn():
     return parser.parse_args()
 
 
-def get_source(command_string: str | None, operands: list[str], loop, hooks: dict):
-    """Get the source diagram iterator based on command line args."""
+class SourceArgs:
+    """Helper to structure return from get_params_fn."""
+    def __init__(self, fd, path, file_name):
+        self.fd = fd
+        self.path = path
+        self.file_name = file_name
+    def __iter__(self):
+        return iter((self.fd, self.path, self.file_name))
+
+def get_source(command_string: str | None, operands: list[str], hooks: dict):
+    """Get the source diagram parameters based on command line args."""
     executable = hooks['get_executable']()
     if command_string is not None:
-         return read(read_diagram(command_string), None, executable, loop, hooks)
+         return SourceArgs(read_diagram(command_string), None, executable)
     elif operands:
          file_name = operands[0]
-         fd = read_diagram(file_name)
-         return read(fd, Path(file_name), file_name, loop, hooks)
+         return SourceArgs(read_diagram(file_name), Path(file_name), file_name)
     else:
-         return read(None, None, executable, loop, hooks)
+         return SourceArgs(None, None, executable)
 
 
-# --- Eval and Print (separate concerns) ---
+# --- Eval and Print ---
 
-def make_pipeline(runner):
+@contextmanager
+def widip_runner(hooks: dict, executable: str):
+    """Context manager yielding (hooks, loop) for execution."""
+    with loop_scope(hooks) as loop:
+        yield hooks, loop
+
+def make_pipeline(runner_data):
     """Create execution pipeline."""
-    return lambda fd: runner(compiler(fd, compiler, None))
+    # runner_data is (hooks, loop) because widip_runner yields that.
+    hooks, loop = runner_data
+    executable = hooks['get_executable']()
+    return lambda diag: execute(diag, hooks, executable, loop)
 
 
-# --- Main Entry Points ---
+# --- Main Entry Point ---
 
 async def async_repl():
     """Main Read-Eval-Print Loop entry point (async)."""
@@ -102,8 +133,8 @@ async def async_repl():
         'BytesIO': BytesIO,
         'Path': Path
     }
-    
-    await run_repl(env_fn, widip_runner, get_source, make_pipeline, reload_diagram, hooks)
+
+    await run_repl(env_fn, widip_runner, get_source, read, make_pipeline, reload_diagram, hooks)
 
 
 def repl():
