@@ -25,7 +25,7 @@ def compile_ar(ar):
 
     if isinstance(ar, yaml.Sequence):
         # Recurse into the bubble contents
-        diag = SHELL_COMPILER(ar.arg)
+        diag = SHELL_COMPILER(ar.inside)
         if ar.tag:
              static_args = extract_static_args(diag)
              if static_args is not None:
@@ -34,7 +34,7 @@ def compile_ar(ar):
         return diag
 
     if isinstance(ar, yaml.Mapping):
-        diag = SHELL_COMPILER(ar.arg)
+        diag = SHELL_COMPILER(ar.inside)
         if ar.tag:
             static_args = extract_static_args(diag)
             if static_args is not None:
@@ -44,9 +44,9 @@ def compile_ar(ar):
 
     if isinstance(ar, yaml.Anchor):
         anchors = computer.RECURSION_REGISTRY.get().copy()
-        anchors[ar.name] = ar.arg
+        anchors[ar.name] = ar.inside
         computer.RECURSION_REGISTRY.set(anchors)
-        return computer.Program(ar.name, args=(SHELL_COMPILER(ar.arg), ), dom=computer.Language, cod=computer.Language)
+        return computer.Program(ar.name, args=(SHELL_COMPILER(ar.inside), ), dom=computer.Language, cod=computer.Language)
 
     if isinstance(ar, yaml.Alias):
         return computer.Program(ar.name, dom=computer.Language, cod=computer.Language)
@@ -56,7 +56,7 @@ def compile_ar(ar):
     if isinstance(ar, yaml.Merge):
         return computer.Merge(SHELL_COMPILER(ar.cod), ar.n)
     if isinstance(ar, yaml.Stream):
-        return SHELL_COMPILER(ar.arg)
+        return SHELL_COMPILER(ar.inside)
     if isinstance(ar, yaml.Discard):
         return computer.Discard(SHELL_COMPILER(ar.dom))
     if isinstance(ar, yaml.Label):

@@ -1,3 +1,4 @@
+#!/home/colltoaction/GitHub/widip/bin/widish
 10: &countdown
   !xargs { test, 0, -eq }: Liftoff!
   !xargs { test, 0, -lt }:

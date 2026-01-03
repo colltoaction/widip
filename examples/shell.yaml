@@ -1,4 +1,4 @@
-#!bin/widish
+#!/home/colltoaction/GitHub/widip/bin/widish
 !cat examples/shell.yaml:
   ? !wc -c
   ? !grep grep: !wc -c
