@@ -38,9 +38,16 @@ def file_diagram(file_name) -> Diagram:
     return fd
 
 def diagram_draw(path, fd):
-    fd.draw(path=str(path.with_suffix(".jpg")),
-            textpad=(0.3, 0.1),
-            fontsize=12,
+    # SVG output - vector format, scales perfectly
+    fd.draw(path=str(path.with_suffix(".svg")),
+            aspect="auto",
+            figsize=(8, 3),
+            textpad=(0.25, 0.08),
+            fontsize=11,
             fontsize_types=8)
+    
+    # Optionally also generate TikZ/LaTeX output
+    # tikz_code = fd.to_tikz()
+    # path.with_suffix(".tex").write_text(tikz_code)
 
 files_f = Functor(lambda x: Ty(""), files_ar)

@@ -240,26 +240,16 @@ Widish = closed.Category(python.Ty, Process)
 def shell_runner_ar(ar):
     if isinstance(ar, Data):
         t = _lazy(Process.run_constant, ar)
-    elif isinstance(ar, Concurrent):
-        t = _lazy(Process.run_map, ar)
-    elif isinstance(ar, Pair):
-        t = _lazy(Process.run_seq, ar)
-    elif isinstance(ar, Sequential):
-        t = _lazy(Process.run_seq, ar)
     elif isinstance(ar, Swap):
         t = partial(Process.run_swap, ar)
-    elif isinstance(ar, Cast):
-        t = _lazy(Process.run_cast, ar)
     elif isinstance(ar, Copy):
         t = partial(Process.run_copy, ar)
+    elif isinstance(ar, Merge):
+        t = partial(Process.run_merge, ar)
     elif isinstance(ar, Discard):
         t = partial(Process.run_discard, ar)
     elif isinstance(ar, Exec):
-         gamma = Constant()
-         diagram = gamma @ closed.Id(ar.dom) >> Eval(ar.dom, ar.cod)
-         return SHELL_RUNNER(diagram)
-    elif isinstance(ar, Constant):
-         t = _lazy(Process.run_constant_gamma, ar)
+         t = _lazy(Process.deferred_exec, ar)
     elif isinstance(ar, Program):
          t = _lazy(Process.run_program, ar)
     elif isinstance(ar, Eval):
