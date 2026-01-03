@@ -10,21 +10,10 @@ import sys
 from . import hif
 from .yaml import Node, Scalar, Sequence, Mapping, Anchor, Alias
 
-# Define symmetric versions of structural boxes for diagram building
-class Copy(symmetric.Box):
-    def __init__(self, x, n=2):
-        super().__init__(f"Copy({x}, {n})", x, x ** n)
-        self.n = n
-
-class Merge(symmetric.Box):
-    def __init__(self, x, n=2):
-        super().__init__(f"Merge({x}, {n})", x ** n, x)
-        self.n = n
-
-class Discard(symmetric.Box):
-    def __init__(self, x):
-        super().__init__(f"Discard({x})", x, symmetric.Ty())
-
+# Symmetric category structural boxes (markov.Copy/Merge/Discard are incompatible)
+Copy = lambda x, n=2: symmetric.Box(f"Copy({x}, {n})", x, x ** n)
+Merge = lambda x, n=2: symmetric.Box(f"Merge({x}, {n})", x ** n, x)
+Discard = lambda x: symmetric.Box(f"Discard({x})", x, symmetric.Ty())
 Swap = symmetric.Swap
 
 diagram_var: ContextVar[symmetric.Diagram] = ContextVar("diagram")

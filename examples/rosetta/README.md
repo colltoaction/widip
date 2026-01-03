@@ -29,16 +29,6 @@ python -m widip examples/rosetta/FizzBuzz.yaml | head -16
 
 <img src="FizzBuzz.shell.svg" width="600">
 
-## Factorial (x86 Assembly)
-
-Pseudocode representation of x86 factorial from [Rosetta Code](https://rosettacode.org/wiki/Factorial#x86_Assembly).
-
-Uses boxes to represent assembly instructions. Note:
-- `label` gets its own box like `loop`
-- Implicit `eax` parameters show data flow between `mov`, `mul`, and `loop`
-
-<img src="factorial-x86.svg" width="400">
-
 ## Fibonacci
 
 Recursive Fibonacci structure demonstration.

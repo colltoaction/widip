@@ -1,3 +1,5 @@
+# TODO this example is not widip shell compatible
+
 nat: nat
 {}: 0
 ---

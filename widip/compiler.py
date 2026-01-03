@@ -2,7 +2,7 @@ from functools import reduce
 from discopy import closed, monoidal, symmetric
 from . import computer
 from . import yaml
-from .loader import Copy as LoaderCopy, Merge as LoaderMerge, Discard as LoaderDiscard, Swap as LoaderSwap
+from .loader import Swap as LoaderSwap
 import sys
 
 
@@ -52,11 +52,15 @@ def compile_ar(ar):
     if isinstance(ar, yaml.Alias):
         return computer.Program(ar.name, dom=computer.Language, cod=computer.Language)
 
-    if isinstance(ar, LoaderCopy):
-        return computer.Copy(map_ob(ar.dom), ar.n)
-    if isinstance(ar, LoaderMerge):
-        return computer.Merge(map_ob(ar.cod), ar.n)
-    if isinstance(ar, LoaderDiscard):
+    # Check by name pattern since Copy/Merge/Discard are now factory functions
+    box_name = getattr(ar, 'name', '')
+    if box_name.startswith('Copy('):
+        n = getattr(ar, 'n', len(ar.cod))
+        return computer.Copy(map_ob(ar.dom), n)
+    if box_name.startswith('Merge('):
+        n = getattr(ar, 'n', len(ar.dom))
+        return computer.Merge(map_ob(ar.cod), n)
+    if box_name.startswith('Discard('):
         return computer.Discard(map_ob(ar.dom))
     if isinstance(ar, yaml.Label):
         return closed.Id(closed.Ty())
