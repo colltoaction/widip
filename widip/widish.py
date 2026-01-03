@@ -1,19 +1,21 @@
 import asyncio
 from functools import partial
 from typing import Awaitable, Callable, Sequence, IO, TypeVar, Generic, Any
+import sys
 
 from io import StringIO
 from discopy.utils import tuplify, untuplify
 from discopy import closed, python, utils
 
 from .computer import *
-from .thunk import unwrap
+from .thunk import unwrap, Thunk
 
 U = TypeVar("U")
 T = TypeVar("T")
 
-async def _bridge_pipe(f: Callable[..., Awaitable[T]], g: Callable[..., Awaitable[U]], *args: T) -> U:
-    res = await unwrap(f(*args))
+async def _bridge_pipe(f: Callable[..., Thunk[T]], g: Callable[..., Thunk[U]], *args: T) -> U:
+    loop = asyncio.get_running_loop()
+    res = await unwrap(loop, f(*args))
     
     def is_failure(x: Any) -> bool:
         if x is None: return True
@@ -22,30 +24,31 @@ async def _bridge_pipe(f: Callable[..., Awaitable[T]], g: Callable[..., Awaitabl
     if is_failure(res):
         return res # type: ignore
     
-    return await unwrap(g(*utils.tuplify(res)))
+    return await unwrap(loop, g(*utils.tuplify(res)))
 
-async def _tensor_inside(f: Callable[..., Awaitable[T]], g: Callable[..., Awaitable[U]], n: int, *args: T) -> tuple[T, ...]:
+async def _tensor_inside(f: Callable[..., Thunk[T]], g: Callable[..., Thunk[U]], n: int, *args: T) -> tuple[T, ...]:
     # args tuple unpacking is hard to type precisely without Variadic Generics
+    loop = asyncio.get_running_loop()
     args1, args2 = args[:n], args[n:]
-    res1 = await unwrap(f(*args1))
-    res2 = await unwrap(g(*args2))
+    res1 = await unwrap(loop, f(*args1))
+    res2 = await unwrap(loop, g(*args2))
     return tuplify(res1) + tuplify(res2) # type: ignore
 
-async def _eval_func(f: Callable[..., Awaitable[T]], *x: T) -> T:
-    return await unwrap(f(*x))
-
+async def _eval_func(f: Callable[..., Thunk[T]], *x: T) -> T:
+    loop = asyncio.get_running_loop()
+    return await unwrap(loop, f(*x))
 
 
 class Process(python.Function, Generic[T]):
-    def __init__(self, inside: Callable[..., Awaitable[T]], dom: closed.Ty, cod: closed.Ty):
+    def __init__(self, inside: Callable[..., Thunk[T]], dom: closed.Ty, cod: closed.Ty):
         super().__init__(inside, dom, cod)
         self.type_checking = False
 
     async def __call__(self, *args: T) -> T:
         # We need to unwrap the result of the internal function
         ar = getattr(self, "ar", None)
-        # print(f"DEBUG: Process call ar={ar}", file=sys.stderr)
-        res = await unwrap(self.inside(*args))
+        loop = asyncio.get_running_loop()
+        res = await unwrap(loop, self.inside(*args))
         return res
 
     def then(self, other: 'Process') -> 'Process':
@@ -69,8 +72,6 @@ class Process(python.Function, Generic[T]):
             (exponent << base) @ base,
             exponent
         )
-
-
 
     @staticmethod
     async def run_constant(ar: Any, *args: T) -> tuple[T, ...]:
@@ -101,36 +102,32 @@ class Process(python.Function, Generic[T]):
     @staticmethod
     async def run_copy(ar: Any, *args: T) -> tuple[T, ...]:
         n = len(ar.cod)
-        from .exec import safe_read_str
-        data = await safe_read_str(args[0]) if args else ""
+        item = args[0] if args else ""
+        if hasattr(item, 'read'):
+            if hasattr(item, 'seek'): item.seek(0)
+            data = item.read()
+        else:
+            data = str(item)
         return tuple(StringIO(data) for _ in range(n))
 
     @staticmethod
     async def run_discard(ar: Any, *args: T) -> tuple[T, ...]:
-        # Consume stream to avoid leaks/buffering issues?
-        from .exec import safe_read_str
         for arg in args:
-             await safe_read_str(arg)
+             if hasattr(arg, 'read'): arg.read()
         return ()
 
     @staticmethod
     async def run_merge(ar: Any, *args: T) -> tuple[T, ...]:
-        # Merge streams into one
-        contents = []
-        from .exec import safe_read_str
         contents = []
         for arg in args:
-             contents.append(await safe_read_str(arg))
+             if hasattr(arg, 'read'):
+                 if hasattr(arg, 'seek'): arg.seek(0)
+                 contents.append(arg.read())
+             else:
+                 contents.append(str(arg))
         return (StringIO("".join(contents)),)
-
-
-
-
-
 
 
     @staticmethod
     def run_constant_gamma(ar: Any, *args: T) -> str:
         return "bin/widish"
-
-

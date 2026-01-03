@@ -20,13 +20,9 @@ class Curry(closed.Curry):
 class Data(closed.Box):
     def __init__(self, value: Any, dom: closed.Ty, cod: closed.Ty):
         self.value = value
-        if isinstance(value, str):
-            content = value if len(value) < 100 else value[:97] + "..."
-        elif value is None:
-            content = "-"
-        else:
-            content = type(value).__name__
-        super().__init__(f"⌜{content}⌝", dom, cod)
+        content = str(value) if value else "-"
+        name = f"⌜{content if len(content) < 100 else content[:97] + '...'}⌝"
+        super().__init__(name, dom, cod)
 
 class Program(closed.Box):
     def __init__(self, name: str, dom: closed.Ty, cod: closed.Ty, args: Any = ()):

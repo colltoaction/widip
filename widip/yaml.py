@@ -13,14 +13,8 @@ class Scalar(symmetric.Box):
         super().__init__("Scalar", dom, cod)
         self.tag, self.value = tag, value
 
-class Label(symmetric.Box):
-    def __init__(self, name):
-        super().__init__(name, symmetric.Ty(), symmetric.Ty())
-
 class Sequence(monoidal.Bubble, symmetric.Box):
     def __init__(self, inside, dom=None, cod=None, n=1, tag=""):
-        if tag:
-            inside = inside @ Label(tag)
         if dom is None:
             dom = Node if tag else inside.dom
         if cod is None:
@@ -31,8 +25,6 @@ class Sequence(monoidal.Bubble, symmetric.Box):
 
 class Mapping(monoidal.Bubble, symmetric.Box):
     def __init__(self, inside, dom=None, cod=None, tag=""):
-        if tag:
-            inside = inside @ Label(tag)
         if dom is None:
             dom = Node if tag else inside.dom
         if cod is None:

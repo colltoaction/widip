@@ -4,28 +4,22 @@ from pathlib import Path
 from yaml import YAMLError
 from typing import IO, Callable, Any, AsyncIterator
 from io import StringIO
+from functools import partial
 
-from .exec import flatten, ExecFunctor
-from .thunk import unwrap
+from .exec import ExecFunctor
+from .widish import safe_read_str
+from .thunk import unwrap, recurse
 from .files import repl_read
 
-
-async def printer(res: Any):
-    filtered = await flatten(res)
+async def printer(rec, res: Any):
+    content = await safe_read_str(res)
+    filtered = content.splitlines()
     if filtered:
         print(*filtered, sep="\n", flush=True)
 
-
-async def reader(source: AsyncIterator[tuple[Any, Path | None, IO[str]]]) -> tuple[Any, Path | None, IO[str]]:
-    try:
-        return await anext(source)
-    except StopAsyncIteration:
-        raise EOFError
-
-
-async def read_single(fd: Any, path: Path | None, runner: ExecFunctor, args: list[str]) -> AsyncIterator[tuple[Any, Path | None, IO[str]]]:
+async def read_single(fd: Any, path: Path | None, runner: ExecFunctor, args: list[str], loop: asyncio.AbstractEventLoop) -> AsyncIterator[tuple[Any, Path | None, IO[str]]]:
     if not sys.stdin.isatty():
-        stdin_content = await runner.loop.run_in_executor(None, sys.stdin.read)
+        stdin_content = await loop.run_in_executor(None, sys.stdin.read)
     else:
         stdin_content = ""
     combined = "\n".join(args)
@@ -34,9 +28,7 @@ async def read_single(fd: Any, path: Path | None, runner: ExecFunctor, args: lis
         combined += stdin_content
     yield fd, path, StringIO(combined)
 
-
-async def read_shell(runner: ExecFunctor, file_name: str) -> AsyncIterator[tuple[Any, Path | None, IO[str]]]:
-    loop = runner.loop
+async def read_shell(runner: ExecFunctor, file_name: str, loop: asyncio.AbstractEventLoop) -> AsyncIterator[tuple[Any, Path | None, IO[str]]]:
     while True:
         try:
             if not sys.stdin.isatty():
@@ -51,28 +43,42 @@ async def read_shell(runner: ExecFunctor, file_name: str) -> AsyncIterator[tuple
         except EOFError:
             break
 
+async def interpreter(runner: ExecFunctor, 
+                      compiler: Callable, 
+                      source: AsyncIterator[tuple[Any, Path | None, IO[str]]],
+                      loop: asyncio.AbstractEventLoop,
+                      input_handler: Callable = None, 
+                      output_handler: Callable = printer):
+    
+    # Internal logic for dealing with inputs if no handler provided
+    def default_input_handler(runner_process, compiled_d, input_stream):
+        if runner_process.dom:
+             return (input_stream,)
+        if isinstance(input_stream, StringIO) and not input_stream.getvalue():
+             return tuple(x.name for x in compiled_d.dom)
+        return ()
+        
+    if input_handler is None:
+        input_handler = default_input_handler
 
-async def interpreter(runner: ExecFunctor, compiler: Callable, source: AsyncIterator[tuple[Any, Path | None, IO[str]]]):
     async for fd, path, input_stream in source:
         try:
             if isinstance(path, Path) and __debug__:
                 from .files import diagram_draw
                 diagram_draw(path, fd)
 
-            compiled_d = compiler(fd, path=path)
+            compiled_d = compiler(fd, compiler, path)
             runner_process = runner(compiled_d)
             
-            # Domain defines input handling
-            if runner_process.dom:
-                inp = (input_stream,)
-            elif isinstance(input_stream, StringIO) and not input_stream.getvalue():
-                # pass constants from dom
-                inp = tuple(x.name for x in compiled_d.dom)
-            else:
-                inp = ()
+            inp = input_handler(runner_process, compiled_d, input_stream)
+            
+            async def compute(rec, *args):
+                 res = await runner_process(*inp)
+                 final = await unwrap(loop, res)
+                 await output_handler(rec, final)
+                 return final
 
-            res = await unwrap(runner_process(*inp))
-            await printer(res)
+            await recurse(compute, None, loop)
 
         except KeyboardInterrupt:
             print(file=sys.stderr)
