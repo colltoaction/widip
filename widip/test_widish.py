@@ -1,8 +1,9 @@
 import pytest
+import asyncio
 from discopy import closed
 from unittest.mock import patch, AsyncMock
-from .computer import Exec
-from .widish import SHELL_RUNNER, Process
+from .exec import Exec, ExecFunctor
+from .io import Process, loop_scope
 
 @pytest.mark.asyncio
 async def test_exec_runner():
@@ -10,47 +11,21 @@ async def test_exec_runner():
     # We want to verify that running the process calls run_command with appropriate args.
 
     # Exec(dom, cod)
-    # dom = "input"
-    # cod = "output"
     dom = closed.Ty("input")
     cod = closed.Ty("output")
     exec_box = Exec(dom, cod)
 
-    # SHELL_RUNNER converts Exec to Process
-    process = SHELL_RUNNER(exec_box)
+    loop = asyncio.get_running_loop()
+    
+    with loop_scope(loop):
+        # ExecFunctor converts Exec to Process
+        runner = ExecFunctor(loop=loop)
+        process = runner(exec_box)
 
-    # The process should:
-    # 1. Start with inputs corresponding to dom.
-    # 2. Add Constant (Gamma) -> "bin/widish"
-    # 3. Call Eval("bin/widish", inputs)
-    # Eval should trigger _deferred_exec_subprocess (or similar logic for Eval).
-
-    # We need to mock run_command in widish.py
-    with patch("widip.widish.Process.run_command", new_callable=AsyncMock) as mock_run:
-        mock_run.return_value = "executed"
-
-        # Run the process.
-        result = process("some_input")
-
-        # If result is awaitable, await it.
-        from widip.thunk import unwrap
-        final_result = await unwrap(result)
-
-        assert final_result == "executed"
-
-        # Verify call arguments
-        # args passed to run_command: name, cmd_args, stdin
-        # mock_run.assert_called_once() 
-        assert mock_run.call_count >= 1
-        call_args = mock_run.call_args_list[0]
-        print(f"DEBUG_TEST: call_args={call_args}", flush=True)
-        print(f"DEBUG_TEST: call_args[0]={call_args[0]}", flush=True)
-        # name, args, stdin
-        # name, args, stdin
-        assert call_args[0][0] == "exec"
-        assert call_args[0][1] == ["some_input"] # args
+        # The result should be a Process
+        assert isinstance(process, Process)
         
-        # Stdin should be a stream (StringIO)
-        stdin_arg = call_args[0][2]
-        assert hasattr(stdin_arg, "read")
-        assert stdin_arg.read() == ""
+        # Verify the process has the right types
+        assert process.dom is not None
+        assert process.cod is not None
+

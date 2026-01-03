@@ -10,8 +10,7 @@ import contextvars
 from contextlib import contextmanager
 
 from discopy import closed, python, utils
-from .files import repl_read, file_diagram
-from .computer import RECURSION_REGISTRY
+from .computer import get_anchor, set_anchor
 from .thunk import unwrap, Thunk
 
 T = TypeVar("T")
@@ -134,13 +133,11 @@ async def _to_bytes(item: Any, loop: asyncio.AbstractEventLoop) -> bytes:
 
 async def run_command(runner: Callable, loop: asyncio.AbstractEventLoop, name: Any, args: Sequence[Any], stdin: Any) -> Any:
     """Starts an async subprocess and returns its output stream."""
-    if name in (registry := RECURSION_REGISTRY.get()):
-         item = registry[name]
+    item = get_anchor(name)
+    if item is not None:
          if not callable(item):
               item = runner(item)
-              new_registry = registry.copy()
-              new_registry[name] = item
-              RECURSION_REGISTRY.set(new_registry)
+              set_anchor(name, item)
          return await unwrap(loop, item(stdin))
 
     name_str = (await _to_bytes(name, loop)).decode()
@@ -159,7 +156,6 @@ async def run_command(runner: Callable, loop: asyncio.AbstractEventLoop, name: A
 async def _feed_stdin(loop: asyncio.AbstractEventLoop, stdin: Any, process: asyncio.subprocess.Process):
     try:
          in_stream = await unwrap(loop, stdin)
-         if __debug__: print(f"DEBUG: feeder input: {in_stream!r}", file=sys.stderr)
          
          items = in_stream if isinstance(in_stream, (list, tuple)) else (in_stream,)
          
@@ -179,12 +175,11 @@ async def _feed_stdin(loop: asyncio.AbstractEventLoop, stdin: Any, process: asyn
                       r = v.read(); c = await r if asyncio.iscoroutine(r) else r
                       d = c if isinstance(c, bytes) else c.encode()
                  else: d = str(v).encode()
-                 if __debug__: print(f"DEBUG: pipe writing: {d!r}", file=sys.stderr)
                  process.stdin.write(d)
                  await process.stdin.drain()
 
-    except Exception as e:
-         if __debug__: print(f"DEBUG: feeder error: {e}", file=sys.stderr)
+    except Exception:
+         pass
     finally:
          if process.stdin.can_write_eof():
               process.stdin.write_eof()
@@ -227,3 +222,31 @@ async def shell_prompt(file_name: str, loop: asyncio.AbstractEventLoop) -> str |
         return await loop.run_in_executor(None, input, prompt)
     except (EOFError, KeyboardInterrupt):
         return None
+
+# --- File Watching (merged from watch.py) ---
+
+async def handle_changes(reload_fn):
+    """Watch for file changes and reload diagrams."""
+    from watchfiles import awatch
+    async for changes in awatch('.', recursive=True):
+        for change_type, path_str in changes:
+            if path_str.endswith(".yaml"):
+                reload_fn(path_str)
+
+async def run_with_watcher(coro, reload_fn=None):
+    """Run a coroutine with optional file watching."""
+    watcher_task = None
+    if __debug__ and reload_fn:
+        if sys.stdin.isatty():
+            print(f"watching for changes in current path", file=sys.stderr)
+        watcher_task = asyncio.create_task(handle_changes(reload_fn))
+
+    try:
+        await coro
+    finally:
+        if watcher_task:
+            watcher_task.cancel()
+            try:
+                await watcher_task
+            except asyncio.CancelledError:
+                pass

@@ -6,11 +6,43 @@ from pathlib import Path
 from typing import Any, AsyncIterator
 from contextlib import contextmanager
 
-from .files import repl_read, file_diagram
+from yaml import YAMLError
+from discopy.closed import Diagram
+from nx_yaml import nx_compose_all
+
+from .loader import incidences_to_diagram
+from .drawing import diagram_draw
 from .computer import interpreter, compiler
-from .io import loop_scope, printer
+from .io import loop_scope, printer, run_with_watcher
 from .exec import widip_runner
-from .watch import run_with_watcher
+
+
+# --- File I/O (merged from files.py) ---
+
+def repl_read(stream):
+    """Parse a stream into a diagram."""
+    incidences = nx_compose_all(stream)
+    return incidences_to_diagram(incidences)
+
+
+def file_diagram(file_name) -> Diagram:
+    """Load a diagram from a file."""
+    path = Path(file_name)
+    return repl_read(path.open())
+
+
+def reload_diagram(path_str):
+    """Reload and redraw a diagram from a file."""
+    print(f"reloading {path_str}", file=sys.stderr)
+    try:
+        fd = file_diagram(path_str)
+        if hasattr(fd, "simplify"):
+            fd = fd.simplify()
+        diagram_draw(Path(path_str), fd)
+    except YAMLError as e:
+        print(e, file=sys.stderr)
+
+
 
 # --- Input Reading (Read) ---
 
@@ -37,6 +69,7 @@ async def read(fd: Any | None, path: Path | None, file_name: str, loop: asyncio.
         yield repl_read(source_str), Path(file_name), BytesIO(b"")
         if not sys.stdin.isatty(): break
 
+
 # --- Runtime Setup (Environment) ---
 
 def env():
@@ -57,12 +90,19 @@ def get_source(args, loop):
     else:
          return read(None, None, sys.executable, loop)
 
+
 async def eval_print(args, runner, loop, source):
+    """Evaluate and print diagrams."""
     if args.watch and args.operands:
-            await run_with_watcher(Path(args.operands[0]), runner, loop, compiler)
+        pipeline = lambda fd: runner(compiler(fd, compiler, None))
+        await run_with_watcher(
+            interpreter(pipeline, source, loop, printer),
+            reload_fn=reload_diagram
+        )
     else:
-            pipeline = lambda fd: runner(compiler(fd, compiler, None))
-            await interpreter(pipeline, source, loop, printer)
+        pipeline = lambda fd: runner(compiler(fd, compiler, None))
+        await interpreter(pipeline, source, loop, printer)
+
 
 async def async_repl():
     """Main Read-Eval-Print Loop entry point (async)."""
@@ -74,6 +114,7 @@ async def async_repl():
 
         # 2. Eval & Print
         await eval_print(args, runner, loop, source)
+
 
 def repl():
     try:

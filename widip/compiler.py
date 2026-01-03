@@ -23,10 +23,8 @@ def compile_container(diagram, compiler, path):
     return diag
 
 def compile_anchor(diagram, compiler, path):
-    anchors = computer.RECURSION_REGISTRY.get().copy()
     compiled = compiler(diagram.inside, compiler, path)
-    anchors[diagram.name] = compiled
-    computer.RECURSION_REGISTRY.set(anchors)
+    computer.set_anchor(diagram.name, compiled)
     return computer.Program(diagram.name, computer.Language ** len(diagram.dom), computer.Language ** len(diagram.cod), (compiled,))
 
 def compile_alias(diagram, compiler, path):
@@ -85,9 +83,7 @@ def SHELL_COMPILER(diagram, compiler, path):
          res = closed.Id(res.dom) >> res
     
     if path is not None and __debug__ and not isinstance(diagram, (closed.Diagram, closed.Box)):
-        from .files import diagram_draw
+        from .drawing import diagram_draw
         diagram_draw(Path(path).with_suffix(".shell.yaml"), res)
     
     return res
-
-SHELL_COMPILER.from_callable = from_callable

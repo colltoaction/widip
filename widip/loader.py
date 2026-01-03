@@ -31,22 +31,22 @@ diagram_var: ContextVar[symmetric.Diagram] = ContextVar("diagram")
 inside_tag_var: ContextVar[bool] = ContextVar("inside_tag", default=False)
 
 @contextmanager
-def load_container(cursor):
-    token = diagram_var.set(cursor)
+def load_container(index, node):
+    token = diagram_var.set((index, node))
     try:
-        yield hif.iterate(cursor)
+        yield hif.iterate(index, node)
     finally:
         diagram_var.reset(token)
 
-def to_symmetric(diag):
+def to_traced(diag):
     if isinstance(diag, symmetric.Diagram):
         return diag
     return symmetric.Id(diag.dom) >> diag
 
 def bridge(left, right):
-    # Ensure both are symmetric diagrams
-    left = to_symmetric(left)
-    right = to_symmetric(right)
+    # Ensure both are traced diagrams
+    left = to_traced(left)
+    right = to_traced(right)
         
     if left.cod == right.dom:
         return left >> right
@@ -65,32 +65,32 @@ def bridge(left, right):
     
     return left >> right
 
-def load_scalar(cursor, tag):
-    data = hif.get_node_data(cursor)
+def load_scalar(index, node, tag):
+    data = hif.get_node_data(index, node)
     return Scalar(tag, data["value"])
 
-def load_sequence(cursor, tag):
+def load_sequence(index, node, tag):
     diagrams = []
     token = None
     if tag:
         token = inside_tag_var.set(True)
     
     try:
-        with load_container(cursor) as items:
-            for item in items:
-                diagrams.append(_incidences_to_diagram(item))
+        with load_container(index, node) as items:
+            for idx, nd in items:
+                diagrams.append(_incidences_to_diagram(idx, nd))
 
         if not diagrams:
             ob = Scalar(tag, "")
         else:
             if inside_tag_var.get():
-                # Parallel arguments/elements - use symmetric tensor
+                # Parallel arguments/elements - use traced tensor
                 ob = diagrams[0]
                 for d in diagrams[1:]:
-                    # Ensure both are symmetric diagrams
-                    left = to_symmetric(ob)
-                    right = to_symmetric(d)
-                    # Use symmetric tensor composition
+                    # Ensure both are traced diagrams
+                    left = to_traced(ob)
+                    right = to_traced(d)
+                    # Use traced tensor composition
                     ob = left.tensor(right)
             else:
                 # Sequential steps
@@ -109,15 +109,15 @@ def load_sequence(cursor, tag):
     # Return diagram directly for untagged sequences
     return ob
 
-def load_mapping(cursor, tag):
+def load_mapping(index, node, tag):
     items = []
     token = None
     if tag:
         token = inside_tag_var.set(True)
     
     try:
-        with load_container(cursor) as nodes:
-            diagrams_list = list(map(_incidences_to_diagram, nodes))
+        with load_container(index, node) as nodes:
+            diagrams_list = list(_incidences_to_diagram(idx, nd) for idx, nd in nodes)
 
             for key, val in batched(diagrams_list, 2):
                 if isinstance(key, Scalar) and not key.tag and not key.value:
@@ -142,16 +142,16 @@ def load_mapping(cursor, tag):
         
         items = [bridge(symmetric.Id(common_dom), item) for item in items]
 
-        # Implicitly copy input and merge results from all branches - use symmetric tensor
+        # Implicitly copy input and merge results from all branches - use traced tensor
         tensor = items[0]
         for item in items[1:]:
-            left = to_symmetric(tensor)
-            right = to_symmetric(item)
+            left = to_traced(tensor)
+            right = to_traced(item)
             tensor = left.tensor(right)
         
         connector = Copy(common_dom, len(items))
         merger = Merge(items[0].cod if items else Node, len(items))
-        ob = to_symmetric(connector) >> tensor >> to_symmetric(merger)
+        ob = to_traced(connector) >> tensor >> to_traced(merger)
     
     if tag:
         # Ensure the internal diagram is compatible with the bubble's dom=Node
@@ -161,27 +161,26 @@ def load_mapping(cursor, tag):
     # Return diagram directly for untagged mappings
     return ob
 
-def incidences_to_diagram(node: HyperGraph):
-    cursor = (0, node)
-    return _incidences_to_diagram(cursor)
+def incidences_to_diagram(node):
+    return _incidences_to_diagram(0, node)
 
-def _incidences_to_diagram(cursor):
-    data = hif.get_node_data(cursor)
+def _incidences_to_diagram(index, node):
+    data = hif.get_node_data(index, node)
     tag = (data.get("tag") or "")[1:]
     kind = data["kind"]
     anchor = data.get("anchor")
 
     match kind:
         case "stream":
-            ob = load_stream(cursor)
+            ob = load_stream(index, node)
         case "document":
-            ob = load_document(cursor)
+            ob = load_document(index, node)
         case "scalar":
-            ob = load_scalar(cursor, tag)
+            ob = load_scalar(index, node, tag)
         case "sequence":
-            ob = load_sequence(cursor, tag)
+            ob = load_sequence(index, node, tag)
         case "mapping":
-            ob = load_mapping(cursor, tag)
+            ob = load_mapping(index, node, tag)
         case "alias":
             ob = Alias(anchor)
         case _:
@@ -191,17 +190,17 @@ def _incidences_to_diagram(cursor):
         return Anchor(anchor, ob)
     return ob
 
-def load_document(cursor):
-    root = hif.step(cursor, "next")
-    return _incidences_to_diagram(root) if root else symmetric.Id(symmetric.Ty())
+def load_document(index, node):
+    root = hif.step(index, node, "next")
+    return _incidences_to_diagram(root[0], root[1]) if root else symmetric.Id(symmetric.Ty())
 
-def load_stream(cursor):
-    diagrams = list(map(_incidences_to_diagram, hif.iterate(cursor)))
+def load_stream(index, node):
+    diagrams = list(_incidences_to_diagram(idx, nd) for idx, nd in hif.iterate(index, node))
     if not diagrams:
         return symmetric.Id(symmetric.Ty())
     # A stream is an I -> I bubble, reduced with >>
     result = diagrams[0]
     for d in diagrams[1:]:
-        result = bridge(to_symmetric(result), to_symmetric(d))
+        result = bridge(to_traced(result), to_traced(d))
     
-    return to_symmetric(result)
+    return to_traced(result)

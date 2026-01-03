@@ -1,5 +1,6 @@
 from __future__ import annotations
 import contextvars
+from contextlib import contextmanager
 from typing import Any
 from pathlib import Path
 from discopy import closed, monoidal, symmetric
@@ -11,7 +12,30 @@ import sys
 # Symbols are represented by ℙ
 Language = closed.Ty("ℙ")
 
-RECURSION_REGISTRY: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("recursion", default={})
+# Anchor registry using ContextVar for async safety
+_ANCHORS: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("anchors", default={})
+
+def get_anchor(name: str) -> Any | None:
+    """Get a registered anchor by name."""
+    return _ANCHORS.get().get(name)
+
+@contextmanager
+def register_anchor(name: str, value: Any):
+    """Context manager to register an anchor and clean up after."""
+    old = _ANCHORS.get().copy()
+    new = old.copy()
+    new[name] = value
+    token = _ANCHORS.set(new)
+    try:
+        yield
+    finally:
+        _ANCHORS.reset(token)
+
+def set_anchor(name: str, value: Any):
+    """Set an anchor value (used during compilation)."""
+    anchors = _ANCHORS.get().copy()
+    anchors[name] = value
+    _ANCHORS.set(anchors)
 
 class Eval(closed.Eval):
     def __init__(self, base: closed.Ty, exponent: closed.Ty):
@@ -60,6 +84,34 @@ class Swap(closed.Box):
         super().__init__("σ", x @ y, y @ x)
         self.draw_as_swap = True
 
+
+# --- Sequential and Parallel Boxes (Programs as Diagrams) ---
+# Notation follows Dusko's paper: → for sequential, ⊗ for parallel
+
+class Sequential(closed.Box):
+    """Represents (→) sequential composition: A → B → C.
+    
+    From Dusko's paper Sec 2.2:
+    (F→G) evaluates to the composite functions A {F} B {G} C
+    """
+    def __init__(self, left: closed.Diagram, right: closed.Diagram):
+        self.left, self.right = left, right
+        name = f"{left.dom}→{left.cod}→{right.cod}"
+        super().__init__(name, left.dom, right.cod)
+
+
+class Parallel(closed.Box):
+    """Represents (⊗) tensor composition: A⊗U → B⊗V.
+    
+    From Dusko's paper Sec 2.2:
+    (F ⊗ T) evaluates to the parallel tensor of functions
+    """
+    def __init__(self, top: closed.Diagram, bottom: closed.Diagram):
+        self.top, self.bottom = top, bottom
+        name = f"({top.dom}→{top.cod})⊗({bottom.dom}→{bottom.cod})"
+        super().__init__(name, top.dom @ bottom.dom, top.cod @ bottom.cod)
+
+
 Computation = closed.Category()
 
 # --- Compiler Logic ---
@@ -79,6 +131,13 @@ def compiler(diagram, comp, path):
              tag = diagram.tag
              res = Program(tag, Language ** len(diagram.dom), Language ** len(diagram.cod), args) if tag else \
                    Data(diagram.value, Language ** len(diagram.dom), Language ** len(diagram.cod))
+        case yaml.Document():
+             # Each document has its own anchor scope
+             with register_anchor("__document__", None):
+                 res = comp(diagram.arg, comp, path)
+        case yaml.Stream():
+             # Compile each document independently (anchors reset per document)
+             res = comp(diagram.arg, comp, path)
         case yaml.Sequence() | yaml.Mapping():
              diag = comp(diagram.inside, comp, path)
              if diagram.tag:
@@ -91,10 +150,15 @@ def compiler(diagram, comp, path):
              else:
                  res = diag
         case yaml.Anchor():
-             anchors = RECURSION_REGISTRY.get().copy()
-             compiled = comp(diagram.inside, comp, path)
-             anchors[diagram.name] = compiled
-             RECURSION_REGISTRY.set(anchors)
+             # First register a placeholder to break the recursive loop
+             placeholder = closed.Id(Language ** len(diagram.dom))
+             set_anchor(diagram.name, placeholder)
+             
+             # Now compile the inner content (which may reference this anchor via alias)
+             compiled = comp(diagram.arg, comp, path)
+             
+             # Update the registry with the actual compiled diagram
+             set_anchor(diagram.name, compiled)
              res = Program(diagram.name, Language ** len(diagram.dom), Language ** len(diagram.cod), (compiled,))
         case yaml.Alias():
              res = Program(diagram.name, Language ** len(diagram.dom), Language ** len(diagram.cod))
@@ -133,7 +197,7 @@ def compiler(diagram, comp, path):
          res = closed.Id(res.dom) >> res
     
     if path is not None and __debug__ and not isinstance(diagram, (closed.Diagram, closed.Box)):
-        from .files import diagram_draw
+        from .drawing import diagram_draw
         diagram_draw(Path(path).with_suffix(".shell.yaml"), res)
     
     return res

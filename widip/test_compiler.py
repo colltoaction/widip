@@ -2,7 +2,7 @@ import pytest
 from discopy import closed
 from .yaml import Sequence, Mapping, Scalar
 from .compiler import SHELL_COMPILER
-from .computer import Data, Program, Exec
+from .computer import Data, Program, Language
 
 # Helper to create dummy scalars for testing
 def mk_scalar(name):
@@ -25,25 +25,25 @@ def mk_scalar(name):
     ),
 ])
 def test_compile_structure(input_bubble, expected_type):
-    compiled = SHELL_COMPILER(input_bubble)
+    # SHELL_COMPILER takes (diagram, compiler, path)
+    compiled = SHELL_COMPILER(input_bubble, SHELL_COMPILER, None)
     # Check that it compiles to a Diagrams
     assert isinstance(compiled, closed.Diagram)
     # Could check structure more deeply if needed, e.g. length of boxes
     # compiled.boxes matches inner structure
 
 def test_exec_compilation():
-    # Test that Scalar with !exec tag compiles to Exec box
+    # Test that Scalar with !exec tag compiles to Program box
     # !exec tag means tag="exec".
     s = Scalar("exec", "ls")
-    c = SHELL_COMPILER(s)
+    c = SHELL_COMPILER(s, SHELL_COMPILER, None)
 
     # SHELL_COMPILER returns a Diagram wrapping the box
     assert isinstance(c, closed.Diagram)
     assert len(c.boxes) == 1
     box = c.boxes[0]
-    assert isinstance(box, Exec)
+    # Tagged scalars compile to Program boxes
+    assert isinstance(box, Program)
     
-    # Language is closed.Ty("IO")
-    from .computer import Language
+    # Language is closed.Ty("ℙ")
     assert box.dom == Language
-    # expected_cod = closed.Ty("exec") >> closed.Ty("exec")
