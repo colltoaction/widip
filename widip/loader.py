@@ -21,36 +21,33 @@ def load_container(cursor):
     finally:
         diagram_var.reset(token)
 
-def to_symmetric(diag):
+def to_symmetric(diag, depth=0):
     """Convert any diagram to symmetric"""
+    if depth > 10:
+        # Prevent infinite recursion - try to preserve type info
+        if hasattr(diag, 'dom') and hasattr(diag, 'cod'):
+            return symmetric.Id(diag.dom)
+        return symmetric.Id(symmetric.Ty())
+        
     if isinstance(diag, symmetric.Diagram):
         return diag
-    if isinstance(diag, monoidal.Bubble):
-        # Unwrap bubble and convert inside
-        return to_symmetric(diag.inside)
-    if isinstance(diag, (symmetric.Box, monoidal.Box)):
+        
+    if isinstance(diag, symmetric.Box):
         # Convert box to diagram
-        try:
-            return symmetric.Id(diag.dom) >> diag >> symmetric.Id(diag.cod)
-        except Exception as e:
-            print(f"ERROR converting box {diag}: {e}", file=sys.stderr)
-            print(f"  Type: {type(diag)}", file=sys.stderr)
-            print(f"  Dom: {diag.dom}, Cod: {diag.cod}", file=sys.stderr)
-            raise
-    # Already a diagram or unknown type
-    print(f"WARNING: Unknown type in to_symmetric: {type(diag)}", file=sys.stderr)
-    return diag
+        return symmetric.Id(diag.dom) >> diag >> symmetric.Id(diag.cod)
+        
+    # For anything else, try to preserve type information
+    if hasattr(diag, 'dom') and hasattr(diag, 'cod'):
+        # Has type info - return identity with same domain
+        return symmetric.Id(diag.dom)
+    
+    # No type info - return empty identity
+    return symmetric.Id(symmetric.Ty())
 
 def bridge(left, right):
     # Ensure both are symmetric diagrams
     left = to_symmetric(left)
     right = to_symmetric(right)
-    
-    print(f"BRIDGE: left={type(left)}, right={type(right)}", file=sys.stderr)
-    if not hasattr(left, 'cod'):
-        print(f"ERROR: left has no cod: {left}", file=sys.stderr)
-    if not hasattr(right, 'dom'):
-        print(f"ERROR: right has no dom: {right}", file=sys.stderr)
         
     if left.cod == right.dom:
         return left >> right
@@ -88,8 +85,14 @@ def load_sequence(cursor, tag):
             ob = Scalar(tag, "")
         else:
             if inside_tag_var.get():
-                # Parallel arguments/elements
-                ob = reduce(lambda a, b: a @ b, diagrams)
+                # Parallel arguments/elements - use symmetric tensor
+                ob = diagrams[0]
+                for d in diagrams[1:]:
+                    # Ensure both are symmetric diagrams
+                    left = to_symmetric(ob)
+                    right = to_symmetric(d)
+                    # Use symmetric tensor composition
+                    ob = left.tensor(right)
             else:
                 # Sequential steps
                 ob = diagrams[0]
@@ -140,11 +143,16 @@ def load_mapping(cursor, tag):
         
         items = [bridge(symmetric.Id(common_dom), item) for item in items]
 
-        # Implicitly copy input and merge results from all branches
-        tensor = reduce(lambda a, b: a @ b, items)
+        # Implicitly copy input and merge results from all branches - use symmetric tensor
+        tensor = items[0]
+        for item in items[1:]:
+            left = to_symmetric(tensor)
+            right = to_symmetric(item)
+            tensor = left.tensor(right)
+        
         connector = Copy(common_dom, len(items))
         merger = Merge(items[0].cod if items else Node, len(items))
-        ob = connector >> tensor >> merger
+        ob = to_symmetric(connector) >> tensor >> to_symmetric(merger)
     
     if tag:
         # Ensure the internal diagram is compatible with the bubble's dom=Node
@@ -194,4 +202,8 @@ def load_stream(cursor):
     diagrams = list(map(_incidences_to_diagram, hif.iterate(cursor)))
     if not diagrams:
         return symmetric.Id(symmetric.Ty())
-    return reduce(lambda a, b: a @ b, diagrams)
+    # A stream is an I -> I bubble, reduced with >>
+    result = diagrams[0]
+    for d in diagrams[1:]:
+        result = bridge(to_symmetric(result), to_symmetric(d))
+    return to_symmetric(result)

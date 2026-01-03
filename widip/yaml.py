@@ -81,6 +81,8 @@ class Merge(symmetric.Box):
         self.n = n
         # draw as box (requested L70-76)
         self.draw_as_spider = False
+        # display tag in merge box
+        self.drawing_name = f"Merge({x}, {n})"
 
 class Discard(symmetric.Box):
     def __init__(self, x):

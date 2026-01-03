@@ -1,10 +1,10 @@
-? 10: &countdown
+10: &countdown
   !xargs { test, 0, -eq }: Liftoff!
   !xargs { test, 0, -lt }:
     - !xargs { -I, "{}" , expr, "{}", -, 1 }
     - *countdown
-
-? 15: &countdown2
+---
+15: &countdown2
   !xargs { test, 0, -eq }: Blastoff!
   !xargs { test, 0, -lt }:
     - !xargs { -I, "{}" , expr, "{}", -, 2 }
