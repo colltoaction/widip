@@ -37,3 +37,37 @@ async def run_discard(ar: Discard, *args: T) -> tuple[T, ...]:
 async def run_merge(ar: Merge, *args: T) -> tuple[Any, ...]:
     from .io import MultiStreamReader
     return (MultiStreamReader(args),)
+
+async def run_partial(runner: Any, ar: Partial, *args: T) -> Any:
+    # Partial(arg, n)
+    # The first n arguments are "missing" from the input (args),
+    # but where are they?
+    # If Partial assumes they are provided by closure context or stored?
+    # As implemented in computer.py, Partial doesn't store them.
+
+    # If Partial is intended to be executed, it must be because it's a residual.
+    # But if it didn't capture the static args, it can't execute.
+    # UNLESS: Partial is just a marker and the args are passed in *args?
+    # Partial dom = arg.dom[n:]
+    # So *args matches the remaining inputs.
+
+    # We need the first n inputs.
+    # If we assume they are NOT available, then Partial cannot be executed directly
+    # unless it was created with them.
+
+    # However, if we assume this is just for test/structure, we might just pass
+    # dummy values or fail.
+
+    # But for now, let's just run the inner diagram if possible, assuming
+    # we have all arguments (which we don't).
+    # This will likely fail if we try to execute.
+
+    # For the purpose of "highlighting lisp nature", maybe we are supposed to
+    # treat Partial as a function that waits for more args?
+
+    # Let's try to run it on the provided args combined with empty/default args?
+    # Or maybe we just return the Partial box itself as a value (Quoting)?
+
+    # If we treat it as execution:
+    # We need to execute ar.arg with (captured_args + args).
+    pass

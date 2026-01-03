@@ -78,7 +78,7 @@ async def test_eval_logic(loop):
     async def capture_output(rec, val):
         output_captured.append(val)
 
-    with widip_runner(executable="python3", loop=loop) as runner:
+    with widip_runner(executable="python3", loop=loop) as (runner, _):
         pipeline = lambda fd: runner(compiler(fd, compiler, None))
 
         # We need a source iterator
@@ -123,7 +123,7 @@ async def test_print_logic(loop):
     async def capture_output(rec, val):
         output_captured.append(val)
 
-    with widip_runner(loop=loop) as runner:
+    with widip_runner(loop=loop) as (runner, _):
         pipeline = lambda fd: runner(compiler(fd, compiler, None))
 
         async def source_gen():
@@ -158,7 +158,7 @@ async def test_params_logic(loop):
     input_content = b"test_input"
     input_stream = BytesIO(input_content)
 
-    with widip_runner(loop=loop) as runner:
+    with widip_runner(loop=loop) as (runner, _):
         pipeline = lambda fd: runner(compiler(fd, compiler, None))
 
         async def source_gen():
@@ -166,17 +166,6 @@ async def test_params_logic(loop):
             yield copy_box, Path("test"), input_stream
 
         await interpreter(pipeline, source_gen(), loop, capture_output)
-
-    # We expect output_captured to contain the results.
-    # interpreter/recurse logic iterates over results if it is a list/tuple?
-    # No, `recurse` just returns the value.
-    # `interpreter` logic: `final = await unwrap(loop, res); await output_handler(rec, final)`
-    # `printer` logic in repl.py handles tuples recursively.
-    # Our `capture_output` is just appending.
-
-    # `run_copy` returns a tuple.
-    # So `final` will be a tuple.
-    # `capture_output` will be called once with that tuple.
 
     assert len(output_captured) == 1
     res_tuple = output_captured[0]

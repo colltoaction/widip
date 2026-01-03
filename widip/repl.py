@@ -68,7 +68,7 @@ async def async_repl():
     """Main Read-Eval-Print Loop entry point (async)."""
     args = env()
     
-    with loop_scope() as loop, widip_runner(executable=sys.executable, loop=loop) as runner:
+    with widip_runner(executable=sys.executable) as (runner, loop):
         # 1. Read
         source = get_source(args, loop)
 

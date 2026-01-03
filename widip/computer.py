@@ -48,6 +48,13 @@ class Discard(closed.Box):
         super().__init__("ε", x, closed.Ty())
         self.draw_as_spider = True
 
+class Partial(closed.Box):
+    def __init__(self, arg: closed.Diagram, n: int = 1, left: bool = True):
+        self.arg, self.n, self.left = arg, n, left
+        name = f"Part({arg.name}, {n})"
+        dom, cod = arg.dom[n:], arg.cod
+        super().__init__(name, dom, cod)
+
 class Swap(closed.Box):
     def __init__(self, x: closed.Ty, y: closed.Ty):
         super().__init__("σ", x @ y, y @ x)

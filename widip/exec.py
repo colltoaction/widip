@@ -17,11 +17,12 @@ T = TypeVar("T")
 @contextlib.contextmanager
 def widip_runner(executable: str = sys.executable, loop: asyncio.AbstractEventLoop | None = None):
     """Runner setup: creates ExecFunctor and handles KeyboardInterrupt."""
-    runner = ExecFunctor(executable=executable, loop=loop)
-    try:
-        yield runner
-    except KeyboardInterrupt:
-        pass
+    with loop_scope(loop) as loop:
+        runner = ExecFunctor(executable=executable, loop=loop)
+        try:
+            yield runner, loop
+        except KeyboardInterrupt:
+            pass
 
 class Exec(closed.Box):
     def __init__(self, dom: closed.Ty, cod: closed.Ty):
@@ -55,7 +56,8 @@ async def _exec_wrapper(runner: ExecFunctor, loop: asyncio.AbstractEventLoop, ar
         Swap: widish.run_swap, 
         Copy: widish.run_copy,
         Merge: widish.run_merge, 
-        Discard: widish.run_discard
+        Discard: widish.run_discard,
+        Partial: widish.run_partial,
     }
     
     # Handle Gamma constant specially if requested via a check
