@@ -1,4 +1,5 @@
 import asyncio
+import sys
 from typing import IO, Callable, Awaitable, TypeVar
 from io import StringIO
 from functools import partial
@@ -13,15 +14,27 @@ T = TypeVar("T")
 
 U = TypeVar("U")
 
-async def safe_read_str(item: T | U) -> str:
-    if hasattr(item, 'read'):
-        content = item.read()
-        if asyncio.iscoroutine(content):
-            content = await content
-        if isinstance(content, bytes):
-            return content.decode("utf-8")
-        return content if content is not None else ""
-    return str(item) if item is not None else ""
+
+async def to_stream(item: T | U) -> StringIO:
+    """Convert any item to a StringIO stream."""
+    if isinstance(item, StringIO):
+        # Create a copy to avoid consuming the original
+        return StringIO(item.getvalue())
+    if isinstance(item, (tuple, list)):
+        # Flatten tuple/list by recursively converting elements
+        parts = []
+        for sub_item in item:
+            if isinstance(sub_item, StringIO):
+                parts.append(sub_item.getvalue())
+            elif isinstance(sub_item, (tuple, list)):
+                parts.append((await to_stream(sub_item)).getvalue())
+            else:
+                parts.append(str(sub_item) if sub_item is not None else "")
+        return StringIO("".join(parts))
+    # Convert to string and wrap in StringIO
+    return StringIO(str(item) if item is not None else "")
+
+
 
 def _lazy(func: Callable[..., Awaitable[T]], ar: object) -> Callable[..., Awaitable[T]]:
     """Returns a function that returns a partial application of func."""
@@ -29,7 +42,13 @@ def _lazy(func: Callable[..., Awaitable[T]], ar: object) -> Callable[..., Awaita
         return partial(func, ar, *args) # type: ignore
     return wrapper
 
-async def run_command(runner: T, name: object, args: tuple[str, ...], stdin: U) -> asyncio.StreamReader:
+async def run_command(
+    runner: closed.Functor,
+    name: str | object,
+    args: tuple[str, ...],
+    stdin: StringIO
+) -> StringIO:
+
     # Logic merged from widish.py
     
     # 1. Check for Recursion / Registry
@@ -46,44 +65,30 @@ async def run_command(runner: T, name: object, args: tuple[str, ...], stdin: U) 
                   compiled_runner = item
              return await compiled_runner(stdin)
 
-        # 2. Check for YAML execution wrapper
-        if name.endswith(".yaml"):
-            str_args = tuple(map(str, args))
-            args = (name, ) + str_args
-            name = "bin/widish"
 
     if not isinstance(name, str):
         return StringIO("")
 
     args = tuple(map(str, args))
 
-    # 3. Subprocess Execution
+    # Subprocess Execution in text mode
     process: asyncio.subprocess.Process = await asyncio.create_subprocess_exec(
         name, *args,
         stdout=asyncio.subprocess.PIPE,
         stdin=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
+        stderr=None,
+        text=True
     )
 
-    async def pipe_input():
-        try:
-            content = await safe_read_str(stdin)
-            if content:
-                process.stdin.write(content.encode("utf-8"))
-                await process.stdin.drain()
-        except Exception:
-            pass
-        finally:
-            process.stdin.close()
+    # Use communicate to handle stdin/stdout
+    stdout, _ = await process.communicate(stdin.getvalue())
+    return StringIO(stdout)
 
-    asyncio.create_task(pipe_input())
 
-    return process.stdout
-
-Exec = closed.Category(python.Ty, Process)
+ExecCategory = closed.Category(python.Ty, Process)
 
 def exec_ob(ob: closed.Ty) -> type:
-    if ob == Language or getattr(ob, "name", "") == "IO":
+    if ob == Language:
         return IO
     return object
 
@@ -93,6 +98,7 @@ def exec_ob(ob: closed.Ty) -> type:
 from .thunk import unwrap
 
 async def exec_deferred(runner: T, ar: object, *args: U) -> U:
+    # ... resolution logic ...
     async def resolve(x: T | U) -> T | U:
         if callable(x):
             return await unwrap(x())
@@ -110,14 +116,11 @@ async def exec_deferred(runner: T, ar: object, *args: U) -> U:
     else:
             if not resolved: return StringIO("")
             name = resolved[0]
-            # Eval wrapping name? If name is stream, read it.
-            if hasattr(name, 'read'):
-                name = (await safe_read_str(name)).strip()
+            if isinstance(name, StringIO):
+                name = name.getvalue().strip()
             
             stdin_wires = resolved[-1]
-            if isinstance(stdin_wires, (tuple, list)):
-                pass 
-            else:
+            if not isinstance(stdin_wires, (tuple, list)):
                 stdin_wires = [stdin_wires]
                 
             cmd_args = resolved[1:-1]
@@ -127,34 +130,29 @@ async def exec_deferred(runner: T, ar: object, *args: U) -> U:
     for arg in cmd_args:
             if isinstance(arg, (tuple, list)):
                 arg = arg[0] if arg else ""
-            if hasattr(arg, 'read'):
-                content = (await safe_read_str(arg)).strip()
-                final_args.append(content)
+            if isinstance(arg, StringIO):
+                final_args.append(arg.getvalue().strip())
             else:
                 final_args.append(str(arg))
             
-    # Prepare Stdin Stream
-    stdin_contents = []
-    if isinstance(stdin_wires, (tuple, list)):
-            for w in stdin_wires:
-                stdin_contents.append(await safe_read_str(w))
+    # Prepare Stdin Stream - normalize to single stream
+    if len(stdin_wires) == 1:
+         stdin_stream = await to_stream(stdin_wires[0])
     else:
-            stdin_contents.append(await safe_read_str(stdin_wires))
-            
-    stdin_stream = StringIO("".join(stdin_contents))
+         stdin_stream = await to_stream(stdin_wires)
 
     return await run_command(runner, name, final_args, stdin_stream)
 
 
 async def exec_program(runner: T, ar: object, *args: U) -> U:
-    # Programs take all inputs from wires as stdin
-    # Merge args into single stream
-    contents = []
-    for arg in args:
-            contents.append(await safe_read_str(arg))
-    stdin_stream = StringIO("".join(contents))
+    # Normalize args to single stream
+    if len(args) == 1:
+         stdin_stream = await to_stream(args[0])
+    else:
+        stdin_stream = await to_stream(args)
     
     return await run_command(runner, ar.name, ar.args, stdin_stream)
+
 
 
 class ExecFunctor(closed.Functor):
@@ -163,7 +161,7 @@ class ExecFunctor(closed.Functor):
             exec_ob,
             self.ar_map,
             dom=Computation,
-            cod=Exec
+            cod=ExecCategory
         )
 
     def ar_map(self, ar: object) -> Process:
@@ -195,37 +193,33 @@ class ExecFunctor(closed.Functor):
 
 EXEC = ExecFunctor()
 
-def flatten(x: IO | list | tuple | str | None) -> list[str]:
+async def flatten(x: IO | list | tuple | str | None) -> list[str]:
     if x is None: return []
-    if hasattr(x, 'read'):
-        content = x.read()
+    if isinstance(x, StringIO):
+        content = x.getvalue()
         return content.splitlines() if content else []
     if isinstance(x, (list, tuple)):
         res = []
-        for item in x: res.extend(flatten(item))
+        for item in x: res.extend(await flatten(item))
         return res
+    if isinstance(x, str):
+        return x.splitlines() if x else []
     return [str(x)]
+
 
 async def trace_output(ar: T, res: U) -> U:
     from discopy.utils import tuplify
+    # Only replicate streams, don't print
     if ar and isinstance(ar, (Data, Eval, Program)):
              
-             print_vals = []
              new_res_vals = []
              
              for item in tuplify(res):
-                 if hasattr(item, "read"):
-                      content = await safe_read_str(item)
-                      print_vals.append(content)
-                      new_res_vals.append(StringIO(content))
+                 if isinstance(item, StringIO):
+                      new_res_vals.append(StringIO(item.getvalue()))
                  else:
-                      print_vals.append(item)
                       new_res_vals.append(item)
 
-             trace_out = flatten(print_vals)
-             if trace_out:
-                 print(*trace_out, sep="\n", flush=True)
-            
              if len(new_res_vals) <= 1:
                  return new_res_vals[0] if new_res_vals else None
              else:

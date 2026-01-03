@@ -1,6 +1,6 @@
 import asyncio
 from functools import partial
-from typing import Awaitable, Callable, Sequence, IO, TypeVar, Generic
+from typing import Awaitable, Callable, Sequence, IO, TypeVar, Generic, Any
 
 from io import StringIO
 from discopy.utils import tuplify, untuplify
@@ -15,7 +15,7 @@ T = TypeVar("T")
 async def _bridge_pipe(f: Callable[..., Awaitable[T]], g: Callable[..., Awaitable[U]], *args: T) -> U:
     res = await unwrap(f(*args))
     
-    def is_failure(x: object) -> bool:
+    def is_failure(x: Any) -> bool:
         if x is None: return True
         return False
 
@@ -24,14 +24,14 @@ async def _bridge_pipe(f: Callable[..., Awaitable[T]], g: Callable[..., Awaitabl
     
     return await unwrap(g(*utils.tuplify(res)))
 
-async def _tensor_inside(f: Callable[..., Awaitable[T]], g: Callable[..., Awaitable[U]], n: int, *args: object) -> tuple[T, ...]:
+async def _tensor_inside(f: Callable[..., Awaitable[T]], g: Callable[..., Awaitable[U]], n: int, *args: T) -> tuple[T, ...]:
     # args tuple unpacking is hard to type precisely without Variadic Generics
     args1, args2 = args[:n], args[n:]
     res1 = await unwrap(f(*args1))
     res2 = await unwrap(g(*args2))
     return tuplify(res1) + tuplify(res2) # type: ignore
 
-async def _eval_func(f: Callable[..., Awaitable[T]], *x: object) -> T:
+async def _eval_func(f: Callable[..., Awaitable[T]], *x: T) -> T:
     return await unwrap(f(*x))
 
 
@@ -41,7 +41,7 @@ class Process(python.Function, Generic[T]):
         super().__init__(inside, dom, cod)
         self.type_checking = False
 
-    async def __call__(self, *args: object) -> T:
+    async def __call__(self, *args: T) -> T:
         # We need to unwrap the result of the internal function
         ar = getattr(self, "ar", None)
         # print(f"DEBUG: Process call ar={ar}", file=sys.stderr)
@@ -78,7 +78,7 @@ class Process(python.Function, Generic[T]):
 
 
     @staticmethod
-    async def run_constant(ar: object, *args: object) -> tuple[IO, ...]:
+    async def run_constant(ar: Any, *args: T) -> tuple[T, ...]:
         if ar.value:
             return (StringIO(ar.value), )
         n = 1
@@ -96,16 +96,16 @@ class Process(python.Function, Generic[T]):
         return await inner_runner(*args)
 
     @staticmethod
-    def run_swap(ar: object, *args: object) -> tuple[object, ...]:
+    def run_swap(ar: Any, *args: T) -> tuple[T, ...]:
         n = len(ar.left)
         return args[n:] + args[:n]
 
     @staticmethod
-    def run_cast(ar: object, *args: object) -> object:
+    def run_cast(ar: Any, *args: T) -> T:
         return args[0] if args else None
 
     @staticmethod
-    async def run_copy(ar: object, *args: object) -> tuple[IO | None, ...]:
+    async def run_copy(ar: Any, *args: T) -> tuple[T, ...]:
         val = args[0] if args else None
         if val is None:
              return (None,) * ar.n
@@ -118,7 +118,7 @@ class Process(python.Function, Generic[T]):
         return (val,) * ar.n
 
     @staticmethod
-    async def run_discard(ar: object, *args: object) -> tuple[object, ...]:
+    async def run_discard(ar: Any, *args: T) -> tuple[T, ...]:
         # Consume stream to avoid leaks/buffering issues?
         from .exec import safe_read_str
         for arg in args:
@@ -126,7 +126,7 @@ class Process(python.Function, Generic[T]):
         return ()
 
     @staticmethod
-    async def run_merge(ar: object, *args: object) -> tuple[IO, ...]:
+    async def run_merge(ar: Any, *args: T) -> tuple[T, ...]:
         # Merge streams into one
         contents = []
         from .exec import safe_read_str
@@ -142,7 +142,7 @@ class Process(python.Function, Generic[T]):
 
 
     @staticmethod
-    def run_constant_gamma(ar: object, *args: object) -> str:
+    def run_constant_gamma(ar: Any, *args: T) -> str:
         return "bin/widish"
 
 

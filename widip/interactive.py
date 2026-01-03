@@ -8,28 +8,25 @@ from io import StringIO
 from discopy.utils import tuplify
 
 from .files import file_diagram, repl_read
-from .exec import EXEC as SHELL_RUNNER
+from .exec import EXEC as SHELL_RUNNER, flatten
 from .widish import Process
 from .thunk import unwrap
 from .compiler import SHELL_COMPILER
 from .computer import Language
 
 
-def flatten(x: IO | list | tuple | str | None) -> list[str]:
-    if x is None: return []
-    if hasattr(x, 'read'):
-        content = x.read()
-        return content.splitlines() if content else []
-    if isinstance(x, (list, tuple)):
-        res = []
-        for item in x: res.extend(flatten(item))
-        return res
-    return [str(x)]
+def prepare_input_stream(args: list[str], stdin_content: str) -> IO[str]:
+    combined_input_str = "\n".join(args)
+    if stdin_content:
+        if combined_input_str: combined_input_str += "\n"
+        combined_input_str += stdin_content
+    return StringIO(combined_input_str)
 
 
 async def async_exec_diagram(yaml_d, path, *shell_program_args):
     loop = asyncio.get_running_loop()
-
+    
+    # Debug drawing logic
     if __debug__ and path is not None:
         from .files import diagram_draw
         diagram_draw(path, yaml_d)
@@ -42,39 +39,17 @@ async def async_exec_diagram(yaml_d, path, *shell_program_args):
     
     runner_process = SHELL_RUNNER(compiled_d)
     
-    # Map shell_program_args to the initial input
-    # If the diagram expects input, use shell_program_args or stdin
-    initial_args = list(shell_program_args) if shell_program_args else []
-    
-    # Read stdin if available
+    # Read stdin if available (buffered approach is simpler and less intrusive)
     stdin_content = ""
     if not sys.stdin.isatty():
         stdin_content = await loop.run_in_executor(None, sys.stdin.read)
     
-    # Combine args and stdin into one inputs list? 
-    # Or depends on process domain.
-    # If domain is simple IO (length 1), we combine everything into one Stream.
-    # If domain is wider, we might need distribution strategy.
-    # For now, following shelling convention: arguments + stdin -> single input stream
+    input_stream = prepare_input_stream(list(shell_program_args) if shell_program_args else [], stdin_content)
     
-    combined_input_str = "\n".join(initial_args)
-    if stdin_content:
-        if combined_input_str: combined_input_str += "\n"
-        combined_input_str += stdin_content
-        
-    input_stream = StringIO(combined_input_str)
-    
-    # Input tuple for the process
-    # Just pass the stream as the single input. 
-    # If dom is 0, we pass nothing? 
-    # If dom is > 1, we duplicates? Or pass multiple streams?
-    # Simplest assumption: Main diagram takes 1 IO wire.
     inp = (input_stream,)
-    
-    # If dom is 0 (State), we don't pass arguments properly? 
-    # But usually shells start with IO.
     if not runner_process.dom:
          inp = ()
+
          
     # Execute
     if inp:
@@ -82,8 +57,8 @@ async def async_exec_diagram(yaml_d, path, *shell_program_args):
     else:
         res = await unwrap(runner_process())
     
-    # Filter out dead branches (None) and print result
-    filtered = flatten(res)
+    # Output handling
+    filtered = await flatten(res)
     if filtered:
         print(*filtered, sep="\n", flush=True)
 
