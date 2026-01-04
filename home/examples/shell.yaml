@@ -1,5 +1,5 @@
-#!/usr/bin/env titi/bin/titi
+#!/usr/bin/env titi
 !cat home/examples/shell.yaml:
   ? !wc -c
   ? !grep grep: !wc -c
-  ? !tail -n 2
+  ? !tail ["-n", "2"]

@@ -303,9 +303,17 @@ async def printer(rec: Any, val: Any, hooks: dict):
             elif isinstance(item, bytes):
                 hooks['stdout_write'](item)
             else:
-                hooks['stdout_write'](str(item).encode() + b"\n")
+                s = str(item)
+                # Only add newline if it doesn't end with one?
+                # Shell tools usually add their own newlines.
+                # If we print scalar values like "Liftoff!", we probably want a newline.
+                # If we print lines from grep/wc, they have newlines.
+                if not s.endswith('\n'): s += '\n'
+                hooks['stdout_write'](s.encode())
     else:
-        hooks['stdout_write'](str(val).encode() + b"\n")
+        s = str(val)
+        if not s.endswith('\n'): s += '\n'
+        hooks['stdout_write'](s.encode())
 
 
 async def run_with_watcher(coro, reload_fn):

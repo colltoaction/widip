@@ -5,7 +5,7 @@
 A simple example that outputs a string.
 
 ```bash
-python -m titi examples/hello-world.yaml
+home/examples/hello-world.yaml
 # Expected: Hello world!
 ```
 
@@ -16,8 +16,11 @@ python -m titi examples/hello-world.yaml
 Demonstrates parallel fan-out with a mapping. Reads its own source file and computes multiple statistics.
 
 ```bash
-python -m titi examples/shell.yaml
-# Expected: byte count, grep matches, and last 2 lines
+home/examples/shell.yaml
+97
+22
+  ? !grep grep: !wc -c
+  ? !tail -2
 ```
 
 <img src="shell.shell.svg" width="500">
@@ -27,8 +30,8 @@ python -m titi examples/shell.yaml
 Recursive countdown orchestration using `test` for termination, `expr` for arithmetic, and anchor/alias for recursion.
 
 ```bash
-echo "5" | python -m titi examples/countdown.yaml
-# Expected: 5 4 3 2 1 Liftoff!
+echo "5" | examples/countdown.yaml
+# Expected: 3 2 1 Liftoff!
 ```
 
 <img src="countdown.shell.svg" width="600">
