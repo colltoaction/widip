@@ -216,10 +216,10 @@ char *join_scalar_values(char *s1, char *s2) {
 %nonassoc TAG
 %nonassoc DEDENT
 
-%type <node> stream document document_list node optional_node flow_node block_node optional_flow_node
+%type <node> stream document node opt_node flow_node block_node opt_flow_node
 %type <node> flow_seq_items flow_map_entries flow_map_entry
 %type <node> block_sequence block_mapping block_seq_items block_map_entries map_entry
-%type <node> anchored_node tagged_node anchored_tagged_node
+%type <node> propertied_node
 %type <str> merged_plain_scalar
 
 %start stream
@@ -230,19 +230,21 @@ char *join_scalar_values(char *s1, char *s2) {
 %%
 
 stream
-    : opt_newlines document_list    { root = make_stream($2); }
-    | opt_newlines                  { root = make_stream(NULL); }
+    : opt_newlines                  { root = make_stream(NULL); $$ = root; }
+    | stream document               { 
+                                      if ($1->children) append_node($1->children, $2); 
+                                      else $1->children = $2; 
+                                      $$ = $1; 
+                                      root = $$; 
+                                    }
     ;
 
-document_list
-    : document              { $$ = $1; }
-    | document_list document{ $$ = append_node($1, $2); }
-    ;
+/* document_list removed */
 
 document
     : node opt_newlines { $$ = $1; }
-    | DOC_START opt_newlines optional_node opt_newlines { $$ = $3; }
-    | directives DOC_START opt_newlines optional_node opt_newlines { $$ = $4; }
+    | DOC_START opt_newlines opt_node opt_newlines { $$ = $3; }
+    | directives DOC_START opt_newlines opt_node opt_newlines { $$ = $4; }
     | DOC_END opt_newlines { $$ = make_null(); }
     | DOC_START DOC_END opt_newlines { $$ = make_null(); }
     ;
@@ -280,12 +282,12 @@ newlines
     | newlines NEWLINE
     ;
 
-optional_node
+opt_node
     : node { $$ = $1; }
     | /* empty */ { $$ = make_null(); }
     ;
 
-optional_flow_node
+opt_flow_node
     : flow_node { $$ = $1; }
     | /* empty */ { $$ = make_null(); }
     ;
@@ -293,9 +295,7 @@ optional_flow_node
 node
     : flow_node
     | block_node
-    | anchored_node
-    | tagged_node
-    | anchored_tagged_node
+    | propertied_node
     ;
 
 flow_node
@@ -317,34 +317,19 @@ block_node
     | INDENT node DEDENT    { $$ = $2; }
     ;
 
-anchored_tagged_node
-    : ANCHOR opt_newlines TAG opt_newlines node {
-                              $$ = make_anchor($1, make_tag($3, $5));
-                            }
-    | TAG opt_newlines ANCHOR opt_newlines node {
-                              $$ = make_tag($1, make_anchor($3, $5));
-                            }
-    | ANCHOR opt_newlines TAG opt_newlines {
-                              $$ = make_anchor($1, make_tag($3, make_null()));
-                            } %prec LOW_PREC
-    | TAG opt_newlines ANCHOR opt_newlines {
-                              $$ = make_tag($1, make_anchor($3, make_null()));
-                            } %prec LOW_PREC
-    ;
-
-anchored_node
-    : ANCHOR opt_newlines node {
-                              $$ = make_anchor($1, $3);
-                            }
-    | ANCHOR newlines INDENT node DEDENT {
-                              $$ = make_anchor($1, $4);
-                            }
-    | ANCHOR newlines DEDENT node {
-                              $$ = make_anchor($1, $4);
-                            }
-    | ANCHOR opt_newlines {
-                              $$ = make_anchor($1, make_null());
-                            } %prec LOW_PREC
+propertied_node
+    : ANCHOR opt_newlines TAG opt_newlines node { $$ = make_anchor($1, make_tag($3, $5)); }
+    | TAG opt_newlines ANCHOR opt_newlines node { $$ = make_tag($1, make_anchor($3, $5)); }
+    | ANCHOR opt_newlines TAG opt_newlines { $$ = make_anchor($1, make_tag($3, make_null())); } %prec LOW_PREC
+    | TAG opt_newlines ANCHOR opt_newlines { $$ = make_tag($1, make_anchor($3, make_null())); } %prec LOW_PREC
+    | ANCHOR opt_newlines node { $$ = make_anchor($1, $3); }
+    | ANCHOR newlines INDENT node DEDENT { $$ = make_anchor($1, $4); }
+    | ANCHOR newlines DEDENT node { $$ = make_anchor($1, $4); }
+    | ANCHOR opt_newlines { $$ = make_anchor($1, make_null()); } %prec LOW_PREC
+    | TAG opt_newlines node { $$ = make_tag($1, $3); }
+    | TAG newlines INDENT node DEDENT { $$ = make_tag($1, $4); }
+    | TAG newlines DEDENT node { $$ = make_tag($1, $4); }
+    | TAG opt_newlines { $$ = make_tag($1, make_null()); } %prec LOW_PREC
     ;
 
 merged_plain_scalar
@@ -352,16 +337,9 @@ merged_plain_scalar
     | merged_plain_scalar PLAIN_SCALAR { $$ = join_scalar_values($1, $2); }
     ;
 
-tagged_node
-    : TAG opt_newlines node { $$ = make_tag($1, $3); }
-    | TAG newlines INDENT node DEDENT { $$ = make_tag($1, $4); }
-    | TAG newlines DEDENT node { $$ = make_tag($1, $4); }
-    | TAG opt_newlines { $$ = make_tag($1, make_null()); } %prec LOW_PREC
-    ;
-
 flow_seq_items
-    : optional_flow_node                         { $$ = $1; }
-    | flow_seq_items COMMA optional_flow_node    { $$ = append_node($1, $3); }
+    : opt_flow_node                         { $$ = $1; }
+    | flow_seq_items COMMA opt_flow_node    { $$ = append_node($1, $3); }
     ;
 
 flow_map_entries
@@ -371,10 +349,10 @@ flow_map_entries
     ;
 
 flow_map_entry
-    : flow_node COLON optional_flow_node              { $$ = append_node($1, $3); }
+    : flow_node COLON opt_flow_node              { $$ = append_node($1, $3); }
     | flow_node                                       { $$ = append_node($1, make_null()); }
-    | MAP_KEY optional_flow_node COLON optional_flow_node { $$ = append_node($2, $4); }
-    | MAP_KEY optional_flow_node                      { $$ = append_node($2, make_null()); }
+    | MAP_KEY opt_flow_node COLON opt_flow_node { $$ = append_node($2, $4); }
+    | MAP_KEY opt_flow_node                      { $$ = append_node($2, make_null()); }
     ;
 
 block_sequence
@@ -382,8 +360,8 @@ block_sequence
     ;
 
 block_seq_items
-    : SEQ_ENTRY optional_node               { $$ = $2; }
-    | block_seq_items opt_newlines SEQ_ENTRY optional_node{ $$ = append_node($1, $4); }
+    : SEQ_ENTRY opt_node               { $$ = $2; }
+    | block_seq_items opt_newlines SEQ_ENTRY opt_node{ $$ = append_node($1, $4); }
     ;
 
 block_mapping
@@ -399,12 +377,12 @@ block_map_entries
 
 /* A single mapping entry: key: value (value can be inline or on next line indented) */
 map_entry
-    : flow_node COLON opt_newlines optional_node { $$ = append_node($1, $4); }
+    : flow_node COLON opt_newlines opt_node { $$ = append_node($1, $4); }
     | flow_node COLON newlines INDENT node DEDENT { $$ = append_node($1, $5); }
-    | MAP_KEY optional_node COLON opt_newlines optional_node { $$ = append_node($2, $5); }
-    | MAP_KEY optional_node                 { $$ = append_node($2, make_null()); }
-    | MAP_KEY newlines INDENT optional_node DEDENT COLON opt_newlines optional_node { $$ = append_node($4, $8); }
-    | MAP_KEY newlines INDENT optional_node DEDENT { $$ = append_node($4, make_null()); }
+    | MAP_KEY opt_node COLON opt_newlines opt_node { $$ = append_node($2, $5); }
+    | MAP_KEY opt_node                 { $$ = append_node($2, make_null()); }
+    | MAP_KEY newlines INDENT opt_node DEDENT COLON opt_newlines opt_node { $$ = append_node($4, $8); }
+    | MAP_KEY newlines INDENT opt_node DEDENT { $$ = append_node($4, make_null()); }
     ;
 
 %%

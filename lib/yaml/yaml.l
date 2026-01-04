@@ -90,8 +90,12 @@ NEWLINE     \n|\r\n|\r
 DIGIT       [0-9]
 ALPHA       [a-zA-Z_]
 ALNUM       [a-zA-Z0-9_]
-SAFE_BLOCK  [a-zA-Z0-9_\-./!@#$%&()=+~\\,\[\]\{\}]
-SAFE_FLOW   [a-zA-Z0-9_\-./!@#$%&()=+~\\]
+
+/* Simplified SAFE classes - Escape brackets properly */
+SAFE_C_BLK  [a-zA-Z0-9_\-./!@#$%&()=+~,\[\]{}]
+SAFE_S_BLK  [a-zA-Z0-9_\-./@$+=~]
+SAFE_C_FLW  [a-zA-Z0-9_\-./!@#$%&()=+~]
+SAFE_S_FLW  [a-zA-Z0-9_\-./@$+=~]
 
 %%
 
@@ -224,6 +228,12 @@ SAFE_FLOW   [a-zA-Z0-9_\-./!@#$%&()=+~\\]
                           return tok;
                         }
 
+<INITIAL,FLOW>"&"[a-zA-Z0-9_\-]+    { yylval.str = strdup(yytext+1); return ANCHOR; }
+<INITIAL,FLOW>"*"[a-zA-Z0-9_\-]+    { yylval.str = strdup(yytext+1); return ALIAS; }
+<INITIAL,FLOW>"!"[a-zA-Z0-9_\-./!@#$%&()=+~\\]* { yylval.str = strdup(yytext+1); return TAG; }
+
+<INITIAL,FLOW>"#"[^\n\r]*    { /* Comment */ }
+
 <INITIAL>"["            { yy_push_state(FLOW); return LBRACKET; }
 <FLOW>"["               { yy_push_state(FLOW); return LBRACKET; }
 
@@ -245,20 +255,14 @@ SAFE_FLOW   [a-zA-Z0-9_\-./!@#$%&()=+~\\]
 <INITIAL>"-"            { REJECT; }
 
 <FLOW>"-"               { yylval.str = strdup("-"); return PLAIN_SCALAR; }
-
 <FLOW>"?"               { return MAP_KEY; }
 
-<FLOW>":"[ \t\r\n\[\]\{\}\,] {
-                            yyless(1); /* Push back the follower */
-                            return COLON; 
-                        }
-
-<INITIAL>{SAFE_BLOCK}+(":"{SAFE_BLOCK}+)*([ \t]+{SAFE_BLOCK}+(":"{SAFE_BLOCK}+)*)* {
+<INITIAL>{SAFE_S_BLK}{SAFE_C_BLK}* {
     yylval.str = strdup(yytext);
     return PLAIN_SCALAR;
 }
 
-<FLOW>{SAFE_FLOW}+(":"{SAFE_FLOW}+)*([ \t]+{SAFE_FLOW}+(":"{SAFE_FLOW}+)*)* {
+<FLOW>{SAFE_S_FLW}{SAFE_C_FLW}* {
     yylval.str = strdup(yytext);
     return PLAIN_SCALAR;
 }
@@ -267,13 +271,10 @@ SAFE_FLOW   [a-zA-Z0-9_\-./!@#$%&()=+~\\]
                             yylval.str = strdup(":");
                             return PLAIN_SCALAR;
                         }
-
-
-<INITIAL,FLOW>"&"{ALNUM}+    { yylval.str = strdup(yytext+1); return ANCHOR; }
-<INITIAL,FLOW>"*"{ALNUM}+    { yylval.str = strdup(yytext+1); return ALIAS; }
-<INITIAL,FLOW>"!"[a-zA-Z0-9_\-./!@#$%&()=+~\\]* { yylval.str = strdup(yytext+1); return TAG; }
-
-<INITIAL,FLOW>"#"[^\n\r]*    { /* Comment */ }
+<FLOW>":"/[ \t\r\n\[\]\{\}\,] {
+                            yyless(1); /* Push back the follower */
+                            return COLON; 
+                        }
 
 <INITIAL,FLOW>\"([^\"\\]|\\.)*\" { 
                           yylval.str = strndup(yytext+1, yyleng-2);
