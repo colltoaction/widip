@@ -1,7 +1,7 @@
 import pytest
 import asyncio
-from titi.yaml import load
-from titi.exec import execute, titi_runner
+from computer.yaml import load
+from computer.exec import execute, titi_runner
 from computer import Program, Data
 
 @pytest.mark.parametrize("yaml_src, expected_output", [
@@ -26,7 +26,16 @@ def test_anchor_alias_execution(yaml_src, expected_output):
     async def run_test():
         with titi_runner(hooks) as (runner, loop):
             diag = load(yaml_src)
-            await runner(diag)
+            res = await runner(diag)
+            if res is not None:
+                # Mimic REPL
+                if isinstance(res, tuple):
+                    for r in res:
+                        if hasattr(r, 'read'): r = await r.read()
+                        hooks['stdout_write'](hooks['value_to_bytes'](r))
+                else:
+                    if hasattr(res, 'read'): res = await res.read()
+                    hooks['stdout_write'](hooks['value_to_bytes'](res))
     
     asyncio.run(run_test())
     # Note: anchor execution + alias execution = 2 prints for echo

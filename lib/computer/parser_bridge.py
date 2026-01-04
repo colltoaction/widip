@@ -93,7 +93,7 @@ class YAMLParserBridge:
         
         # Simple parser for the indented tree structure
         root = {'type': 'root', 'children': []}
-        stack = [(0, root)]
+        stack = [(-1, root)]
         
         for line in lines:
             # Count leading spaces
@@ -212,6 +212,21 @@ class YAMLParserBridge:
             
             return Anchor(anchor_name, inner_diag)
         
+        elif node_type == 'TAG':
+            # TAG node acts as a wrapper
+            tag_name = node.get('value', '')
+            if tag_name.startswith("!"):
+                tag_name = tag_name[1:]
+            children = node.get('children', [])
+            
+            if children:
+                inner_diag = self._convert_node(children[0])
+            else:
+                inner_diag = frobenius.Id(Node)
+                
+            # Use specific YamlBox kind "Tagged" to let construct.py handle the tag
+            return YamlBox("Tagged", dom=inner_diag.dom, cod=inner_diag.cod, kind="Tagged", tag=tag_name, nested=inner_diag)
+
         else:
             # Unknown node type - return identity on Node
             return frobenius.Id(Node)

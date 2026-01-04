@@ -24,7 +24,7 @@ from computer.io import (
     BytesIO,
     Path
 )
-from computer.asyncio import async_read, run_repl, run, loop_scope
+from computer.asyncio import async_read, run_repl, run, loop_scope, eval_diagram
 from computer.exec import execute, titi_runner
 
 

@@ -7,14 +7,13 @@ import os
 
 from discopy import closed
 from titi.repl import read, env_fn, get_source, read_diagram
-from computer.super import interpreter
-from computer.yaml import construct_functor as compiler
-from titi.exec import titi_runner
-from titi.io import value_to_bytes, get_executable
+# interpreter was likely removed or moved. Assuming simple execution pipeline
+from computer.exec import titi_runner
+from computer.io import value_to_bytes_fn, get_executable
 
 @pytest.fixture
 def hooks():
-    from titi.io import impl_value_to_bytes, impl_get_executable
+    from computer.io import impl_value_to_bytes, impl_get_executable
     return {
         'set_recursion_limit': lambda n: None,
         'value_to_bytes': impl_value_to_bytes,
@@ -73,7 +72,9 @@ async def test_eval_logic(loop, hooks):
         pipeline = lambda fd, stdin=None: runner(fd, stdin)
         async def source_gen():
             yield program, Path("test"), BytesIO(b"")
-        await interpreter(pipeline, source_gen(), loop, capture_output)
+        # await interpreter(pipeline, source_gen(), loop, capture_output)
+        from titi.repl import eval_diagram
+        await eval_diagram(pipeline, source_gen(), loop, capture_output)
 
     assert len(output_captured) > 0
     result = output_captured[0]
@@ -100,7 +101,8 @@ async def test_print_logic(loop, hooks):
         pipeline = lambda fd, stdin=None: runner(fd, stdin)
         async def source_gen():
             yield data_box, Path("test"), BytesIO(b"")
-        await interpreter(pipeline, source_gen(), loop, capture_output)
+        from titi.repl import eval_diagram
+        await eval_diagram(pipeline, source_gen(), loop, capture_output)
 
     assert len(output_captured) > 0
     assert "Hello World" in str(output_captured[0])
@@ -119,7 +121,8 @@ async def test_data_logic(loop, hooks):
         pipeline = lambda fd, stdin=None: runner(fd, stdin)
         async def source_gen():
             yield data_box, Path("test"), BytesIO(b"")
-        await interpreter(pipeline, source_gen(), loop, capture_output)
+        from titi.repl import eval_diagram
+        await eval_diagram(pipeline, source_gen(), loop, capture_output)
 
     assert len(output_captured) == 1
     assert "test_input" in str(output_captured[0])

@@ -3,8 +3,8 @@ import asyncio
 import io
 import sys
 from pathlib import Path
-from titi.yaml import load
-from titi.exec import titi_runner
+from computer.yaml import load
+from computer.exec import titi_runner
 
 @pytest.mark.parametrize("yaml_src, expected_substrings", [
     # 1. Accumulative Tap (Untagged sequence)
@@ -37,7 +37,16 @@ def test_high_level_logic(yaml_src, expected_substrings):
     async def run_it():
         with titi_runner(hooks) as (runner, loop):
              diag = load(yaml_src)
-             await runner(diag)
+             res = await runner(diag)
+             # Mimic REPL print
+             if res is not None:
+                 if isinstance(res, tuple):
+                     for r in res:
+                        if hasattr(r, 'read'): r = await r.read()
+                        hooks['stdout_write'](hooks['value_to_bytes'](r))
+                 else:
+                     if hasattr(res, 'read'): res = await res.read()
+                     hooks['stdout_write'](hooks['value_to_bytes'](res))
              
     asyncio.run(run_it())
     combined = "".join(output)

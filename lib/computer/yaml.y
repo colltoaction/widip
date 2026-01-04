@@ -13,7 +13,8 @@ typedef enum {
     NODE_SEQ,
     NODE_MAP,
     NODE_ALIAS,
-    NODE_ANCHOR
+    NODE_ANCHOR,
+    NODE_TAG
 } NodeType;
 
 typedef struct Node {
@@ -71,6 +72,17 @@ Node *make_alias(char *name) {
     return n;
 }
 
+Node *make_tag(char *tag, Node *child) {
+    Node *n = malloc(sizeof(Node));
+    n->type = NODE_TAG;
+    n->tag = tag;
+    n->anchor = NULL;
+    n->value = NULL;
+    n->children = child;
+    n->next = NULL;
+    return n;
+}
+
 Node *append_node(Node *list, Node *item) {
     if (!list) return item;
     Node *curr = list;
@@ -108,6 +120,10 @@ void print_node(Node *n, int depth) {
             printf("ANCHOR: &%s\n", n->anchor);
             print_node(n->children, depth + 1);
             break;
+        case NODE_TAG:
+            printf("TAG: %s\n", n->tag);
+            print_node(n->children, depth + 1);
+            break;
     }
 }
 
@@ -129,25 +145,25 @@ void print_node(Node *n, int depth) {
 %type <node> stream document node scalar
 %type <node> flow_sequence flow_mapping flow_seq_items flow_map_entries
 %type <node> block_sequence block_mapping block_seq_items block_map_entries
-%type <node> tagged_node anchored_node
+%type <node> tagged_node anchored_node document_list
 
 %start stream
 
 %%
 
 stream
-    : document_list         { /* root already set */ }
+    : document_list         { root = make_seq($1); }
     ;
 
 document_list
-    : document              { root = $1; }
-    | document_list document{ /* multi-doc - keep last */ root = $2; }
+    : document              { $$ = $1; }
+    | document_list document{ $$ = append_node($1, $2); }
     ;
 
 document
     : node optional_newlines { $$ = $1; }
-    | DOC_START node        { $$ = $2; }
-    | DOC_START node DOC_END{ $$ = $2; }
+    | DOC_START optional_newlines node        { $$ = $3; }
+    | DOC_START optional_newlines node DOC_END{ $$ = $3; }
     | newlines node optional_newlines { $$ = $2; }
     ;
 
@@ -179,7 +195,7 @@ scalar
     ;
 
 tagged_node
-    : TAG optional_newlines node { $$ = $3; $$->tag = $1; }
+    : TAG optional_newlines node { $$ = make_tag($1, $3); }
     ;
 
 anchored_node
@@ -233,9 +249,9 @@ block_mapping
     ;
 
 block_map_entries
-    : node COLON node                       { $$ = append_node($1, $3); }
-    | block_map_entries NEWLINE node COLON node
-                                            { $$ = append_node($1, append_node($3, $5)); }
+    : node COLON optional_newlines node     { $$ = append_node($1, $4); }
+    | block_map_entries NEWLINE node COLON optional_newlines node
+                                            { $$ = append_node($1, append_node($3, $6)); }
     | block_map_entries NEWLINE             { $$ = $1; }
     ;
 

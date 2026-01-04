@@ -77,7 +77,9 @@ def impl_read_diagram_file(source: Any, parser_fn: Callable) -> Any:
 def impl_get_executable(): return sys.executable
 def impl_stdin_read(): return sys.stdin.read()
 def impl_stdin_isatty(): return sys.stdin.isatty()
-def impl_stdout_write(data): sys.stdout.buffer.write(data if isinstance(data, bytes) else data.encode())
+def impl_stdout_write(data): 
+    sys.stdout.buffer.write(data if isinstance(data, bytes) else data.encode())
+    sys.stdout.buffer.flush()
 def impl_set_recursion_limit(n): sys.setrecursionlimit(n)
 
 # --- Aliases for hooks ---

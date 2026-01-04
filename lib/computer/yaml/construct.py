@@ -246,7 +246,14 @@ def construct_box(box) -> closed.Diagram:
             # Run C compiler
             args = extract_args(box)
             return Program("cc", args)
-        
+
+        if tag == "Data":
+            # Extract scalar value from inside
+            # inside is typically Data(val) already if derived from Scalar
+            # If kind="Tagged", nested=Scalar("val") -> inside=Data("val")
+            # So just return inside.
+            return inside
+
         # Default: create Program with tag and args
         args = extract_args(box)
         return Program(tag, args)

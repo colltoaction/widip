@@ -6,7 +6,6 @@
 # Specialize a power function with a fixed exponent
 
 power_specialized: &power_spec
-  !seq
   - !data 2              # Static exponent = 2
   - !program square      # Specialized to squaring
   - !specializer         # Apply partial evaluation
@@ -18,7 +17,6 @@ simple_interpreter: &interp
   !program eval_simple
 
 test_program: &prog
-  !seq
   - !data "x + 1"
   - !data "* 2"
 
@@ -47,13 +45,13 @@ compiler_generator: &compgen
 
 factorial: &fact
   !anchor factorial
-  !seq
+
   - !program "test_zero"
   - !choice
     - !data 1                    # Base case: 0! = 1
-    - !seq                       # Recursive case
+    -                       # Recursive case
       - !copy 2
-      - !seq
+      - 
         - !program "dec"
         - !alias factorial       # Recursive call
         - !program "mul"
@@ -65,7 +63,6 @@ optimized_factorial: &opt_fact
 # Eliminate intermediate data structures
 
 pipeline: &pipe
-  !seq
   - !program map_inc           # map (+1)
   - !program map_double        # map (*2)
   - !program filter_even       # filter even
@@ -77,7 +74,6 @@ deforested: &defor
 # Combine multiple loops into one
 
 sum_of_squares: &sos
-  !seq
   - !program map_square
   - !program sum
 
@@ -88,7 +84,6 @@ fused: &fused_sos
 # Evaluate constant expressions at compile time
 
 constant_expr: &const
-  !seq
   - !data 3
   - !data 4
   - !program add
@@ -102,12 +97,10 @@ folded: &folded_const
 # Inline function calls
 
 helper: &helper
-  !seq
   - !program double
   - !program inc
 
 main_with_call: &main
-  !seq
   - !data 10
   - *helper
 
@@ -131,18 +124,18 @@ specialized_int_ascending: &spec_int_asc
   - !data "ascending"
 
 # --- Main Demo: Run All Examples ---
-!seq
-- !print "=== Supercompilation Demo ==="
-- !print "1. Partial Evaluation:"
+
+- "=== Supercompilation Demo ==="
+- "1. Partial Evaluation:"
 - *power_spec
-- !print "\n2. Futamura Projection 1:"
+- "\n2. Futamura Projection 1:"
 - *compiled
-- !print "\n3. Futamura Projection 2:"
+- "\n3. Futamura Projection 2:"
 - *comp
-- !print "\n4. Optimized Factorial:"
+- "\n4. Optimized Factorial:"
 - *opt_fact
-- !print "\n5. Deforestation:"
+- "\n5. Deforestation:"
 - *defor
-- !print "\n6. Constant Folding:"
+- "\n6. Constant Folding:"
 - *folded_const
-- !print "\n=== Demo Complete ==="
+- "\n=== Demo Complete ==="

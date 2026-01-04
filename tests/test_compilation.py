@@ -1,5 +1,5 @@
 import pytest
-from titi.yaml import load
+from computer.yaml import load
 from computer import Program, Data
 
 @pytest.mark.parametrize("yaml_src, expected_name, expected_args", [
@@ -26,7 +26,7 @@ def test_basic_compilation(yaml_src, expected_name, expected_args):
 
 @pytest.mark.parametrize("yaml_src, expected_box_names", [
     ("- &step !echo Thinking\n- *step", ["anchor", "alias"]),
-    ("!echo A >> !echo B", ["echo", "echo"]),
+    ("- !echo A\n- !echo B", ["echo", "echo"]),
 ])
 def test_composition_compilation(yaml_src, expected_box_names):
     """Verify composition of commands compiles correctly."""
