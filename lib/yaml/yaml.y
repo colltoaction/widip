@@ -301,12 +301,8 @@ propertied_node
     | ANCHOR opt_newlines TAG opt_newlines { $$ = make_anchor($1, make_tag($3, make_null())); } %prec LOW_PREC
     | TAG opt_newlines ANCHOR opt_newlines { $$ = make_tag($1, make_anchor($3, make_null())); } %prec LOW_PREC
     | ANCHOR opt_newlines node { $$ = make_anchor($1, $3); }
-    | ANCHOR newlines INDENT node DEDENT { $$ = make_anchor($1, $4); }
-    | ANCHOR newlines DEDENT node { $$ = make_anchor($1, $4); }
     | ANCHOR opt_newlines { $$ = make_anchor($1, make_null()); } %prec LOW_PREC
     | TAG opt_newlines node { $$ = make_tag($1, $3); }
-    | TAG newlines INDENT node DEDENT { $$ = make_tag($1, $4); }
-    | TAG newlines DEDENT node { $$ = make_tag($1, $4); }
     | TAG opt_newlines { $$ = make_tag($1, make_null()); } %prec LOW_PREC
     ;
 flow_node
@@ -345,8 +341,10 @@ flow_seq_items
 
 flow_seq_item
     : flow_node entry_value         { $$ = make_map(append_node($1, $2)); }
+    | propertied_node entry_value   { $$ = make_map(append_node($1, $2)); }
     | entry_key opt_entry_value     { $$ = make_map(append_node($1, $2)); }
     | flow_node                     { $$ = $1; }
+    | propertied_node               { $$ = $1; }
     ;
 
 flow_map_entries
@@ -398,7 +396,6 @@ entry_key
 
 entry_value
     : COLON opt_newlines opt_node { $$ = $3; }
-    | COLON newlines INDENT node DEDENT { $$ = $4; }
     ;
 
 opt_entry_value
