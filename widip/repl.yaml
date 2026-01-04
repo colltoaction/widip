@@ -1,0 +1,11 @@
+# widip/repl.yaml
+# !/usr/bin/env widish
+# Read-Eval-Print Loop Implementation in YAML
+
+!WhileLoop:
+  test: !TRUE {}
+  body:
+    !Sequential:
+      - !read: !stdin {}
+      - !interpreter: { program: !yaml: !read: !stdin {}, arg: !stdin {} }
+      - !write: !stdout {}

@@ -1,7 +1,7 @@
 # widip/computer/yaml.yaml
-# Functor: Evaluates diagram structure to concrete tuples.
+# YAML bootstrapping definition
 
-eval_diagram:
-  !desc: "Monoid homomorphism: flatten tuple of tuples via reduce(add, tuples, ())."
-  !id: eval_diagram
-  !type: [Language, Language]
+load:
+  !desc: "Parse and evaluate YAML source into a diagram structure."
+  !id: yaml
+  !type: [Str, Language]
