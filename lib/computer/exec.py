@@ -167,6 +167,59 @@ def exec_box(box: closed.Box) -> Process:
              # Eval
              try: result = eval(stdin_val)
              except: result = stdin_val
+        elif box.name == "stream":
+             from .core import Program
+             # Execute each item in the stream sequentially with CLEARED context
+             stream_items = args_data[0] if args_data else []
+             
+             last_res = None
+             if len(cod) == 1: 
+                  # Accumulate results if codomain is 1 (Language)
+                  # This mimics the "Accumulative Tap" at the document level
+                  # But typically Stream returns a tuple or merged content?
+                  # For now, let's execute all, but we need to MERGE their outputs if they produce any.
+                  # Since "stream" box is usually constructed with cod=1 if it's a Titi stream.
+                  results = []
+                  for item in stream_items:
+                       # CLEAR ANCHORS before each document
+                       ctx.anchors.clear()
+                       
+                       # Compile and execute item
+                       item_diag = item 
+                       item_proc = exec_functor(item_diag)
+                       
+                       # Input to item? Usually documents start fresh or share stdin?
+                       # Standard YAML: each doc is independent.
+                       # But in streams, we might pipe?
+                       # For now: pass empty input or stdin_val?
+                       # If we want independence, pass stdin_val to all (tap).
+                       
+                       # Prepare input args
+                       item_in = (stdin_val,) if len(item_proc.dom) > 0 else ()
+                       if len(item_proc.dom) > 1 and isinstance(stdin_val, tuple): item_in = stdin_val
+                       
+                       r = await unwrap(item_proc(*item_in), ctx.loop, memo)
+                       if r is not None: results.append(r)
+                  
+                  if not results: result = None
+                  elif len(results) == 1: result = results[0]
+                  else: 
+                       # Merge results
+                       from .asyncio import to_bytes
+                       valid = []
+                       for r in results:
+                            b = await to_bytes(r, ctx.loop, ctx.hooks)
+                            valid.append(b)
+                       result = b"".join(valid)
+             else:
+                  # If codomain is 0 or >1, just run
+                  for item in stream_items:
+                       ctx.anchors.clear()
+                       item_proc = exec_functor(item)
+                       item_in = (stdin_val,) if len(item_proc.dom) > 0 else ()
+                       if len(item_proc.dom) > 1 and isinstance(stdin_val, tuple): item_in = stdin_val
+                       await unwrap(item_proc(*item_in), ctx.loop, memo)
+                  result = ()
         else:
              result = await run_command(lambda x: x, ctx.loop, box.name, args_data, stdin_val, ctx.hooks)
         
@@ -290,20 +343,20 @@ class UniversalObMap:
     def __getitem__(self, _): return object
     def get(self, key, default=None): return object
 
-_FUNCTOR_CACHE = {}
+from weakref import WeakKeyDictionary
+_FUNCTOR_CACHE = WeakKeyDictionary()
 
 def _exec_functor_impl(diag: closed.Diagram) -> Process:
     import sys
     sys.setrecursionlimit(100000) # Ensure high limit for deep recursion
     
-    id_diag = id(diag)
-    if id_diag in _FUNCTOR_CACHE:
-        return _FUNCTOR_CACHE[id_diag]
+    if diag in _FUNCTOR_CACHE:
+        return _FUNCTOR_CACHE[diag]
         
     from discopy.closed import Functor
     f = Functor(ob=UniversalObMap(), ar=exec_dispatch, cod=python.Category())
     res = f(diag)
-    _FUNCTOR_CACHE[id_diag] = res
+    _FUNCTOR_CACHE[diag] = res
     return res
 
 from .yaml import Composable

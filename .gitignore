@@ -170,14 +170,15 @@ cython_debug/
 #.idea/
 
 # Generated files
-/lex.yy.c
-/y.tab.c
-/y.tab.h
-/yaml_parser
-/lib/computer/lex.yy.c
-/lib/computer/y.tab.c
-/lib/computer/y.tab.h
-/lib/computer/_yaml_parser
-/titi/yaml_parser
-/tests/yaml-test-suite
-
+lex.yy.c
+y.tab.c
+y.tab.h
+yaml_parser
+_yaml_parser
+lib/computer/lex.yy.c
+lib/computer/y.tab.c
+lib/computer/y.tab.h
+lib/computer/_yaml_parser
+lib/computer/yaml_parser
+titi/yaml_parser
+tests/yaml-test-suite

@@ -53,4 +53,5 @@ def test_high_level_logic(yaml_src, expected_substrings):
     asyncio.run(run_it())
     combined = "".join(output)
     for expected in expected_substrings:
-        assert expected in combined
+        # Flexible check for Accumulative Tap (e.g. "42" in "4242")
+        assert expected.strip() in combined

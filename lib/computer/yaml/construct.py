@@ -107,13 +107,21 @@ def construct_box(box) -> closed.Diagram:
             return Data(value)
 
     # Special: Treat untagged sequences as accumulative pipelines (print taps)
-    is_seq = kind in ["Sequence", "Stream"] and not tag
+    is_seq = kind == "Sequence" and not tag
     has_inside = hasattr(nested, 'inside') or isinstance(nested, list)
     if is_seq and has_inside:
           items = nested.inside if hasattr(nested, 'inside') else nested
           return sequential_compose(items)
+    
+    if kind == "Stream":
+          items = nested.inside if hasattr(nested, 'inside') else nested
+          return Program("stream", (items,))
 
-    inside = computer.yaml.construct_functor(nested)
+    if nested is None:
+         inside = closed.Id(Language)
+    else:
+         inside = computer.yaml.construct_functor(nested)
+
     
     if kind == "Mapping" and not tag:
         # Raw tensor representation for untagged mappings
@@ -302,8 +310,9 @@ def sequential_compose(items: list) -> closed.Diagram:
             # For "Accumulative Tap", we want to preserve previous output
             # and ALSO run the next one.
             
-            # If both have Language cod/dom, use Accumulative Tap
-            if n_res == 1 and n_layer == 1:
+            # If both have Language cod/dom AND matching output arity, use Accumulative Tap
+            n_layer_cod = len(layer_diag.cod)
+            if n_res == 1 and n_layer == 1 and n_layer_cod == 1:
                  # Shared input + Parallel output merged
                  res = make_copy(2) >> (res @ layer_diag) >> make_merge(2)
             elif n_res == n_layer:
