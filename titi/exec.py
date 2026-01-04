@@ -14,6 +14,7 @@ _EXEC_CTX = __import__('contextvars').ContextVar("exec_ctx")
 class ExecContext:
     def __init__(self, hooks: Dict[str, Callable], executable: str, loop: Any):
         self.hooks, self.executable, self.loop = hooks, executable, loop
+        self.anchors = {}
 
 # --- Leaf Execution ---
 
@@ -33,6 +34,21 @@ def exec_box(box: closed.Box) -> Process:
         args_data = box.data if hasattr(box, 'data') and isinstance(box.data, tuple) else ()
         stdin_val = args[0] if args else None
         if len(args) > 1: stdin_val = args
+        
+        # Intercept Special Commands
+        if box.name == "anchor":
+            name, inside = args_data
+            ctx.anchors[name] = inside
+            # Execute the inner diagram
+            return await execute(inside, ctx.hooks, ctx.executable, ctx.loop, stdin_val)
+            
+        if box.name == "alias":
+            name = args_data[0]
+            if name not in ctx.anchors:
+                raise ValueError(f"Unknown anchor: {name}")
+            # Recurse
+            return await execute(ctx.anchors[name], ctx.hooks, ctx.executable, ctx.loop, stdin_val)
+
         return await run_command(lambda x: x, ctx.loop, box.name, args_data, stdin_val, ctx.hooks)
     return Process(prog_fn, dom, cod)
 
@@ -115,7 +131,11 @@ def exec_functor(diag: closed.Diagram) -> Process:
     return f(diag)
 
 async def execute(diag: closed.Diagram, hooks: dict, executable: str, loop: Any, stdin: Any = None):
+    parent = _EXEC_CTX.get(None)
     ctx = ExecContext(hooks, executable, loop)
+    if parent:
+        ctx.anchors.update(parent.anchors)
+
     token = _EXEC_CTX.set(ctx)
     try:
         proc = exec_functor(diag)

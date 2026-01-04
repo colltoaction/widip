@@ -59,6 +59,8 @@ construct_dispatch.register(ren.SequenceBox, con.construct_box)
 construct_dispatch.register(ren.MappingBox, con.construct_box)
 construct_dispatch.register(ren.DocumentBox, lambda b: construct_dispatch(b.nested))
 construct_dispatch.register(ren.StreamBox, lambda b: construct_dispatch(b.nested))
+construct_dispatch.register(ren.AnchorBox, con.construct_box)
+construct_dispatch.register(ren.AliasBox, con.construct_box)
 construct_dispatch.register(ren.TitiBox, con.construct_box)
 
 construct_functor = closed.Functor(
