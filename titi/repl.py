@@ -2,7 +2,6 @@ import sys
 import os
 from typing import Any
 from functools import partial
-from contextlib import contextmanager
 
 from yaml import YAMLError
 from discopy import closed

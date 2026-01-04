@@ -100,9 +100,27 @@ def construct_box(box) -> closed.Diagram:
             return closed.Id(Language)
         return Data(value)
 
-    # 5. Handle Containers (Sequence / Mapping / Document / Stream)
-    if nested is None:
-        return closed.Id(Language)
+    # Special: Treat untagged sequences as accumulative pipelines (print taps)
+    if kind == "Sequence" and not tag and hasattr(nested, 'inside'):
+          res = None
+          for layer in nested.inside:
+               layer_diag = titi.yaml.construct_functor(layer)
+               if res is None:
+                    res = layer_diag
+               else:
+                    # Accumulative Tap: res >> copy >> (printer @ next_layer)
+                    n_res = len(res.cod)
+                    from computer import Copy, Merge
+                    tap = closed.Id(Language ** n_res)
+                    if n_res > 1:
+                        tap = Merge(Language, n_res) >> closed.Id(Language)
+                    
+                    if n_res > 0:
+                        cp = Copy(res.cod, 2) >> closed.Id(res.cod ** 2)
+                        res = res >> cp >> ( (tap >> Program("print", cod=closed.Ty())) @ closed.Id(res.cod) )
+                    
+                    res = res >> layer_diag
+          return res or closed.Id(Language)
 
     inside = titi.yaml.construct_functor(nested)
     

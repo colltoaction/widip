@@ -1,6 +1,5 @@
 """Async operations and lazy evaluation (thunks) using asyncio."""
-from collections.abc import Iterator, Callable, Awaitable, Sequence
-from contextlib import contextmanager, ExitStack
+from collections.abc import Iterator, Callable, Awaitable, Sequence, AsyncIterator
 from functools import partial
 from typing import Any, TypeVar, Union, AsyncIterator
 from pathlib import Path
@@ -24,28 +23,37 @@ def run(coro):
     """Run a coroutine to completion."""
     return asyncio.run(coro)
 
-@contextmanager
-def loop_scope(hooks: dict, loop: EventLoop | None = None):
-    """Context manager for setting the event loop in the current context."""
-    with ExitStack() as stack:
-        created = False
-        if loop is None:
+class loop_scope:
+    """Class-based context manager for setting the event loop."""
+    def __init__(self, hooks: dict, loop: EventLoop | None = None):
+        self.hooks = hooks
+        self.loop = loop
+        self.created = False
+        self.token = None
+
+    def __enter__(self):
+        if self.loop is None:
             try:
-                loop = asyncio.get_running_loop()
+                self.loop = asyncio.get_running_loop()
             except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                created = True
-                stack.callback(loop.close)
+                self.loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(self.loop)
+                self.created = True
         
-        token = loop_var.set(loop)
-        stack.callback(loop_var.reset, token)
+        self.token = loop_var.set(self.loop)
         
-        if created: 
-             fn = hooks.get('set_recursion_limit')
+        if self.created: 
+             fn = self.hooks.get('set_recursion_limit')
              if fn: fn(10000)
-        
-        yield loop
+        return self.loop
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.token:
+            try:
+                loop_var.reset(self.token)
+            except ValueError: pass # Different context
+        if self.created:
+            self.loop.close()
 
 
 # --- Memoization ---
@@ -53,19 +61,23 @@ def loop_scope(hooks: dict, loop: EventLoop | None = None):
 Memo = dict[int, tuple[Any, asyncio.Future]]
 memo_var: contextvars.ContextVar[Memo | None] = contextvars.ContextVar("memo", default=None)
 
-@contextmanager
-def recursion_scope():
-    """Context manager for recursion memoization."""
-    memo = memo_var.get()
-    token = None
-    if memo is None:
-        memo = {}
-        token = memo_var.set(memo)
-    try:
-        yield memo
-    finally:
-        if token:
-            memo_var.reset(token)
+class recursion_scope:
+    """Class-based context manager for recursion memoization."""
+    def __init__(self):
+        self.token = None
+
+    def __enter__(self):
+        memo = memo_var.get()
+        if memo is None:
+            memo = {}
+            self.token = memo_var.set(memo)
+        return memo
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.token:
+            try:
+                memo_var.reset(self.token)
+            except ValueError: pass # Guard against cross-context reset
 
 
 # --- Unwrapping ---

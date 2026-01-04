@@ -23,6 +23,21 @@ def mk_scalar(name):
         Mapping(mk_scalar("K") >> mk_scalar("V")),
         YamlBox
     ),
+    (
+        # Identity scalar
+        Scalar("id", None),
+        YamlBox
+    ),
+    (
+        # Data scalar
+        Scalar("Data", "some data"),
+        YamlBox
+    ),
+    (
+        # Nested Mapping (Valid composition)
+        Mapping((mk_scalar("K1") >> mk_scalar("V1")) @ (mk_scalar("K2") >> mk_scalar("V2"))),
+        YamlBox
+    ),
 ])
 def test_compile_structure(input_bubble, expected_class):
     # Tests that construct_functor (SHELL_COMPILER) correctly handles structural boxes.

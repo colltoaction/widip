@@ -5,8 +5,8 @@ from titi.exec import execute, titi_runner
 from computer import Program, Data
 
 @pytest.mark.parametrize("yaml_src, expected_output", [
-    ("&hello !echo world\n*hello", ["world\n", "world\n"]),
-    ("&fixed !Data data\n*fixed", ["data\n"]), # Data doesn't print by itself in execute, only returned. 
+    ("&hello !echo world\n---\n*hello", ["world\n", "world\n"]),
+    ("&fixed !Data data\n---\n*fixed", ["data\n"]), # Data doesn't print by itself in execute, only returned. 
                                               # But if piped to printer...
 ])
 def test_anchor_alias_execution(yaml_src, expected_output):

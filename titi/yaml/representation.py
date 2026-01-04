@@ -31,14 +31,12 @@ def Sequence(inside, tag="", **kwargs):
     return YamlBox("Sequence", dom=dom, cod=cod, nested=inside, tag=tag, **kwargs)
 
 def Mapping(inside, tag=""):
-    dom = getattr(inside, 'dom', Node)
-    cod = getattr(inside, 'cod', Node)
-    return YamlBox("Mapping", dom=dom, cod=cod, nested=inside, tag=tag)
+    # Mappings are treated as a single node value in our representation category
+    return YamlBox("Mapping", dom=Node, cod=Node, nested=inside, tag=tag)
 
 def Titi(inside, **kwargs):
-    dom = getattr(inside, 'dom', Node)
-    cod = getattr(inside, 'cod', Node)
-    return YamlBox("Titi", dom=dom, cod=cod, nested=inside, **kwargs)
+    # Titi endofunctor wraps everything into a single I/O stream handler
+    return YamlBox("Titi", dom=Node, cod=Node, nested=inside, **kwargs)
 
 def Anchor(name, inside):
     dom = getattr(inside, 'dom', Node)
@@ -46,7 +44,8 @@ def Anchor(name, inside):
     return YamlBox(f"Anchor({name})", dom=dom, cod=cod, kind="Anchor", anchor_name=name, nested=inside)
 
 def Alias(name):
-    return YamlBox(name, kind="Alias", anchor_name=name)
+    # Alias is a placeholder for any node
+    return YamlBox(name, dom=Node, cod=Node, kind="Alias", anchor_name=name)
 
 def Document(inside):
     dom = getattr(inside, 'dom', Node)

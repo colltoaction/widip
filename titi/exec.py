@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import Any, TypeVar, Dict, Callable
 from discopy import closed, python, symmetric, frobenius
 from .asyncio import run_command, unwrap
-from contextlib import contextmanager
 import discopy
 
 T = TypeVar("T")
@@ -56,27 +55,30 @@ def exec_box(box: closed.Box) -> Process:
             res = await execute(inside, ctx.hooks, ctx.executable, ctx.loop, stdin_val)
             from .asyncio import printer
             await printer(None, res, ctx.hooks)
-            return res
-            
-        if box.name == "alias":
+            result = res
+        elif box.name == "alias":
             name = args_data[0]
             if name not in ctx.anchors:
                 raise ValueError(f"Unknown anchor: {name}")
             res = await execute(ctx.anchors[name], ctx.hooks, ctx.executable, ctx.loop, stdin_val)
             from .asyncio import printer
             await printer(None, res, ctx.hooks)
-            return res
-
-        if box.name == "print":
+            result = res
+        elif box.name == "print":
              from .asyncio import printer
              await printer(None, stdin_val, ctx.hooks)
-             # Return () if codomain is empty, else return value
-             return () if not cod else stdin_val
-
-        if box.name == "read_stdin":
-             return ctx.hooks['stdin_read']()
-
-        return await run_command(lambda x: x, ctx.loop, box.name, args_data, stdin_val, ctx.hooks)
+             result = () if not cod else stdin_val
+        elif box.name == "read_stdin":
+             result = ctx.hooks['stdin_read']()
+        else:
+             result = await run_command(lambda x: x, ctx.loop, box.name, args_data, stdin_val, ctx.hooks)
+        
+        # Enforce DisCoPy Process return conventions
+        n_out = len(cod)
+        if n_out == 0: return ()
+        if n_out == 1:
+             return result[0] if isinstance(result, tuple) and len(result) == 1 else result
+        return discopy.utils.tuplify(result)
     return Process(prog_fn, dom, cod)
 
 def any_ty(n: int):
@@ -176,17 +178,33 @@ async def execute(diag: closed.Diagram, hooks: dict, executable: str, loop: Any,
         res = await unwrap(loop, proc(*arg))
         return res
     finally:
-        _EXEC_CTX.reset(token)
+        try:
+            _EXEC_CTX.reset(token)
+        except ValueError: pass
 
-@contextmanager
-def titi_runner(hooks: Dict[str, Callable], executable: str = "python3", loop: Any = None):
-    if loop is None:
-        import asyncio
-        loop = asyncio.get_running_loop()
-    ctx = ExecContext(hooks, executable, loop)
-    def runner(diag: closed.Diagram, stdin: Any = None):
-        return execute(diag, hooks, executable, loop, stdin)
-    yield runner, loop
+class titi_runner:
+    """Class-based context manager for running titi diagrams."""
+    def __init__(self, hooks: Dict[str, Callable], executable: str = "python3", loop: Any = None):
+        if loop is None:
+            import asyncio
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None # Will be handled in __enter__ if needed
+
+        self.hooks, self.executable, self.loop = hooks, executable, loop
+
+    def __enter__(self):
+        if self.loop is None:
+            import asyncio
+            self.loop = asyncio.get_event_loop()
+            
+        def runner(diag: closed.Diagram, stdin: Any = None):
+            return execute(diag, self.hooks, self.executable, self.loop, stdin)
+        return runner, self.loop
+
+    def __exit__(self, *args):
+        pass
 
 compile_exec = exec_functor
 __all__ = ['execute', 'ExecContext', 'exec_dispatch', 'Process', 'titi_runner', 'compile_exec']
