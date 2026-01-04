@@ -24,16 +24,10 @@ def compose_dispatch(box: Any) -> symmetric.Diagram:
     return box
 
 # Registrations
-compose_dispatch.register(ren.YamlBox, lambda b: getattr(ren, f"comp_{b.kind[:3].lower()}")(b, compose_functor))
+# Registrations
+compose_dispatch.register(ren.YamlBox, lambda b: ren.comp_box(b, compose_functor))
 
 def _compose_ar(box):
-    if hasattr(box, 'kind'):
-         # YamlBox stores kind
-         if box.kind == "Scalar": return ren.comp_sca(box)
-         if box.kind == "Alias": return ren.comp_ali(box)
-    elif hasattr(box, 'name'):
-        if box.name == "Scalar": return ren.comp_sca(box)
-        if box.name.startswith("Alias"): return ren.comp_ali(box)
     return compose_dispatch(box)
 
 compose_functor = symmetric.Functor(ob={symmetric.Ty("Node"): ren.Node}, ar=_compose_ar)

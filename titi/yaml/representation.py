@@ -56,13 +56,17 @@ def Document(inside):
 def Stream(inside):
     return YamlBox("Stream", nested=inside)
 
-# --- Compose Implementation Functions ---
 
-def comp_seq(box, compose): return Sequence(compose(box.nested), tag=box.tag)
-def comp_map(box, compose): return Mapping(compose(box.nested), tag=box.tag)
-def comp_doc(box, compose): return Document(compose(box.nested))
-def comp_str(box, compose): return Stream(compose(box.nested))
-def comp_anc(box, compose): return Anchor(box.anchor_name, compose(box.nested))
-def comp_sca(box): return Scalar(box.tag, box.value)
-def comp_ali(box): return Alias(box.anchor_name)
-def comp_tit(box, compose): return Titi(compose(box.nested))
+# --- Generic Composition ---
+
+def comp_box(box, compose):
+    """Generic composer for YamlBox."""
+    nested = compose(box.nested) if box.nested else None
+    return YamlBox(
+        box.name, box.dom, box.cod,
+        kind=box.kind,
+        tag=box.tag,
+        value=box.value,
+        nested=nested,
+        anchor_name=box.anchor_name
+    )
