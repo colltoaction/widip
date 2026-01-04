@@ -53,6 +53,9 @@ def construct_box(box) -> closed.Diagram:
     kind = getattr(box, 'kind', name)
     anchor_name = getattr(box, 'anchor_name', None)
 
+    # Debug
+    # print(f"DEBUG: construct_box kind={kind!r} name={name!r} tag={tag!r}", file=__import__('sys').stderr)
+
     # 1. Handle Titi Special Case
     if kind == "Titi" or tag == "titi":
         inside = computer.yaml.construct_functor(nested)
@@ -135,10 +138,17 @@ def construct_box(box) -> closed.Diagram:
     if tag and kind not in ["Titi"]:
         if tag == "seq": return inside
         
+        # Helper to safely compose if inside is providing input
+        def safe_compose(box):
+             if inside != closed.Id(Language): 
+                  try: return inside >> box
+                  except: pass
+             return box
+
         # --- Supercompilation Tags ---
         if tag == "specializer":
             from ..super_extended import specializer_box
-            return specializer_box >> closed.Id(Language)
+            return safe_compose(specializer_box >> closed.Id(Language))
         
         if tag == "futamura1":
             from ..super_extended import futamura_1
@@ -173,30 +183,22 @@ def construct_box(box) -> closed.Diagram:
         if tag == "ackermann":
             from ..hyper_extended import ackermann_box
             res = ackermann_box >> closed.Id(Language)
-            if inside is not None:
-                return inside >> res
-            return res
+            return safe_compose(res)
         
         if tag == "fast_growing":
             from ..hyper_extended import fast_growing_box
             res = fast_growing_box >> closed.Id(Language)
-            if inside is not None:
-                return inside >> res
-            return res
+            return safe_compose(res)
         
         if tag == "busy_beaver":
             from ..hyper_extended import busy_beaver_box
             res = busy_beaver_box >> closed.Id(Language)
-            if inside is not None:
-                return inside >> res
-            return res
+            return safe_compose(res)
         
         if tag == "goodstein":
             from ..hyper_extended import goodstein_box
             res = goodstein_box >> closed.Id(Language)
-            if inside is not None:
-                return inside >> res
-            return res
+            return safe_compose(res)
         
         if tag == "omega_iterate":
             from ..hyper_extended import iterate_omega
@@ -209,9 +211,7 @@ def construct_box(box) -> closed.Diagram:
         if tag == "transfinite":
             from ..hyper_extended import transfinite_box
             res = transfinite_box >> closed.Id(Language)
-            if inside is not None:
-                return inside >> res
-            return res
+            return safe_compose(res)
         
         if tag == "omega":
             from ..hyper_extended import OrdinalNotation

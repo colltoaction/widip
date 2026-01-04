@@ -61,8 +61,11 @@ def construct_dispatch(box: Any) -> closed.Diagram:
     n_cod = len(getattr(box, 'cod', []))
     target_dom = Language ** n_dom
     target_cod = Language ** n_cod
+    
+    # raise RuntimeError(f"DEBUG: construct_dispatch box={box!r} type={type(box)} base={type(box).__bases__}")
 
-    if isinstance(box, ren.YamlBox):
+    is_yaml_box = isinstance(box, ren.YamlBox) or type(box).__name__ == "YamlBox"
+    if is_yaml_box:
         res = con.construct_box(box)
     elif isinstance(box, closed.Box) and not isinstance(box, frobenius.Box):
         res = box >> closed.Id(box.cod)

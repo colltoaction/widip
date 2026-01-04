@@ -19,8 +19,8 @@ class Program(closed.Box):
     def __init__(self, name: str, args=None, dom=None, cod=None):
         if dom is None: dom = Language
         if cod is None: cod = Language
-        super().__init__(name, dom, cod)
         self.args = args or []
+        super().__init__(name, dom, cod, data=self.args)
 
 class Partial(closed.Box):
     def __init__(self, name: str, dom=None, cod=None):
