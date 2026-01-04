@@ -15,12 +15,12 @@ class ScalarBox(symmetric.Box):
         self.tag, self.value = tag, value
 
 class SequenceBox(symmetric.Box):
-    def __init__(self, inside: symmetric.Diagram, tag="", dom=Node, cod=Node):
+    def __init__(self, inside: symmetric.Diagram, tag="", dom=Node, cod=Node, **kwargs):
         super().__init__("Sequence", dom, cod, data=inside)
         self.tag, self.nested = tag, inside
 
 class MappingBox(symmetric.Box):
-    def __init__(self, inside: symmetric.Diagram, tag="", dom=Node, cod=Node):
+    def __init__(self, inside: symmetric.Diagram, tag="", dom=Node, cod=Node, **kwargs):
         super().__init__("Mapping", dom, cod, data=inside)
         self.tag, self.nested = tag, inside
 
@@ -47,7 +47,7 @@ class StreamBox(symmetric.Box):
 # --- Factories ---
 
 Scalar = lambda tag, val: ScalarBox(tag, val)
-Sequence = lambda inside, tag="": SequenceBox(inside, tag)
+Sequence = lambda inside, tag="", *args, **kwargs: SequenceBox(inside, tag, *args, **kwargs)
 Mapping = lambda inside, tag="": MappingBox(inside, tag)
 Anchor = lambda name, inside: AnchorBox(name, inside)
 Alias = lambda name: AliasBox(name)

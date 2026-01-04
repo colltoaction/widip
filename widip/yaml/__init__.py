@@ -48,7 +48,9 @@ def compose(node_wire):
 @singledispatch
 def construct_dispatch(box: Any) -> closed.Diagram:
     # Default for wires/nodes
-    if not hasattr(box, 'dom'): return closed.Id(Language)
+    if not hasattr(box, 'dom'): 
+        # For Identiy boxes, dom might be Ty("Node")
+        return closed.Id(Language)
     # Ensure we use closed.Ty for powers
     return closed.Id(Language**len(box.dom))
 
@@ -56,7 +58,11 @@ construct_dispatch.register(ren.ScalarBox, con.construct_scalar)
 construct_dispatch.register(ren.SequenceBox, con.construct_sequence)
 construct_dispatch.register(ren.MappingBox, con.construct_mapping)
 
-construct_functor = closed.Functor(ob={ren.Node: Language}, ar=construct_dispatch)
+construct_functor = closed.Functor(
+    ob={ren.Node: Language, symmetric.Ty("Node"): Language}, 
+    ar=construct_dispatch, 
+    cod=closed.Category()
+)
 
 # --- Load Pipeline ---
 load = lambda source: construct_functor(compose_functor(impl_parse(source)))

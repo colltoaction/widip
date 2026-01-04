@@ -18,22 +18,28 @@ AnyTy = symmetric.Ty()
 
 # --- Standard Input/Output ---
 
+def impl_read_stdin(*args) -> BytesIO:
+    """Read from stdin if available, otherwise return empty BytesIO."""
+    if not sys.stdin.isatty():
+        return sys.stdin.buffer
+    return BytesIO(b"")
+
 @symmetric.Diagram.from_callable(IO, Bytes)
 def read_stdin(*args): 
     """Read from stdin if available, otherwise return empty BytesIO."""
-    # args[0] is the input wire.
-    def impl():
-        if not sys.stdin.get('isatty', lambda: False)():
-            return sys.stdin.buffer
-        return BytesIO(b"")
-    return symmetric.Box("read_stdin", IO, Bytes, data=impl)(*args)
+    return symmetric.Box("read_stdin", IO, Bytes, data=impl_read_stdin)(*args)
 
+
+def impl_value_to_bytes(val: Any) -> bytes:
+    """Convert any value to bytes."""
+    if isinstance(val, bytes): return val
+    if isinstance(val, str): return val.encode()
+    return str(val).encode()
 
 @symmetric.Diagram.from_callable(AnyTy, Bytes)
 def value_to_bytes(*args):
     """Convert a value to bytes (sync I/O operations)."""
-    # AnyTy is empty, so args is empty.
-    return symmetric.Box("value_to_bytes", AnyTy, Bytes)(*args)
+    return symmetric.Box("value_to_bytes", AnyTy, Bytes, data=impl_value_to_bytes)(*args)
 
 
 # --- File and Diagram Parsing ---
@@ -73,3 +79,13 @@ def impl_stdin_read(): return sys.stdin.read()
 def impl_stdin_isatty(): return sys.stdin.isatty()
 def impl_stdout_write(data): sys.stdout.buffer.write(data if isinstance(data, bytes) else data.encode())
 def impl_set_recursion_limit(n): sys.setrecursionlimit(n)
+
+# --- Aliases for hooks ---
+get_executable = impl_get_executable
+stdin_read = impl_stdin_read
+stdin_isatty = impl_stdin_isatty
+stdout_write = impl_stdout_write
+set_recursion_limit = impl_set_recursion_limit
+read_diagram_file_fn = impl_read_diagram_file
+value_to_bytes_fn = impl_value_to_bytes
+read_stdin_fn = impl_read_stdin

@@ -38,7 +38,8 @@ async def test_exec_runner(hooks):
     
     with loop_scope(hooks=hooks, loop=loop):
         # compile_exec converts "exec" box to Process
-        process = compile_exec(exec_box, hooks=hooks, executable="python3", loop=loop)
+        # It's a functor, only takes the diagram
+        process = compile_exec(exec_box)
 
         # The result should be a Process
         assert isinstance(process, Process)

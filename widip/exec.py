@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Any, TypeVar, Dict, Callable
 from discopy import closed, python, symmetric
 from .asyncio import run_command, unwrap
+from contextlib import contextmanager
 
 T = TypeVar("T")
 Process = python.Function
@@ -35,9 +36,9 @@ def exec_box(box: closed.Box) -> Process:
     return Process(prog_fn, dom, cod)
 
 def any_ty(n: int):
-    """Returns a tensor of n Any types."""
+    """Returns a tensor of n object types."""
     res = python.Ty()
-    for _ in range(n): res @= python.Ty(Any)
+    for _ in range(n): res @= python.Ty(object)
     return res
 
 def exec_swap(box: symmetric.Swap) -> Process:
@@ -55,17 +56,30 @@ def exec_functor(diag: closed.Diagram) -> Process:
     """Manual functor implementation to avoid DisCoPy version issues."""
     from discopy.closed import Functor
     # Map Language to Any in the python category
-    f = Functor(ob={closed.Ty("P"): Any}, ar=exec_dispatch, cod=python.Category())
+    f = Functor(ob={closed.Ty("P"): object}, ar=exec_dispatch, cod=python.Category())
     return f(diag)
 
-async def execute(diag: closed.Diagram, hooks: dict, executable: str, loop: Any):
+async def execute(diag: closed.Diagram, hooks: dict, executable: str, loop: Any, stdin: Any = None):
     ctx = ExecContext(hooks, executable, loop)
     token = _EXEC_CTX.set(ctx)
     try:
         proc = exec_functor(diag)
-        res = await unwrap(loop, proc())
+        # Pass stdin to the process if it's expected
+        arg = (stdin,) if proc.dom else ()
+        res = await unwrap(loop, proc(*arg))
         return res
     finally:
         _EXEC_CTX.reset(token)
 
-__all__ = ['execute', 'ExecContext', 'exec_dispatch', 'Process']
+@contextmanager
+def widip_runner(hooks: Dict[str, Callable], executable: str = "python3", loop: Any = None):
+    """Context manager for the execution environment."""
+    ctx = ExecContext(hooks, executable, loop)
+    def runner(diag: closed.Diagram, stdin: Any = None):
+        return execute(diag, hooks, executable, loop, stdin)
+    yield runner, loop
+
+# Legacy alias for tests
+compile_exec = exec_functor
+
+__all__ = ['execute', 'ExecContext', 'exec_dispatch', 'Process', 'widip_runner', 'compile_exec']

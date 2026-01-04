@@ -18,14 +18,14 @@ def construct_scalar(box: ren.ScalarBox) -> closed.Diagram:
 
 def construct_sequence(box: ren.SequenceBox) -> closed.Diagram:
     import widip.yaml
-    inside_computer = widip.yaml.construct_functor(box.inside)
+    inside_computer = widip.yaml.construct_functor(box.nested)
     if box.tag:
         return Program(box.tag, (inside_computer,))
     return inside_computer
 
 def construct_mapping(box: ren.MappingBox) -> closed.Diagram:
     import widip.yaml
-    inside_computer = widip.yaml.construct_functor(box.inside)
+    inside_computer = widip.yaml.construct_functor(box.nested)
     if box.tag:
         return Program(box.tag, (inside_computer,))
     return inside_computer

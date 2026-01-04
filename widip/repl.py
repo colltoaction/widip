@@ -11,19 +11,22 @@ from .yaml import load as load_diagram
 from .yaml.presentation import CharacterStream
 from .drawing import diagram_draw
 from .io import (
-    impl_read_diagram_file as read_diagram_file,
-    read_stdin, 
-    impl_set_recursion_limit as set_recursion_limit, 
-    value_to_bytes, 
+    read_diagram_file as read_diagram_file_diag,
+    impl_read_diagram_file as read_diagram_file_fn,
+    read_stdin as read_stdin_diag,
+    impl_read_stdin as read_stdin_fn,
+    impl_set_recursion_limit as set_recursion_limit,
+    value_to_bytes as value_to_bytes_diag,
+    impl_value_to_bytes as value_to_bytes_fn,
     impl_stdout_write as stdout_write,
-    impl_stdin_read as stdin_read, 
-    impl_stdin_isatty as stdin_isatty, 
+    impl_stdin_read as stdin_read,
+    impl_stdin_isatty as stdin_isatty,
     impl_get_executable as get_executable,
     BytesIO,
     Path
 )
 from .asyncio import async_read, run_repl, run, loop_scope
-from .exec import execute
+from .exec import execute, widip_runner
 
 
 
@@ -31,7 +34,7 @@ from .exec import execute
 
 def read_diagram(source: Any) -> closed.Diagram:
     """Parse a stream or file path into a diagram."""
-    return read_diagram_file(source, lambda x: load_diagram(CharacterStream(x)))
+    return read_diagram_file_fn(source, lambda x: load_diagram(CharacterStream(x)))
 
 
 def reload_diagram(path_str):
@@ -50,7 +53,7 @@ def reload_diagram(path_str):
 
 def read(fd: Any | None, path: Path | None, file_name: str, loop: Any, hooks: dict):
     """Get the async reader iterator."""
-    return async_read(fd, path, file_name, loop, read_diagram, read_stdin, hooks)
+    return async_read(fd, path, file_name, loop, read_diagram, read_stdin_fn, hooks)
 
 
 # --- Runtime Setup ---
@@ -87,18 +90,10 @@ def get_source(command_string: str | None, operands: list[str], hooks: dict):
 
 # --- Eval and Print ---
 
-@contextmanager
-def widip_runner(hooks: dict, executable: str):
-    """Context manager yielding (hooks, loop) for execution."""
-    with loop_scope(hooks) as loop:
-        yield hooks, loop
-
 def make_pipeline(runner_data):
     """Create execution pipeline."""
-    # runner_data is (hooks, loop) because widip_runner yields that.
-    hooks, loop = runner_data
-    executable = hooks['get_executable']()
-    return lambda diag: execute(diag, hooks, executable, loop)
+    runner, loop = runner_data
+    return lambda diag, stdin=None: runner(diag, stdin)
 
 
 # --- Main Entry Point ---
@@ -107,11 +102,13 @@ async def async_repl():
     """Main Read-Eval-Print Loop entry point (async)."""
     hooks = {
         'set_recursion_limit': set_recursion_limit,
-        'value_to_bytes': value_to_bytes,
+        'value_to_bytes': value_to_bytes_fn,
         'stdout_write': stdout_write,
         'stdin_read': stdin_read,
         'stdin_isatty': stdin_isatty,
         'get_executable': get_executable,
+        'read_stdin_fn': read_stdin_fn,
+        'read_diagram_file_fn': read_diagram_file_fn,
         'fspath': os.fspath,
         'BytesIO': BytesIO,
         'Path': Path
