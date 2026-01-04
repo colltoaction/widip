@@ -1,4 +1,8 @@
 from .repl import repl
 
 
-repl()
+def main():
+    repl()
+
+if __name__ == "__main__":
+    main()
