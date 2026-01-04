@@ -1,5 +1,5 @@
 %{
-/* YAML 1.2 Lexer - Final Polish */
+/* YAML Lexer - Native LALR Version */
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -15,18 +15,10 @@ int flow_level = 0;
 int token_queue[2048];
 int q_head = 0, q_tail = 0;
 
-void enqueue(int t) { 
-    if (q_tail < 2048) token_queue[q_tail++] = t; 
-}
-int dequeue() { 
-    if (q_head < q_tail) return token_queue[q_head++]; 
-    return 0;
-}
+void enqueue(int t) { if (q_tail < 2048) token_queue[q_tail++] = t; }
+int dequeue() { if (q_head < q_tail) return token_queue[q_head++]; return 0; }
 bool q_empty() { return q_head == q_tail; }
-int q_peek() { 
-    if (q_head < q_tail) return token_queue[q_head]; 
-    return 0;
-}
+int q_peek() { if (q_head < q_tail) return token_queue[q_head]; return 0; }
 
 int process_indent(int indent) {
     if (flow_level > 0) return 0;
@@ -46,6 +38,11 @@ int process_indent(int indent) {
 int real_yylex();
 
 const char* tok_name(int tok) {
+    if (tok < 256) {
+        static char buf[2] = {0};
+        buf[0] = (char)tok; buf[1] = 0;
+        return buf;
+    }
     switch(tok) {
         case DOC_START: return "DOC_START";
         case DOC_END: return "DOC_END";
@@ -70,8 +67,6 @@ const char* tok_name(int tok) {
         case LITERAL: return "LITERAL";
         case FOLDED: return "FOLDED";
         case LITERAL_CONTENT: return "LITERAL_CONTENT";
-        case TAG_DIRECTIVE: return "TAG_DIRECTIVE";
-        case YAML_DIRECTIVE: return "YAML_DIRECTIVE";
         default: return "OTHER";
     }
 }
@@ -81,7 +76,6 @@ int yylex() {
     while (1) {
         if (!q_empty()) tok = dequeue();
         else tok = real_yylex();
-        
         if (tok == 0 && q_empty()) return 0;
         
         if (tok == NEWLINE && !q_empty() && q_peek() == DEDENT) {
@@ -90,7 +84,7 @@ int yylex() {
         }
         
         if (tok != 0) {
-            if (!q_empty()) {
+            if (!q_empty() && tok > 0 && tok != INDENT && tok != DEDENT) {
                 enqueue(tok);
                 return dequeue();
             }
@@ -110,14 +104,16 @@ int yylex() {
 %x FLOW
 
 NEWLINE     \n|\r\n|\r
-SAFE_S_BLK  [^ \t\n\-\?:,\[\]\{\}!#&*|>\x22\x27]
-SAFE_C_BLK  [^ \t\n\-\?:,\[\]\{\}!#&*|>\x22\x27]
+/* SAFE_S_BLK: cannot start with indicator */
+SAFE_S_BLK  [^ \t\n\r\-\?:,\[\]\{\}!#&*|>\x22\x27%@\x60]
+/* SAFE_C_BLK: inner characters, excluding structural ones and colon */
+SAFE_C_BLK  [^ \t\n\r,\[\]\{\}:]
 
 %%
 
 %{
-    static int first_init = 1;
-    if (first_init) { first_init = 0; BEGIN(BOL); }
+    static int init_begun = 0;
+    if (!init_begun) { init_begun = 1; BEGIN(BOL); }
 %}
 
 <BOL>[ \t]*             { 
@@ -128,9 +124,7 @@ SAFE_C_BLK  [^ \t\n\-\?:,\[\]\{\}!#&*|>\x22\x27]
                           }
                           pending_indent = indent;
                         }
-
 <BOL>{NEWLINE}          { pending_indent = 0; return NEWLINE; }
-
 <BOL>.                  { 
                           yyless(0); 
                           BEGIN(INITIAL);
@@ -138,40 +132,34 @@ SAFE_C_BLK  [^ \t\n\-\?:,\[\]\{\}!#&*|>\x22\x27]
                           pending_indent = 0;
                           if (tok) return tok;
                         }
-
 <BOL><<EOF>>            {
                           while (indent_level > 0) { indent_level--; enqueue(DEDENT); }
-                          enqueue(DEDENT); 
                           if (!q_empty()) return dequeue();
                           return 0;
                         }
 
-<INITIAL,FLOW>"---"/([ \t\n\r]|$)   { return DOC_START; }
-<INITIAL,FLOW>"..."/([ \t\n\r]|$)   { return DOC_END; }
+<INITIAL,FLOW>"---"/([ \t\n\r]|$) { return DOC_START; }
+<INITIAL,FLOW>"..."/([ \t\n\r]|$) { return DOC_END; }
 
-<INITIAL>"-"/([ \t\n\r]|$)           { return SEQ_ENTRY; }
-<INITIAL>":"/([ \t\n\r]|$)           { return COLON; }
-<INITIAL>"?"/([ \t\n\r]|$)           { return MAP_KEY; }
+<INITIAL>"-"/([ \t\n\r]|$)        { return SEQ_ENTRY; }
+<INITIAL>":"/([ \t\n\r]|$)        { return COLON; }
+<INITIAL>"?"/([ \t\n\r]|$)        { return MAP_KEY; }
 
-<INITIAL,FLOW>","       { return COMMA; }
-<INITIAL,FLOW>"["       { flow_level++; yy_push_state(FLOW); return LBRACKET; }
-<FLOW>"]"               { if (flow_level > 0) flow_level--; yy_pop_state(); return RBRACKET; }
-<INITIAL,FLOW>"{"       { flow_level++; yy_push_state(FLOW); return LBRACE; }
-<FLOW>"}"               { if (flow_level > 0) flow_level--; yy_pop_state(); return RBRACE; }
+<INITIAL,FLOW>","                 { return COMMA; }
+<INITIAL,FLOW>"["                 { flow_level++; yy_push_state(FLOW); return LBRACKET; }
+<FLOW>"]"                         { if (flow_level > 0) flow_level--; yy_pop_state(); return RBRACKET; }
+<INITIAL,FLOW>"{"                     { flow_level++; yy_push_state(FLOW); return LBRACE; }
+<FLOW>"}"                         { if (flow_level > 0) flow_level--; yy_pop_state(); return RBRACE; }
 
-<FLOW>"-"               { yylval.str = strdup("-"); return PLAIN_SCALAR; }
-<FLOW>":"               { return COLON; }
-<FLOW>"?"               { return MAP_KEY; }
+<FLOW>":"                         { return COLON; }
+<FLOW>"?"                         { return MAP_KEY; }
+<FLOW>"-"                         { yylval.str = strdup("-"); return PLAIN_SCALAR; }
 
 <INITIAL,FLOW>"&"[a-zA-Z0-9_\-]+    { yylval.str = strdup(yytext+1); return ANCHOR; }
 <INITIAL,FLOW>"*"[a-zA-Z0-9_\-]+    { yylval.str = strdup(yytext+1); return ALIAS; }
 
-<INITIAL,FLOW>"!"[a-zA-Z0-9_\-./!@#$%&()=+~\\<>]+ { 
+<INITIAL,FLOW>"!"[a-zA-Z0-9_\-./!@#$%&()=+~\\<>]* { 
     yylval.str = strdup(yytext+1); 
-    return TAG; 
-}
-<INITIAL,FLOW>"!"                   { 
-    yylval.str = strdup(""); 
     return TAG; 
 }
 
@@ -179,13 +167,13 @@ SAFE_C_BLK  [^ \t\n\-\?:,\[\]\{\}!#&*|>\x22\x27]
                           yylval.str = strndup(yytext+1, yyleng-2);
                           return DQUOTE_STRING;
                         }
-
 <INITIAL,FLOW>\'[^\']*\'     {
                           yylval.str = strndup(yytext+1, yyleng-2);
                           return SQUOTE_STRING;
                         }
 
-<INITIAL,FLOW>{SAFE_S_BLK}{SAFE_C_BLK}* {
+<INITIAL,FLOW>{SAFE_S_BLK}({SAFE_C_BLK}|":"[^ \t\n\r,\[\]\{\}]|[!#&*|%>])* {
+    /* Standard trailing context logic for internal indicators */
     yylval.str = strdup(yytext);
     return PLAIN_SCALAR;
 }
@@ -194,46 +182,31 @@ SAFE_C_BLK  [^ \t\n\-\?:,\[\]\{\}!#&*|>\x22\x27]
 
 <INITIAL>{NEWLINE}      { 
                           if (flow_level == 0) {
-                              int c;
-                              int next_indent = 0;
-                              int pc[128];
-                              int pcc = 0;
+                              int c; int ni = 0; int pc[128]; int pcc = 0;
                               while (pcc < 127 && ((c = input()) == ' ' || c == '\t')) {
                                   pc[pcc++] = c;
-                                  if (c == ' ') next_indent++;
-                                  else if (c == '\t') next_indent = (next_indent + 8) & ~7;
+                                  if (c == ' ') ni++; else ni = (ni + 8) & ~7;
                               }
-                              if ((c == EOF || c == 0) || (c != '\n' && c != '\r' && next_indent < indent_stack[indent_level])) {
-                                  if (c == EOF || c == 0) {
-                                      while(indent_level >= 0) { indent_level--; enqueue(DEDENT); }
-                                  } else {
-                                      while (next_indent < indent_stack[indent_level] && indent_level > 0) {
-                                          indent_level--; enqueue(DEDENT);
-                                      }
+                              if (c == EOF || c == 0 || (c != '\n' && c != '\r' && ni < indent_stack[indent_level])) {
+                                  while (ni < indent_stack[indent_level] && indent_level > 0) {
+                                      indent_level--; enqueue(DEDENT);
                                   }
                               }
                               if (c != EOF && c != 0) unput(c);
                               for (int i = pcc - 1; i >= 0; i--) unput(pc[i]);
                           }
-                          BEGIN(BOL); 
-                          return NEWLINE; 
+                          BEGIN(BOL); return NEWLINE; 
                         }
 
 <FLOW>{NEWLINE}         { /* ignore */ }
-
-[ \t]+                  { /* ignore */ }
-
+[ \t]+                  { /* whitespace */ }
 .                       { return yytext[0]; }
 
 <<EOF>>                 {
-                          while (indent_level >= 0) {
-                              indent_level--;
-                              enqueue(DEDENT);
-                          }
+                          while (indent_level > 0) { indent_level--; enqueue(DEDENT); }
                           if (!q_empty()) return dequeue();
                           return 0;
                         }
 
 %%
-
 #undef yylex
