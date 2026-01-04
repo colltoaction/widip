@@ -393,8 +393,9 @@ async def async_read(fd: Any | None, path: Path | None, file_name: str, loop: Ev
 
 async def eval_diagram(pipeline: Callable, source: AsyncIterator, loop: EventLoop, output_handler: Callable):
     """Evaluate diagrams through the pipeline."""
-    from .computer import interpreter
-    return await interpreter(pipeline, source, loop, output_handler)
+    async for diagram, path, stdin in source:
+        result = await pipeline(diagram)
+        await output_handler(result)
 
 
 async def eval_with_watch(pipeline: Callable, source: AsyncIterator, loop: EventLoop, 
@@ -410,7 +411,8 @@ async def run_repl(env_fn: Callable, runner_ctx: Callable, get_params_fn: Callab
                    make_pipeline_fn: Callable, reload_fn: Callable, hooks: dict):
     """Orchestrate the async REPL execution."""
     args = env_fn()
-    with runner_ctx(hooks=hooks, executable=hooks['get_executable']()) as (runner, loop):
+    with runner_ctx(hooks=hooks, executable=hooks['get_executable']()) as runner:
+        hooks, loop = runner
         params = get_params_fn(args.command_string, args.operands, hooks)
         source = read_fn(*params, loop, hooks)
         pipeline = make_pipeline_fn(runner)

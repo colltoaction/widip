@@ -3,11 +3,12 @@ from typing import Any
 from functools import singledispatch
 from discopy import symmetric, closed
 
-from .parse import parse, SequenceBox, MappingBox, AnchorBox, DocumentBox, StreamBox
+from .parse import parse, impl_parse, SequenceBox, MappingBox, AnchorBox, DocumentBox, StreamBox
 from . import representation as ren
+from .representation import Scalar, Sequence, Mapping, Alias, Document, Stream
 from . import construct as con
 from . import presentation as pres
-from ..core import Language
+from computer.core import Language
 
 # --- Presentation Singletons ---
 
@@ -58,4 +59,4 @@ construct_dispatch.register(ren.MappingBox, con.construct_mapping)
 construct_functor = closed.Functor(ob={ren.Node: Language}, ar=construct_dispatch)
 
 # --- Load Pipeline ---
-load = lambda source: construct_functor(compose_functor(parse(source)))
+load = lambda source: construct_functor(compose_functor(impl_parse(source)))

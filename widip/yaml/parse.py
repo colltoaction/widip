@@ -55,43 +55,11 @@ def from_hif(data: dict) -> symmetric.Hypergraph:
 
 
 # --- Serialization Primitives (Native DisCoPy Factories) ---
-Node = symmetric.Ty("Node")
-
-Scalar = lambda tag, val: symmetric.Box("Scalar", symmetric.Ty(), Node, data=(tag, val))
-Alias = lambda name: symmetric.Box(f"Alias({name})", symmetric.Ty(), Node, data=name)
-
-class SequenceBox(monoidal.Bubble, symmetric.Box):
-    def __init__(self, inside, tag="", dom=Node, cod=Node):
-        super().__init__(inside, dom, cod)
-        self.tag = tag
-
-Sequence = lambda inside, tag="": SequenceBox(inside, tag=tag)
-
-class MappingBox(monoidal.Bubble, symmetric.Box):
-    def __init__(self, inside, tag="", dom=Node, cod=Node):
-        super().__init__(inside, dom, cod)
-        self.tag = tag
-
-Mapping = lambda inside, tag="": MappingBox(inside, tag=tag)
-
-class AnchorBox(monoidal.Bubble, symmetric.Box):
-    def __init__(self, name, inside, dom=Node, cod=Node):
-        super().__init__(inside, dom, cod)
-        self.name = name
-
-Anchor = lambda name, inside: AnchorBox(name, inside)
-
-class DocumentBox(monoidal.Bubble, symmetric.Box):
-    def __init__(self, inside, dom=Node, cod=Node):
-        super().__init__(inside, dom, cod)
-
-Document = lambda inside: DocumentBox(inside)
-
-class StreamBox(monoidal.Bubble, symmetric.Box):
-    def __init__(self, inside, dom=Node, cod=Node):
-        super().__init__(inside, dom, cod)
-
-Stream = lambda inside: StreamBox(inside)
+from .representation import (
+    Scalar, Alias, Sequence, Mapping, Anchor, Document, Stream,
+    ScalarBox, SequenceBox, MappingBox, AnchorBox, AliasBox, DocumentBox, StreamBox,
+    Node
+)
 
 
 # --- HIF Traversal Helpers ---
@@ -146,8 +114,8 @@ def _seq_builder(b, c):
     items = [_build_node(i) for i in (c or [])]
     res = items[0] if items else symmetric.Id(Node)
     for it in items[1:]: res >>= it
-    res = Sequence(res, tag=b.tag)
-    return Anchor(b.anchor, res) if b.anchor else res
+    res = Sequence(res, tag=getattr(b, 'tag', ""))
+    return Anchor(b.anchor, res) if getattr(b, 'anchor', None) else res
 
 build_ser.register(pres.Sequence, _seq_builder)
 build_ser.register(pres.Stream, lambda b, c: Stream(_seq_builder(b, c)))
@@ -156,8 +124,8 @@ def _map_builder(b, c):
     pairs = [(_build_node(k) >> _build_node(v)) for k, v in batched(list(c or []), 2)]
     res = pairs[0] if pairs else symmetric.Id(Node)
     for p in pairs[1:]: res @= p
-    res = Mapping(res, tag=b.tag)
-    return Anchor(b.anchor, res) if b.anchor else res
+    res = Mapping(res, tag=getattr(b, 'tag', ""))
+    return Anchor(b.anchor, res) if getattr(b, 'anchor', None) else res
 
 build_ser.register(pres.Mapping, _map_builder)
 build_ser.register(pres.Document, lambda b, c: Document(_build_node(c)) if c else Document(symmetric.Id(Node)))
@@ -167,10 +135,19 @@ build_ser.register(pres.Document, lambda b, c: Document(_build_node(c)) if c els
 def parse_box(source_wire):
     return symmetric.Box("parse", symmetric.Ty("CharacterStream"), Node)(source_wire)
 
-@symmetric.Diagram.from_callable(symmetric.Ty("CharacterStream"), Node)
-def parse(source):
+def impl_parse(source):
+    """Native implementation of the YAML parser."""
+    if hasattr(source, "source") and type(source).__name__ == "CharacterStream":
+        source = source.source
     if not hasattr(source, 'read') and not isinstance(source, (str, bytes)):
-        return parse_box(source)
+        raise TypeError(f"Expected stream or string, got {type(source)}")
     from nx_yaml import nx_compose_all
     incidences = nx_compose_all(source)
     return _build_node((0, incidences))
+
+@symmetric.Diagram.from_callable(symmetric.Ty("CharacterStream"), Node)
+def parse(source):
+    """Traceable parse diagram."""
+    if not hasattr(source, 'read') and not isinstance(source, (str, bytes)):
+        return parse_box(source)
+    return impl_parse(source)

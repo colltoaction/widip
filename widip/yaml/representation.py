@@ -11,36 +11,38 @@ NodeGraph = symmetric.Category(Node, symmetric.Diagram)
 
 class ScalarBox(symmetric.Box):
     def __init__(self, tag: str, value: Any, dom=Node, cod=Node):
-        super().__init__("Scalar", dom, cod)
+        super().__init__("Scalar", dom, cod, data=(tag, value))
         self.tag, self.value = tag, value
 
-class SequenceBox(monoidal.Bubble, symmetric.Box):
+class SequenceBox(symmetric.Box):
     def __init__(self, inside: symmetric.Diagram, tag="", dom=Node, cod=Node):
-        super().__init__(inside, dom, cod)
-        self.tag = tag
+        super().__init__("Sequence", dom, cod, data=inside)
+        self.tag, self.nested = tag, inside
 
-class MappingBox(monoidal.Bubble, symmetric.Box):
+class MappingBox(symmetric.Box):
     def __init__(self, inside: symmetric.Diagram, tag="", dom=Node, cod=Node):
-        super().__init__(inside, dom, cod)
-        self.tag = tag
+        super().__init__("Mapping", dom, cod, data=inside)
+        self.tag, self.nested = tag, inside
 
-class AnchorBox(monoidal.Bubble, symmetric.Box):
+class AnchorBox(symmetric.Box):
     def __init__(self, name: str, inside: symmetric.Diagram, dom=Node, cod=Node):
-        super().__init__(inside, dom, cod)
-        self.name = name
+        super().__init__(f"Anchor({name})", dom, cod, data=inside)
+        self.name, self.nested = name, inside
 
 class AliasBox(symmetric.Box):
     def __init__(self, name: str, dom=Node, cod=Node):
-        super().__init__(name, dom, cod)
+        super().__init__(name, dom, cod, data=name)
         self.name = name
 
-class DocumentBox(monoidal.Bubble, symmetric.Box):
+class DocumentBox(symmetric.Box):
     def __init__(self, inside: symmetric.Diagram, dom=Node, cod=Node):
-        super().__init__(inside, dom, cod)
+        super().__init__("Document", dom, cod, data=inside)
+        self.nested = inside
 
-class StreamBox(monoidal.Bubble, symmetric.Box):
+class StreamBox(symmetric.Box):
     def __init__(self, inside: symmetric.Diagram, dom=Node, cod=Node):
-        super().__init__(inside, dom, cod)
+        super().__init__("Stream", dom, cod, data=inside)
+        self.nested = inside
 
 # --- Factories ---
 
@@ -54,10 +56,10 @@ Stream = lambda inside: StreamBox(inside)
 
 # --- Compose Implementation Functions ---
 
-def comp_seq(box, compose): return Sequence(compose(box.inside), tag=box.tag)
-def comp_map(box, compose): return Mapping(compose(box.inside), tag=box.tag)
-def comp_doc(box, compose): return Document(compose(box.inside))
-def comp_str(box, compose): return Stream(compose(box.inside))
-def comp_anc(box, compose): return Anchor(box.name, compose(box.inside))
+def comp_seq(box, compose): return Sequence(compose(box.nested), tag=box.tag)
+def comp_map(box, compose): return Mapping(compose(box.nested), tag=box.tag)
+def comp_doc(box, compose): return Document(compose(box.nested))
+def comp_str(box, compose): return Stream(compose(box.nested))
+def comp_anc(box, compose): return Anchor(box.name, compose(box.nested))
 def comp_sca(box): return Scalar(box.data[0], box.data[1])
 def comp_ali(box): return Alias(box.data)

@@ -1,6 +1,7 @@
 """System I/O operations (stdin/stdout, files, no async)."""
 import sys
-from typing import Any, TypeVar
+import os
+from typing import Any, TypeVar, Callable
 from io import BytesIO
 from pathlib import Path
 from functools import singledispatch
@@ -54,31 +55,21 @@ def read_diagram_file(*args):
     """Parse a stream or file path using a parser function."""
     return symmetric.Box("read_diagram_file", Source @ Parser, Diagram)(*args)
 
+# --- Hook Implementations (Native) ---
 
-Int = symmetric.Ty("Int")
+def impl_read_diagram_file(source: Any, parser_fn: Callable) -> Any:
+    """Native implementation of diagram file reading."""
+    if isinstance(source, str) and not os.path.exists(source):
+        # Treat as raw string
+        return parser_fn(source)
+    path = Path(source)
+    if path.exists():
+        with open(path, 'r') as f:
+            return parser_fn(f.read())
+    return parser_fn(source)
 
-# --- Sync System Wrappers ---
-
-@symmetric.Diagram.from_callable(Int, IO)
-def set_recursion_limit(*args):
-    return symmetric.Box("set_recursion_limit", Int, IO)(*args)
-
-
-@symmetric.Diagram.from_callable(IO, Bool)
-def stdin_isatty(*args) -> bool:
-    return symmetric.Box("stdin_isatty", IO, Bool)(*args)
-
-
-@symmetric.Diagram.from_callable(IO, Str)
-def stdin_read(*args) -> str:
-    return symmetric.Box("stdin_read", IO, Str)(*args)
-
-
-@symmetric.Diagram.from_callable(Bytes, IO)
-def stdout_write(*args):
-    return symmetric.Box("stdout_write", Bytes, IO)(*args)
-
-
-@symmetric.Diagram.from_callable(IO, Str)
-def get_executable(*args) -> str:
-    return symmetric.Box("get_executable", IO, Str)(*args)
+def impl_get_executable(): return sys.executable
+def impl_stdin_read(): return sys.stdin.read()
+def impl_stdin_isatty(): return sys.stdin.isatty()
+def impl_stdout_write(data): sys.stdout.buffer.write(data if isinstance(data, bytes) else data.encode())
+def impl_set_recursion_limit(n): sys.setrecursionlimit(n)

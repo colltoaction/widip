@@ -11,14 +11,14 @@ from .yaml import load as load_diagram
 from .yaml.presentation import CharacterStream
 from .drawing import diagram_draw
 from .io import (
-    read_diagram_file,
+    impl_read_diagram_file as read_diagram_file,
     read_stdin, 
-    set_recursion_limit, 
+    impl_set_recursion_limit as set_recursion_limit, 
     value_to_bytes, 
-    stdout_write,
-    stdin_read, 
-    stdin_isatty, 
-    get_executable,
+    impl_stdout_write as stdout_write,
+    impl_stdin_read as stdin_read, 
+    impl_stdin_isatty as stdin_isatty, 
+    impl_get_executable as get_executable,
     BytesIO,
     Path
 )
