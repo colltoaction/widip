@@ -220,6 +220,7 @@ char *join_scalar_values(char *s1, char *s2) {
 %type <node> flow_seq_items flow_map_entries flow_entry flow_seq_item
 %type <node> block_sequence block_mapping map_entry
 %type <node> entry_key entry_value opt_entry_value
+%type <node> properties node_content
 %type <str> merged_plain_scalar
 
 %start stream
@@ -230,23 +231,22 @@ char *join_scalar_values(char *s1, char *s2) {
 %%
 
 stream
-    : opt_newlines                  { root = make_stream(NULL); $$ = root; }
+    : /* empty */                   { root = make_stream(NULL); $$ = root; }
     | stream document               { 
                                       if ($1->children) append_node($1->children, $2); 
                                       else $1->children = $2; 
                                       $$ = $1; 
                                       root = $$; 
                                     }
+    | stream NEWLINE                { $$ = $1; }
     ;
 
-/* document_list removed */
-
 document
-    : node opt_newlines { $$ = $1; }
-    | DOC_START opt_newlines opt_node opt_newlines { $$ = $3; }
-    | directives DOC_START opt_newlines opt_node opt_newlines { $$ = $4; }
-    | DOC_END opt_newlines { $$ = make_null(); }
-    | DOC_START DOC_END opt_newlines { $$ = make_null(); }
+    : node { $$ = $1; }
+    | DOC_START opt_newlines opt_node { $$ = $3; }
+    | directives DOC_START opt_newlines opt_node { $$ = $4; }
+    | DOC_END { $$ = make_null(); }
+    | DOC_START DOC_END { $$ = make_null(); }
     ;
 
 directives
@@ -290,13 +290,28 @@ opt_node
 
 
 node
+    : node_content                          { $$ = $1; }
+    | properties node_content               { 
+          $$ = $2;
+          if ($1->anchor) $$ = make_anchor($1->anchor, $$);
+          if ($1->tag)    $$ = make_tag($1->tag, $$);
+          // Note: If properties were nested, we'd need a loop or recursion here
+      }
+    | properties %prec LOW_PREC             { $$ = $1; }
+    ;
+
+properties
+    : ANCHOR opt_newlines                   { $$ = make_anchor($1, make_null()); }
+    | TAG opt_newlines                      { $$ = make_tag($1, make_null()); }
+    | ANCHOR opt_newlines TAG opt_newlines  { $$ = make_anchor($1, make_tag($3, make_null())); }
+    | TAG opt_newlines ANCHOR opt_newlines  { $$ = make_tag($1, make_anchor($3, make_null())); }
+    ;
+
+node_content
     : flow_node
     | block_node
-    | ANCHOR opt_newlines node { $$ = make_anchor($1, $3); }
-    | TAG opt_newlines node    { $$ = make_tag($1, $3); }
-    | ANCHOR opt_newlines %prec LOW_PREC { $$ = make_anchor($1, make_null()); }
-    | TAG opt_newlines %prec LOW_PREC    { $$ = make_tag($1, make_null()); }
     ;
+
 flow_node
     : merged_plain_scalar   { $$ = make_scalar($1); }
     | DQUOTE_STRING         { $$ = make_scalar($1); }
@@ -309,14 +324,12 @@ flow_node
     ;
 
 block_node
-    : block_sequence        { $$ = $1; }
-    | block_mapping         { $$ = $1; }
+    : block_sequence { $$ = $1; }
+    | block_mapping  { $$ = $1; }
     | LITERAL LITERAL_CONTENT { $$ = make_block_scalar($2, 0); }
     | FOLDED LITERAL_CONTENT  { $$ = make_block_scalar($2, 1); }
-    | INDENT node DEDENT    { $$ = $2; }
+    | INDENT node opt_newlines DEDENT { $$ = $2; }
     ;
-
-/* propertied_node logic now inline in node */
 
 merged_plain_scalar
     : PLAIN_SCALAR { $$ = $1; }
@@ -332,9 +345,9 @@ flow_seq_items
     ;
 
 flow_seq_item
-    : node entry_value         { $$ = make_map(append_node($1, $2)); }
-    | entry_key opt_entry_value     { $$ = make_map(append_node($1, $2)); }
-    | node                          { $$ = $1; }
+    : node %prec LOW_PREC          { $$ = $1; }
+    | node entry_value             { $$ = make_map(append_node($1, $2)); }
+    | entry_key opt_entry_value    { $$ = make_map(append_node($1, $2)); }
     ;
 
 flow_map_entries
@@ -349,38 +362,23 @@ flow_entry
     ;
 
 block_sequence
-    : SEQ_ENTRY opt_node                        { $$ = make_seq($2); }
-    | block_sequence opt_newlines SEQ_ENTRY opt_node { 
-          if ($1->children) append_node($1->children, $4);
-          else $1->children = $4;
-          $$ = $1; 
-      }
-    | block_sequence newlines                   { $$ = $1; }
+    : SEQ_ENTRY opt_node { $$ = make_seq($2); }
+    | block_sequence opt_newlines SEQ_ENTRY opt_node { append_node($1->children, $4); $$ = $1; }
     ;
-
-/* block_seq_items removed */
 
 block_mapping
-    : map_entry                                 { $$ = make_map($1); }
-    | block_mapping map_entry                   { 
-          if ($1->children) append_node($1->children, $2);
-          else $1->children = $2;
-          $$ = $1; 
-      }
+    : map_entry { $$ = make_map($1); }
+    | block_mapping opt_newlines map_entry { append_node($1->children, $3); $$ = $1; }
     ;
 
-/* block_map_entries removed */
-
-/* A single mapping entry: key: value */
-/* A single mapping entry: key: value */
 map_entry
-    : node entry_value opt_newlines        { $$ = append_node($1, $2); }
-    | entry_key opt_entry_value opt_newlines    { $$ = append_node($1, $2); }
+    : node entry_value   { $$ = append_node($1, $2); }
+    | entry_key opt_entry_value { $$ = append_node($1, $2); }
     ;
 
 entry_key
     : MAP_KEY opt_node opt_newlines { $$ = $2; }
-    | MAP_KEY newlines INDENT opt_node DEDENT opt_newlines { $$ = $4; }
+    | MAP_KEY newlines INDENT opt_node opt_newlines DEDENT opt_newlines { $$ = $4; }
     ;
 
 entry_value

@@ -64,13 +64,42 @@ void append_block(const char *s) {
 
 int real_yylex();
 
+const char* tok_name(int tok) {
+    switch(tok) {
+        case DOC_START: return "DOC_START";
+        case DOC_END: return "DOC_END";
+        case LBRACKET: return "LBRACKET";
+        case RBRACKET: return "RBRACKET";
+        case LBRACE: return "LBRACE";
+        case RBRACE: return "RBRACE";
+        case COMMA: return "COMMA";
+        case SEQ_ENTRY: return "SEQ_ENTRY";
+        case MAP_KEY: return "MAP_KEY";
+        case COLON: return "COLON";
+        case NEWLINE: return "NEWLINE";
+        case INDENT: return "INDENT";
+        case DEDENT: return "DEDENT";
+        case ANCHOR: return "ANCHOR";
+        case ALIAS: return "ALIAS";
+        case TAG: return "TAG";
+        case PLAIN_SCALAR: return "PLAIN_SCALAR";
+        case DQUOTE_STRING: return "DQUOTE_STRING";
+        case SQUOTE_STRING: return "SQUOTE_STRING";
+        case LITERAL: return "LITERAL";
+        case FOLDED: return "FOLDED";
+        case LITERAL_CONTENT: return "LITERAL_CONTENT";
+        default: return "OTHER";
+    }
+}
+
 int yylex() {
     int tok;
     if (!q_empty()) {
         tok = dequeue();
-        return tok;
+    } else {
+        tok = real_yylex();
     }
-    tok = real_yylex();
+    if (tok > 0) fprintf(stderr, "TOKEN: %s (%s) at line %d\n", tok_name(tok), yytext, yylineno);
     return tok;
 }
 
@@ -230,7 +259,7 @@ SAFE_S_FLW  [a-zA-Z0-9_\-./@$+=~]
 
 <INITIAL,FLOW>"&"[a-zA-Z0-9_\-]+    { yylval.str = strdup(yytext+1); return ANCHOR; }
 <INITIAL,FLOW>"*"[a-zA-Z0-9_\-]+    { yylval.str = strdup(yytext+1); return ALIAS; }
-<INITIAL,FLOW>"!"[a-zA-Z0-9_\-./!@#$%&()=+~\\<>,:\[\]]* { yylval.str = strdup(yytext+1); return TAG; }
+<INITIAL,FLOW>"!"[a-zA-Z0-9_\-./!@#$%&()=+~\\<>]* { yylval.str = strdup(yytext+1); return TAG; }
 
 <INITIAL,FLOW>"#"[^\n\r]*    { /* Comment */ }
 
