@@ -23,14 +23,10 @@ LEX_SRC := $(LIB_DIR)/yaml.l
 YACC_SRC := $(LIB_DIR)/yaml.y
 
 # Generated files
-LEX_OUT := lex.yy.c
-YACC_OUT := y.tab.c
-YACC_HEADER := y.tab.h
-PARSER_BIN := yaml_parser
-
-# Copy generated files to lib/computer
-LIB_LEX_OUT := $(LIB_DIR)/lex.yy.c
-LIB_YACC_OUT := $(LIB_DIR)/y.tab.c
+LEX_OUT := $(LIB_DIR)/lex.yy.c
+YACC_OUT := $(LIB_DIR)/y.tab.c
+YACC_HEADER := $(LIB_DIR)/y.tab.h
+PARSER_BIN := $(LIB_DIR)/yaml_parser
 
 # YAML files
 YAML_FILES := $(shell find $(EXAMPLES_DIR) -name '*.yaml' 2>/dev/null)
@@ -59,13 +55,11 @@ parser: $(PARSER_BIN) ## Build the YAML parser from lex/yacc sources
 
 $(LEX_OUT): $(LEX_SRC)
 	@echo "→ Running lex on $(LEX_SRC)..."
-	$(LEX) $(LEX_SRC)
-	@cp $(LEX_OUT) $(LIB_LEX_OUT) 2>/dev/null || true
+	cd $(LIB_DIR) && $(LEX) yaml.l
 
 $(YACC_OUT) $(YACC_HEADER): $(YACC_SRC)
 	@echo "→ Running yacc on $(YACC_SRC)..."
-	$(YACC) -d $(YACC_SRC)
-	@cp $(YACC_OUT) $(LIB_YACC_OUT) 2>/dev/null || true
+	cd $(LIB_DIR) && $(YACC) -d yaml.y
 
 $(PARSER_BIN): $(LEX_OUT) $(YACC_OUT)
 	@echo "→ Compiling parser..."
@@ -132,7 +126,7 @@ verify-build: parser test ## Verify complete build (parser + tests)
 clean: ## Remove generated files
 	@echo "→ Cleaning generated files..."
 	@rm -f $(LEX_OUT) $(YACC_OUT) $(YACC_HEADER) $(PARSER_BIN)
-	@rm -f $(LIB_LEX_OUT) $(LIB_YACC_OUT)
+	@rm -f lex.yy.c y.tab.c y.tab.h yaml_parser
 	@rm -f $(SVG_FILES)
 	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true

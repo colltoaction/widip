@@ -500,8 +500,8 @@ int yy_flex_debug = 0;
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
 char *yytext;
-#line 1 "lib/computer/yaml.l"
-#line 2 "lib/computer/yaml.l"
+#line 1 "yaml.l"
+#line 2 "yaml.l"
 /* YAML 1.2 Lexer - Simplified Subset */
 #include <stdio.h>
 #include <string.h>
@@ -732,7 +732,7 @@ YY_DECL
 		}
 
 	{
-#line 26 "lib/computer/yaml.l"
+#line 26 "yaml.l"
 
 
 #line 739 "lex.yy.c"
@@ -805,52 +805,52 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 28 "lib/computer/yaml.l"
+#line 28 "yaml.l"
 { return DOC_START; }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 29 "lib/computer/yaml.l"
+#line 29 "yaml.l"
 { return DOC_END; }
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 31 "lib/computer/yaml.l"
+#line 31 "yaml.l"
 { return LBRACKET; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 32 "lib/computer/yaml.l"
+#line 32 "yaml.l"
 { return RBRACKET; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 33 "lib/computer/yaml.l"
+#line 33 "yaml.l"
 { return LBRACE; }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 34 "lib/computer/yaml.l"
+#line 34 "yaml.l"
 { return RBRACE; }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 35 "lib/computer/yaml.l"
+#line 35 "yaml.l"
 { return COMMA; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 37 "lib/computer/yaml.l"
+#line 37 "yaml.l"
 { return SEQ_ENTRY; }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 38 "lib/computer/yaml.l"
+#line 38 "yaml.l"
 { return MAP_KEY; }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 39 "lib/computer/yaml.l"
+#line 39 "yaml.l"
 { return COLON; }
 	YY_BREAK
 case 11:
@@ -860,7 +860,7 @@ YY_LINENO_REWIND_TO(yy_bp + 1);
 (yy_c_buf_p) = yy_cp = yy_bp + 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 40 "lib/computer/yaml.l"
+#line 40 "yaml.l"
 { return COLON; }
 	YY_BREAK
 case 12:
@@ -868,33 +868,33 @@ case 12:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 41 "lib/computer/yaml.l"
+#line 41 "yaml.l"
 { return COLON; }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 43 "lib/computer/yaml.l"
+#line 43 "yaml.l"
 { yylval.str = strdup(yytext+1); return ANCHOR; }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 44 "lib/computer/yaml.l"
+#line 44 "yaml.l"
 { yylval.str = strdup(yytext+1); return ALIAS; }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 45 "lib/computer/yaml.l"
+#line 45 "yaml.l"
 { yylval.str = strdup(yytext+1); return TAG; }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 47 "lib/computer/yaml.l"
+#line 47 "yaml.l"
 { /* Comment - ignore */ }
 	YY_BREAK
 case 17:
 /* rule 17 can match eol */
 YY_RULE_SETUP
-#line 49 "lib/computer/yaml.l"
+#line 49 "yaml.l"
 { 
                           /* Double-quoted string */
                           yylval.str = strndup(yytext+1, yyleng-2);
@@ -904,7 +904,7 @@ YY_RULE_SETUP
 case 18:
 /* rule 18 can match eol */
 YY_RULE_SETUP
-#line 55 "lib/computer/yaml.l"
+#line 55 "yaml.l"
 {
                           /* Single-quoted string */
                           yylval.str = strndup(yytext+1, yyleng-2);
@@ -913,12 +913,12 @@ YY_RULE_SETUP
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 61 "lib/computer/yaml.l"
+#line 61 "yaml.l"
 { yylval.str = strdup(yytext); return PLAIN_SCALAR; }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 63 "lib/computer/yaml.l"
+#line 63 "yaml.l"
 { 
                           pending_indent = yyleng;
                           /* Indentation - track for block structure */
@@ -927,22 +927,22 @@ YY_RULE_SETUP
 case 21:
 /* rule 21 can match eol */
 YY_RULE_SETUP
-#line 68 "lib/computer/yaml.l"
+#line 68 "yaml.l"
 { current_indent = 0; return NEWLINE; }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 69 "lib/computer/yaml.l"
+#line 69 "yaml.l"
 { /* Ignore other whitespace */ }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 71 "lib/computer/yaml.l"
+#line 71 "yaml.l"
 { return yytext[0]; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 73 "lib/computer/yaml.l"
+#line 73 "yaml.l"
 ECHO;
 	YY_BREAK
 #line 949 "lex.yy.c"
@@ -1964,6 +1964,6 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 73 "lib/computer/yaml.l"
+#line 73 "yaml.l"
 
 
