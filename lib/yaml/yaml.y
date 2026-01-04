@@ -193,6 +193,7 @@ void print_node(Node *n, int depth) {
 %type <node> stream document document_list node optional_node flow_node block_node optional_flow_node
 %type <node> flow_seq_items flow_map_entries flow_map_entry
 %type <node> block_sequence block_mapping block_seq_items block_map_entries map_entry
+%type <node> anchored_node tagged_node
 
 %start stream
 
@@ -274,6 +275,36 @@ block_node
     | INDENT node DEDENT    { $$ = $2; }
     ;
 
+anchored_node
+    : ANCHOR opt_newlines node {
+                              $$ = malloc(sizeof(Node));
+                              $$->type = NODE_ANCHOR;
+                              $$->anchor = $1;
+                              $$->children = $3;
+                              $$->next = NULL;
+                            }
+    | ANCHOR newlines INDENT node DEDENT {
+                              $$ = malloc(sizeof(Node));
+                              $$->type = NODE_ANCHOR;
+                              $$->anchor = $1;
+                              $$->children = $4;
+                              $$->next = NULL;
+                            }
+    | ANCHOR newlines DEDENT node {
+                              $$ = malloc(sizeof(Node));
+                              $$->type = NODE_ANCHOR;
+                              $$->anchor = $1;
+                              $$->children = $4;
+                              $$->next = NULL;
+                            }
+    ;
+
+tagged_node
+    : TAG opt_newlines node { $$ = make_tag($1, $3); }
+    | TAG newlines INDENT node DEDENT { $$ = make_tag($1, $4); }
+    | TAG newlines DEDENT node { $$ = make_tag($1, $4); }
+    ;
+
 flow_seq_items
     : optional_flow_node                         { $$ = $1; }
     | flow_seq_items COMMA optional_flow_node    { $$ = append_node($1, $3); }
@@ -308,6 +339,7 @@ block_mapping
 /* Block mapping entries - key: value pairs at same indentation */
 block_map_entries
     : map_entry                             { $$ = $1; }
+    
     | block_map_entries newlines map_entry  { $$ = append_node($1, $3); }
     ;
 
@@ -315,6 +347,8 @@ block_map_entries
 map_entry
     : node COLON opt_newlines optional_node { $$ = append_node($1, $4); }
     | node COLON newlines INDENT node DEDENT { $$ = append_node($1, $5); }
+    | node COLON newlines anchored_node { $$ = append_node($1, $4); }
+    | node COLON newlines tagged_node { $$ = append_node($1, $4); }
     | MAP_KEY optional_node COLON opt_newlines optional_node { $$ = append_node($2, $5); }
     | MAP_KEY optional_node                 { $$ = append_node($2, make_null()); }
     ;
