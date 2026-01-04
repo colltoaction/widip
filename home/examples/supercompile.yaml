@@ -1,0 +1,148 @@
+#!/usr/bin/env titi
+# Supercompilation Examples for Monoidal Computer
+# Demonstrates Futamura projections and partial evaluation
+
+# --- Example 1: Simple Partial Evaluation ---
+# Specialize a power function with a fixed exponent
+
+power_specialized: &power_spec
+  !seq
+  - !data 2              # Static exponent = 2
+  - !program square      # Specialized to squaring
+  - !specializer         # Apply partial evaluation
+
+# --- Example 2: First Futamura Projection ---
+# Compile a simple interpreter with a fixed program
+
+simple_interpreter: &interp
+  !program eval_simple
+
+test_program: &prog
+  !seq
+  - !data "x + 1"
+  - !data "* 2"
+
+compiled_program: &compiled
+  !futamura1
+  - *interp
+  - *prog
+
+# --- Example 3: Second Futamura Projection ---
+# Generate a compiler from interpreter and specializer
+
+compiler: &comp
+  !futamura2
+  - *interp
+  - !program specializer
+
+# --- Example 4: Third Futamura Projection ---
+# Generate a compiler generator
+
+compiler_generator: &compgen
+  !futamura3
+  - !program specializer
+
+# --- Example 5: Supercompilation with Driving ---
+# Optimize a recursive function through symbolic execution
+
+factorial: &fact
+  !anchor factorial
+  !seq
+  - !program "test_zero"
+  - !choice
+    - !data 1                    # Base case: 0! = 1
+    - !seq                       # Recursive case
+      - !copy 2
+      - !seq
+        - !program "dec"
+        - !alias factorial       # Recursive call
+        - !program "mul"
+
+optimized_factorial: &opt_fact
+  !supercompile *fact
+
+# --- Example 6: Deforestation ---
+# Eliminate intermediate data structures
+
+pipeline: &pipe
+  !seq
+  - !program map_inc           # map (+1)
+  - !program map_double        # map (*2)
+  - !program filter_even       # filter even
+
+deforested: &defor
+  !supercompile *pipe          # Fuses into single pass
+
+# --- Example 7: Loop Fusion ---
+# Combine multiple loops into one
+
+sum_of_squares: &sos
+  !seq
+  - !program map_square
+  - !program sum
+
+fused: &fused_sos
+  !supercompile *sos
+
+# --- Example 8: Constant Folding ---
+# Evaluate constant expressions at compile time
+
+constant_expr: &const
+  !seq
+  - !data 3
+  - !data 4
+  - !program add
+  - !data 5
+  - !program mul
+
+folded: &folded_const
+  !supercompile *const         # Should reduce to !data 35
+
+# --- Example 9: Inlining ---
+# Inline function calls
+
+helper: &helper
+  !seq
+  - !program double
+  - !program inc
+
+main_with_call: &main
+  !seq
+  - !data 10
+  - *helper
+
+inlined: &inlined_main
+  !supercompile *main
+
+# --- Example 10: Specialization Chain ---
+# Multiple levels of specialization
+
+generic_algo: &generic
+  !program generic_sort
+
+specialized_int: &spec_int
+  !specializer
+  - *generic
+  - !data "int"
+
+specialized_int_ascending: &spec_int_asc
+  !specializer
+  - *spec_int
+  - !data "ascending"
+
+# --- Main Demo: Run All Examples ---
+!seq
+- !print "=== Supercompilation Demo ==="
+- !print "1. Partial Evaluation:"
+- *power_spec
+- !print "\n2. Futamura Projection 1:"
+- *compiled
+- !print "\n3. Futamura Projection 2:"
+- *comp
+- !print "\n4. Optimized Factorial:"
+- *opt_fact
+- !print "\n5. Deforestation:"
+- *defor
+- !print "\n6. Constant Folding:"
+- *folded_const
+- !print "\n=== Demo Complete ==="

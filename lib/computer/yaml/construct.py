@@ -143,6 +143,107 @@ def construct_box(box) -> closed.Diagram:
 
     if tag and kind not in ["Titi"]:
         if tag == "seq": return inside
+        
+        # --- Supercompilation Tags ---
+        if tag == "specializer":
+            from ..super_extended import specializer_box
+            return specializer_box >> closed.Id(Language)
+        
+        if tag == "futamura1":
+            from ..super_extended import futamura_1
+            # Extract interpreter and program from nested
+            if hasattr(nested, 'inside') and len(nested.inside) >= 2:
+                interp = computer.yaml.construct_functor(nested.inside[0])
+                prog = computer.yaml.construct_functor(nested.inside[1])
+                return futamura_1(interp, prog)
+            return inside
+        
+        if tag == "futamura2":
+            from ..super_extended import futamura_2
+            if hasattr(nested, 'inside') and len(nested.inside) >= 2:
+                interp = computer.yaml.construct_functor(nested.inside[0])
+                spec = computer.yaml.construct_functor(nested.inside[1])
+                return futamura_2(interp, spec)
+            return inside
+        
+        if tag == "futamura3":
+            from ..super_extended import futamura_3
+            if hasattr(nested, 'inside') and len(nested.inside) >= 1:
+                spec = computer.yaml.construct_functor(nested.inside[0])
+                return futamura_3(spec)
+            return inside
+        
+        if tag == "supercompile":
+            from ..super_extended import Supercompiler
+            sc = Supercompiler()
+            return sc.supercompile(inside)
+        
+        # --- Hypercomputation Tags ---
+        if tag == "ackermann":
+            from ..hyper_extended import ackermann_box
+            return ackermann_box >> closed.Id(Language)
+        
+        if tag == "fast_growing":
+            from ..hyper_extended import fast_growing_box
+            return fast_growing_box >> closed.Id(Language)
+        
+        if tag == "busy_beaver":
+            from ..hyper_extended import busy_beaver_box
+            return busy_beaver_box >> closed.Id(Language)
+        
+        if tag == "goodstein":
+            from ..hyper_extended import goodstein_box
+            return goodstein_box >> closed.Id(Language)
+        
+        if tag == "omega_iterate":
+            from ..hyper_extended import iterate_omega
+            return iterate_omega(inside)
+        
+        if tag == "diagonal":
+            from ..hyper_extended import diagonal
+            return diagonal(inside)
+        
+        if tag == "transfinite":
+            from ..hyper_extended import transfinite_box
+            return transfinite_box >> closed.Id(Language)
+        
+        if tag == "omega":
+            from ..hyper_extended import OrdinalNotation
+            omega = OrdinalNotation.omega()
+            return Data(str(omega)) >> closed.Id(Language)
+        
+        if tag == "epsilon_0":
+            from ..hyper_extended import OrdinalNotation
+            eps0 = OrdinalNotation.epsilon_0()
+            return Data(str(eps0)) >> closed.Id(Language)
+        
+        # --- Parser Integration Tags ---
+        if tag == "parse_yaml":
+            from ..parser_bridge import YAMLParserBridge
+            parser = YAMLParserBridge()
+            # Extract source from nested
+            source_val = value or ""
+            if hasattr(nested, 'inside'):
+                # Try to extract source from nested structure
+                pass
+            return parser.parse(source_val)
+        
+        if tag == "lex":
+            # Run lex on the specified file
+            args = extract_args(box)
+            return Program("lex", args)
+        
+        if tag == "yacc":
+            # Run yacc on the specified file
+            args = extract_args(box)
+            return Program("yacc", args)
+        
+        if tag == "cc":
+            # Run C compiler
+            args = extract_args(box)
+            return Program("cc", args)
+        
+        # Default: create Program with tag and args
         args = extract_args(box)
         return Program(tag, args)
 
