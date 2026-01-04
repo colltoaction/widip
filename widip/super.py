@@ -7,12 +7,12 @@ from .computer import Program, Language, Partial
 @closed.Diagram.from_callable(Language @ Language, Language)
 def specializer(program, arg):
     """Partial evaluator / Specializer diagram."""
-    return Program("specializer")(program, arg)
+    return closed.Box("specializer", Language @ Language, Language)(program, arg)
 
 @closed.Diagram.from_callable(Language @ Language, Language)
 def interpreter(program, arg):
     """Interpreter diagram representation."""
-    return Program("interpreter")(program, arg)
+    return closed.Box("interpreter", Language @ Language, Language)(program, arg)
 
 # Futamura's Projections
 compiler = lambda program: Partial(interpreter, 1)(program)

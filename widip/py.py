@@ -6,10 +6,14 @@ eval_python:  str → AST → object       -- parses and evaluates Python AST fo
 """
 
 import functools, operator, ast
-from discopy import python
+from . import computer
 
-eval_diagram: python.Ty = lambda tuples: functools.reduce(operator.add, tuples, ())
-eval_diagram.__doc__ = """Monoid homomorphism: flatten tuple of tuples via reduce(add, tuples, ())."""
+@computer.Program.as_diagram()
+def eval_diagram(tuples):
+    """Monoid homomorphism: flatten tuple of tuples via reduce(add, tuples, ())."""
+    return functools.reduce(operator.add, tuples, ())
 
-eval_python: python.Ty = lambda code: eval(compile(ast.parse(code, mode='eval'), '<string>', 'eval'))
-eval_python.__doc__ = """Functor str → AST → object: parse and evaluate Python expressions via AST."""
+@computer.Program.as_diagram()
+def eval_python(code):
+    """Functor str → AST → object: parse and evaluate Python expressions via AST."""
+    return eval(compile(ast.parse(code, mode='eval'), '<string>', 'eval'))

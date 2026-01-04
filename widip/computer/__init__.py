@@ -22,10 +22,8 @@ def Data(value):
     return diag
 
 def Program(name, args=()):
-    @closed.Diagram.from_callable(Language, Language)
-    def diag(x):
-        return closed.Box(name, Language, Language, data=args)(x)
-    return diag
+    """Create a Program box."""
+    return closed.Box(name, Language, Language, data=args)
 
 def Discard():
     @closed.Diagram.from_callable(Language, closed.Ty())
@@ -35,3 +33,25 @@ def Discard():
 
 from .composition import Sequential, Parallel
 Computation = closed.Category(closed.Ty, closed.Diagram)
+
+# --- Futamura Projections (Super-Computer) ---
+
+# Manually construct closed.Ty for two Language arguments
+Language2 = closed.Ty("ℙ", "ℙ")
+
+specializer_box = closed.Box("specializer", Language2, Language)
+interpreter_box = closed.Box("interpreter", Language2, Language)
+
+# Boxes are already diagrams
+specializer = specializer_box
+interpreter = interpreter_box
+
+# Futamura's Projections
+compiler = lambda program: Partial(interpreter_box, 1)
+compiler_generator = lambda: Partial(specializer_box, 1)
+
+# --- Hypercomputation ---
+
+ackermann = closed.Box("ackermann", Language2, Language)
+
+
