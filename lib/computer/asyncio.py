@@ -251,6 +251,40 @@ async def run_command(runner: Callable, loop: EventLoop,
     # 2. Execute subprocess
     args_str = [await unwrap_to_str(a, loop, hooks) for a in args]
     
+    # Build system commands (lex, yacc, cc) - execute synchronously and return output
+    if name_str in ["lex", "yacc", "cc"]:
+        # These are build tools that should complete synchronously
+        process = await asyncio.create_subprocess_exec(
+            name_str, *args_str,
+            stdin=asyncio.subprocess.PIPE, 
+            stdout=asyncio.subprocess.PIPE, 
+            stderr=asyncio.subprocess.STDOUT  # Capture stderr to stdout for build messages
+        )
+        
+        # Feed stdin if provided
+        if stdin is not None:
+            await feed_stdin(loop, stdin, process, hooks)
+        else:
+            # Close stdin if no input
+            try:
+                if process.stdin and process.stdin.can_write_eof():
+                    process.stdin.write_eof()
+                if process.stdin:
+                    process.stdin.close()
+            except Exception:
+                pass
+        
+        # Wait for completion and return output
+        stdout_data, _ = await process.communicate()
+        
+        # Return the output (build messages) or empty bytes if successful
+        if process.returncode != 0:
+            # Build failed - return error output
+            return stdout_data if stdout_data else b"Build failed\n"
+        else:
+            # Build succeeded - return success message or output
+            return stdout_data if stdout_data else b"Build successful\n"
+    
     # xargs as a GUARD (Special Case)
     if name_str == "xargs":
          process = await asyncio.create_subprocess_exec(
