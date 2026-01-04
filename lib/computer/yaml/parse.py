@@ -4,7 +4,7 @@ from itertools import batched
 from discopy import frobenius, monoidal, closed
 
 # Import the C-based parser bridge
-from ..parser_bridge import YAMLParserBridge
+from .parser_bridge import YAMLParserBridge
 
 
 

@@ -59,14 +59,23 @@ def exec_box(box: closed.Box) -> Process:
         box_kind = get_attr(box, 'kind', box_name)
         # print(f"DEBUG: exec_box name='{box_name}' kind='{box_kind}' args={args_data}", file=sys.stderr)
 
-        if box_kind == "Anchor" or box_name.startswith("Anchor"):
+        if box_kind == "Anchor" or box_name.lower() == "anchor" or box_name.startswith("Anchor"):
             name = get_attr(box, 'anchor_name')
             # Extract name from string if needed (e.g. "Anchor(hello)")
             if name is None and "(" in box_name:
                 name = box_name.split("(")[1].rstrip(")")
             
-            if name is None and len(args_data) >= 2:
+            # Extract 'inside' from args or nested
+            inside = None
+            if len(args_data) >= 2:
                  name, inside = args_data
+            elif len(args_data) == 1:
+                 # If name already found, arg is 'inside'. Otherwise arg is 'name'.
+                 if name: inside = args_data[0]
+                 else: name = args_data[0]
+            
+            if inside is None:
+                 inside = get_attr(box, 'nested')
             
             # print(f"DEBUG: Setting anchor '{name}'", file=sys.stderr)
             if name:

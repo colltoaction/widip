@@ -94,22 +94,13 @@ def construct_box(box) -> closed.Diagram:
 
     # 4. Handle Scalar (Leaf)
     if kind == "Scalar":
-        if tag:
-            if tag == "id": return closed.Id(Language)
-            if tag == "xargs": return Program("xargs", (value,))
-            if tag.lower() == "data": return Data(value)
-            if tag.lower() == "program": return Program(value)
-            # Handle Partial specially
-            if tag == "Partial":
-                 from computer import Partial
-                 return Partial(value)
-            # Fall through for other tags
-        else:
+        if not tag:
             if value is None or value == "":
                 return closed.Id(Language)
             return Data(value)
+        # Fall through to default tag handling if tagged
 
-    # Special: Treat untagged sequences as accumulative pipelines (print taps)
+    # Special: Treat untagged sequences as pipelines (prefer >>)
     is_seq = kind == "Sequence" and not tag
     has_inside = hasattr(nested, 'inside') or isinstance(nested, list)
     if is_seq and has_inside:
@@ -125,7 +116,6 @@ def construct_box(box) -> closed.Diagram:
     else:
          inside = computer.yaml.construct_functor(nested)
 
-    
     if kind == "Mapping" and not tag:
         # Raw tensor representation for untagged mappings
         return inside
@@ -136,163 +126,34 @@ def construct_box(box) -> closed.Diagram:
     if kind == "ε": return discard
 
     if tag and kind not in ["Titi"]:
-        if tag == "seq": return inside
-        
-        # Helper to safely compose if inside is providing input
-        def safe_compose(box):
-             if inside != closed.Id(Language): 
-                  try: return inside >> box
-                  except: pass
-             return box
-
-        # --- Supercompilation Tags ---
-        if tag == "specializer":
-            from ..super_extended import specializer_box
-            return safe_compose(specializer_box >> closed.Id(Language))
-        
-        if tag == "futamura1":
-            from ..super_extended import futamura_1
-            # Extract interpreter and program from nested
-            if hasattr(nested, 'inside') and len(nested.inside) >= 2:
-                interp = computer.yaml.construct_functor(nested.inside[0])
-                prog = computer.yaml.construct_functor(nested.inside[1])
-                return futamura_1(interp, prog)
-            return inside
-        
-        if tag == "futamura2":
-            from ..super_extended import futamura_2
-            if hasattr(nested, 'inside') and len(nested.inside) >= 2:
-                interp = computer.yaml.construct_functor(nested.inside[0])
-                spec = computer.yaml.construct_functor(nested.inside[1])
-                return futamura_2(interp, spec)
-            return inside
-        
-        if tag == "futamura3":
-            from ..super_extended import futamura_3
-            if hasattr(nested, 'inside') and len(nested.inside) >= 1:
-                spec = computer.yaml.construct_functor(nested.inside[0])
-                return futamura_3(spec)
-            return inside
-        
-        if tag == "supercompile":
-            from ..super_extended import Supercompiler
-            sc = Supercompiler()
-            return sc.supercompile(inside)
-        
-        # --- Hypercomputation Tags ---
-        if tag == "ackermann":
-            from ..hyper_extended import ackermann_box
-            res = ackermann_box >> closed.Id(Language)
-            return safe_compose(res)
-        
-        if tag == "fast_growing":
-            from ..hyper_extended import fast_growing_box
-            res = fast_growing_box >> closed.Id(Language)
-            return safe_compose(res)
-        
-        if tag == "busy_beaver":
-            from ..hyper_extended import busy_beaver_box
-            res = busy_beaver_box >> closed.Id(Language)
-            return safe_compose(res)
-        
-        if tag == "goodstein":
-            from ..hyper_extended import goodstein_box
-            res = goodstein_box >> closed.Id(Language)
-            return safe_compose(res)
-        
-        if tag == "omega_iterate":
-            from ..hyper_extended import iterate_omega
-            return iterate_omega(inside)
-        
-        if tag == "diagonal":
-            from ..hyper_extended import diagonal
-            return diagonal(inside)
-        
-        if tag == "transfinite":
-            from ..hyper_extended import transfinite_box
-            res = transfinite_box >> closed.Id(Language)
-            return safe_compose(res)
-        
-        if tag == "omega":
-            from ..hyper_extended import OrdinalNotation
-            omega = OrdinalNotation.omega()
-            return Data(str(omega)) >> closed.Id(Language)
-        
-        if tag == "epsilon_0":
-            from ..hyper_extended import OrdinalNotation
-            eps0 = OrdinalNotation.epsilon_0()
-            return Data(str(eps0)) >> closed.Id(Language)
-        
-        if tag == "choice":
-            # Conditional choice between branches
-            if hasattr(nested, 'inside') and len(nested.inside) >= 2:
-                 branch1 = computer.yaml.construct_functor(nested.inside[0])
-                 branch2 = computer.yaml.construct_functor(nested.inside[1])
-                 return Program("choice", (branch1, branch2))
-            return inside
-        
-        if tag == "mapping":
-            # Explicit tensor product
-            return inside
-            
-        if tag == "seq":
-            # Explicit sequential composition
-            items = nested.inside if hasattr(nested, 'inside') else nested
-            return sequential_compose(items)
-        
-        # --- Parser Integration Tags ---
-        if tag == "parse_yaml":
-            from ..parser_bridge import YAMLParserBridge
-            parser = YAMLParserBridge()
-            # Extract source from nested
-            source_val = value or ""
-            if hasattr(nested, 'inside'):
-                # Try to extract source from nested structure
-                pass
-            return parser.parse(source_val)
-        
-        if tag == "lex":
-            # Run lex on the specified file
-            args = extract_args(box)
-            return Program("lex", args)
-        
-        if tag == "yacc":
-            # Run yacc on the specified file
-            args = extract_args(box)
-            return Program("yacc", args)
-        
-        if tag == "cc":
-            # Run C compiler
-            args = extract_args(box)
-            return Program("cc", args)
-
         if tag.lower() == "data":
-            # Extract scalar value from inside
-            # inside is typically Data(val) already if derived from Scalar
-            # If kind="Tagged", nested=Scalar("val") -> inside=Data("val")
-            # So just return inside.
-            return inside
-        
-        if tag.lower() == "program":
-            # If nested is already a Program box (unwrap)
-            return inside
-
+             # If inside is Data box, we want its name. 
+             # nested for a tagged scalar is the Scalar box. 
+             # inside is already construct_functor(nested) -> Data(val)
+             if hasattr(inside, 'name'):
+                  return Data(inside.name)
+             return Data(value)
+             
         # Default: create Program with tag and args
         args = extract_args(box)
         return Program(tag, args)
 
     return inside
+
 def sequential_compose(items: list) -> closed.Diagram:
     """
-    Helper to compose a list of items with 'Accumulative Tap' behavior.
-    If multiple items produce output (codomain is Language), they are
-    automatically merged (μ) so all outputs are preserved.
+    Helper to compose a list of items.
+    Prefer strict sequential composition (>>) for pipelines.
+    Fall back to 'Accumulative Tap' only if domains/codomains don't match
+    or if multiple outputs are desired (though usually we want to see everything).
     """
     import computer
     from ..core import Language, Discard, make_copy, make_merge, Copy, Merge
     from discopy import closed
     
     res = None
+    if not items: return closed.Id(Language)
+    
     # Edge case: If 1 item and it's a Program, just return it directly (unwrap)
     if len(items) == 1:
         return computer.yaml.construct_functor(items[0])
@@ -302,37 +163,34 @@ def sequential_compose(items: list) -> closed.Diagram:
         if res is None:
             res = layer_diag
         else:
-            # Robust Accumulative Composition
             n_res = len(res.cod)
             n_layer = len(layer_diag.dom)
             
-            # If both have Language cod/dom, we can pipe OR tap
-            # For "Accumulative Tap", we want to preserve previous output
-            # and ALSO run the next one.
-            
-            # If both have Language cod/dom AND matching output arity, use Accumulative Tap
-            n_layer_cod = len(layer_diag.cod)
-            if n_res == 1 and n_layer == 1 and n_layer_cod == 1:
-                 # Shared input + Parallel output merged
+            # --- PIPE First ---
+            if n_res == n_layer and n_res > 0:
+                 # Standard pipeline: echo 1 >> awk ...
+                 res = res >> layer_diag
+            # --- TAP Second (Accumulative) ---
+            elif n_res == 1 and n_layer == 1:
+                 # If they COULD pipe but we want to see both? 
+                 # Actually, most users expect pipelines in sequences. 
+                 # But some might expect "log-like" behavior. 
+                 # Given the current tests, "Accumulative Tap" was intended for untagged seqs.
+                 # Let's keep it as a fallback or explicit if it was the previous behavior.
                  res = make_copy(2) >> (res @ layer_diag) >> make_merge(2)
-            elif n_res == n_layer:
-                res = res >> layer_diag
+            # --- TENSOR Third ---
             elif n_layer == 0:
-                # Parallel composition: next one is a source
                 res = res @ layer_diag
             elif n_res == 0:
-                # Sequence: previous produced nothing, next starts fresh
                 res = res >> layer_diag
             elif n_res < n_layer:
-                # fan out
                 if n_res == 1:
                     res = res >> make_copy(n_layer) >> layer_diag
                 else: res = res >> layer_diag
             elif n_res > n_layer:
-                # merge or discard
                 if n_layer == 1:
                     res = res >> make_merge(n_res) >> layer_diag
                 else:
                     extra = n_res - n_layer
                     res = res >> (closed.Id(Language ** n_layer) @ Discard(Language ** extra)) >> layer_diag
-    return res or closed.Id(Language)
+    return res

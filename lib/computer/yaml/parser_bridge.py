@@ -11,8 +11,8 @@ categorical execution model, enabling:
 from __future__ import annotations
 from typing import Any
 from discopy import closed, frobenius
-from .core import Language
-from .yaml.representation import Scalar, Sequence, Mapping, Alias, Anchor, Node, YamlBox
+from ..core import Language
+from .representation import Scalar, Sequence, Mapping, Alias, Anchor, Node, YamlBox
 import subprocess
 import json
 import os
@@ -31,9 +31,10 @@ class YAMLParserBridge:
             parser_path: Path to the yaml_parser executable
         """
         if parser_path is None:
-            # Default to lib/computer/_yaml_parser
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            parser_path = os.path.join(base_dir, "_yaml_parser")
+            # Default to lib/yaml/_yaml_parser
+            base_dir = os.path.dirname(os.path.abspath(__file__)) # lib/computer/yaml
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(base_dir)))
+            parser_path = os.path.join(project_root, "lib", "yaml", "_yaml_parser")
         
         self.parser_path = parser_path
         
@@ -229,7 +230,7 @@ class YAMLParserBridge:
 
         elif node_type == 'STREAM':
             # STREAM is a list of documents
-            from .yaml.representation import Stream
+            from .representation import Stream
             children = node.get('children', [])
             diagrams = [self._convert_node(child) for child in children]
             return Stream(diagrams)
@@ -329,7 +330,9 @@ def build_parser(lib_dir: str = None) -> bool:
         True if build succeeded, False otherwise
     """
     if lib_dir is None:
-        lib_dir = os.path.dirname(os.path.abspath(__file__))
+        base_dir = os.path.dirname(os.path.abspath(__file__)) # lib/computer/yaml
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(base_dir)))
+        lib_dir = os.path.join(project_root, "lib", "yaml")
     
     yaml_l = os.path.join(lib_dir, "yaml.l")
     yaml_y = os.path.join(lib_dir, "yaml.y")

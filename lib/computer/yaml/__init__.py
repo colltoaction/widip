@@ -101,3 +101,17 @@ construct_functor = Composable(_construct_functor_wrapped)
 
 # --- Load Pipeline ---
 load = lambda source: construct_functor(compose_functor(impl_parse(source)))
+
+# --- Helpers ---
+def yaml(source: str):
+    """Functor: parse and evaluate YAML source into a diagram."""
+    return load(source)
+
+eval_yaml = yaml
+
+def eval_diagram(tuples):
+    """Monoid homomorphism: flatten tuple of tuples via reduce(add, tuples, ())."""
+    import functools, operator
+    return functools.reduce(operator.add, tuples, ())
+
+__all__ = ['load', 'yaml', 'eval_yaml', 'eval_diagram', 'construct_functor', 'compose_functor']

@@ -1,5 +1,5 @@
 %{
-/* YAML 1.2 Parser - Simplified Subset */
+/* YAML 1.2 Parser - Flexible */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,7 +15,8 @@ typedef enum {
     NODE_ALIAS,
     NODE_ANCHOR,
     NODE_TAG,
-    NODE_STREAM
+    NODE_STREAM,
+    NODE_NULL
 } NodeType;
 
 typedef struct Node {
@@ -95,6 +96,17 @@ Node *make_stream(Node *docs) {
     return n;
 }
 
+Node *make_null() {
+    Node *n = malloc(sizeof(Node));
+    n->type = NODE_SCALAR;
+    n->tag = NULL;
+    n->anchor = NULL;
+    n->value = strdup("null");
+    n->children = NULL;
+    n->next = NULL;
+    return n;
+}
+
 Node *append_node(Node *list, Node *item) {
     if (!list) return item;
     Node *curr = list;
@@ -141,6 +153,9 @@ void print_node(Node *n, int depth) {
             for (Node *c = n->children; c; c = c->next)
                 print_node(c, depth + 1);
             break;
+        case NODE_NULL:
+            printf("SCALAR: null\n");
+            break;
     }
 }
 
@@ -154,12 +169,12 @@ void print_node(Node *n, int depth) {
 %token DOC_START DOC_END
 %token LBRACKET RBRACKET LBRACE RBRACE COMMA
 %token SEQ_ENTRY MAP_KEY COLON
-%token NEWLINE
+%token NEWLINE INDENT DEDENT
 
 %token <str> ANCHOR ALIAS TAG
 %token <str> PLAIN_SCALAR DQUOTE_STRING SQUOTE_STRING
 
-%type <node> stream document node scalar
+%type <node> stream document node scalar optional_node
 %type <node> flow_sequence flow_mapping flow_seq_items flow_map_entries
 %type <node> block_sequence block_mapping block_seq_items block_map_entries
 %type <node> tagged_node anchored_node document_list
@@ -170,6 +185,7 @@ void print_node(Node *n, int depth) {
 
 stream
     : document_list         { root = make_stream($1); }
+    | opt_newlines          { root = make_stream(NULL); }
     ;
 
 document_list
@@ -178,13 +194,13 @@ document_list
     ;
 
 document
-    : node optional_newlines { $$ = $1; }
-    | DOC_START optional_newlines node optional_newlines       { $$ = $3; }
-    | DOC_START optional_newlines node optional_newlines DOC_END optional_newlines { $$ = $3; }
-    | newlines node optional_newlines { $$ = $2; }
+    : node opt_newlines { $$ = $1; }
+    | DOC_START opt_newlines optional_node opt_newlines       { $$ = $3; }
+    | DOC_START opt_newlines optional_node opt_newlines DOC_END opt_newlines { $$ = $3; }
+    | DOC_END opt_newlines { $$ = make_null(); }
     ;
 
-optional_newlines
+opt_newlines
     : /* empty */
     | newlines
     ;
@@ -192,6 +208,7 @@ optional_newlines
 newlines
     : NEWLINE
     | newlines NEWLINE
+    | newlines INDENT DEDENT
     ;
 
 node
@@ -205,6 +222,11 @@ node
     | ALIAS                 { $$ = make_alias($1); }
     ;
 
+optional_node
+    : node { $$ = $1; }
+    | /* empty */ { $$ = make_null(); }
+    ;
+
 scalar
     : PLAIN_SCALAR          { $$ = make_scalar($1); }
     | DQUOTE_STRING         { $$ = make_scalar($1); }
@@ -212,11 +234,11 @@ scalar
     ;
 
 tagged_node
-    : TAG optional_newlines node { $$ = make_tag($1, $3); }
+    : TAG opt_newlines node { $$ = make_tag($1, $3); }
     ;
 
 anchored_node
-    : ANCHOR optional_newlines node { 
+    : ANCHOR opt_newlines node { 
                               $$ = malloc(sizeof(Node));
                               $$->type = NODE_ANCHOR;
                               $$->anchor = $1;
@@ -232,9 +254,8 @@ flow_sequence
     ;
 
 flow_seq_items
-    : node                                  { $$ = $1; }
-    | flow_seq_items COMMA node             { $$ = append_node($1, $3); }
-    | flow_seq_items COMMA                  { $$ = $1; /* trailing comma */ }
+    : optional_node                         { $$ = $1; }
+    | flow_seq_items COMMA optional_node    { $$ = append_node($1, $3); }
     ;
 
 /* Flow Mapping: {key: value} */
@@ -244,32 +265,37 @@ flow_mapping
     ;
 
 flow_map_entries
-    : node COLON node                       { $$ = append_node($1, $3); }
-    | flow_map_entries COMMA node COLON node{ $$ = append_node($1, append_node($3, $5)); }
+    : node COLON optional_node              { $$ = append_node($1, $3); }
+    | flow_map_entries COMMA node COLON optional_node{ $$ = append_node($1, append_node($3, $5)); }
     | flow_map_entries COMMA                { $$ = $1; }
     ;
 
 /* Block Sequence: - item */
 block_sequence
     : block_seq_items                       { $$ = make_seq($1); }
+    | INDENT block_seq_items DEDENT         { $$ = make_seq($2); }
     ;
 
 block_seq_items
-    : SEQ_ENTRY node                        { $$ = $2; }
-    | block_seq_items newlines SEQ_ENTRY node{ $$ = append_node($1, $4); }
-    | block_seq_items newlines               { $$ = $1; }
+    : SEQ_ENTRY optional_node               { $$ = $2; }
+    | block_seq_items opt_newlines SEQ_ENTRY optional_node{ $$ = append_node($1, $4); }
     ;
 
 /* Block Mapping: key: value */
 block_mapping
     : block_map_entries                     { $$ = make_map($1); }
+    | INDENT block_map_entries DEDENT         { $$ = make_map($2); }
     ;
 
 block_map_entries
-    : node COLON optional_newlines node     { $$ = append_node($1, $4); }
-    | block_map_entries newlines node COLON optional_newlines node
+    : node COLON opt_newlines optional_node     { $$ = append_node($1, $4); }
+    | MAP_KEY node COLON opt_newlines optional_node { $$ = append_node($2, $5); }
+    | MAP_KEY node { $$ = append_node($2, make_null()); }
+    | block_map_entries opt_newlines node COLON opt_newlines optional_node
                                             { $$ = append_node($1, append_node($3, $6)); }
-    | block_map_entries newlines             { $$ = $1; }
+    | block_map_entries opt_newlines MAP_KEY node COLON opt_newlines optional_node
+                                            { $$ = append_node($1, append_node($4, $7)); }
+    | block_map_entries opt_newlines MAP_KEY node { $$ = append_node($1, append_node($4, make_null())); }
     ;
 
 %%

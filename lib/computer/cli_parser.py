@@ -6,7 +6,7 @@ def main():
     """Run the native _yaml_parser binary."""
     # Find the binary relative to this file
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    parser_path = os.path.join(base_dir, "_yaml_parser")
+    parser_path = os.path.join(base_dir, "..", "yaml", "_yaml_parser")
     
     if not os.path.exists(parser_path):
         print(f"Error: Native parser binary not found at {parser_path}", file=sys.stderr)

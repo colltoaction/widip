@@ -1,8 +1,0 @@
-#!/usr/bin/env titi
-# YAML Parser Build Script
-# Calls POSIX lex and yacc to generate and compile a YAML parser
-
-!seq
-- !lex lib/computer/yaml.l
-- !yacc ["-d", "lib/computer/yaml.y"]
-- !cc ["lex.yy.c", "y.tab.c", "-lfl", "-o", "yaml_parser"]
