@@ -176,7 +176,7 @@ void print_node(Node *n, int depth) {
 
 %type <node> stream document document_list node optional_node
 %type <node> flow_seq_items flow_map_entries flow_map_entry
-%type <node> block_sequence block_mapping block_seq_items block_map_entries
+%type <node> block_sequence block_mapping block_seq_items block_map_entries map_entry
 
 %start stream
 
@@ -264,9 +264,16 @@ block_mapping
     : block_map_entries                     { $$ = make_map($1); }
     ;
 
+/* Block mapping entries - key: value pairs at same indentation */
 block_map_entries
-    : node COLON optional_node              { $$ = append_node($1, $3); }
-    | block_map_entries opt_newlines node COLON optional_node { $$ = append_node($1, append_node($3, $5)); }
+    : map_entry                             { $$ = $1; }
+    | block_map_entries newlines map_entry  { $$ = append_node($1, $3); }
+    ;
+
+/* A single mapping entry: key: value (value can be inline or on next line indented) */
+map_entry
+    : node COLON opt_newlines optional_node { $$ = append_node($1, $4); }
+    | node COLON newlines INDENT node DEDENT { $$ = append_node($1, $5); }
     ;
 
 %%
