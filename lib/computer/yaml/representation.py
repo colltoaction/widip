@@ -31,8 +31,25 @@ def Sequence(inside, tag="", **kwargs):
     return YamlBox("Sequence", nested=inside, tag=tag, **kwargs)
 
 def Mapping(inside, tag="", **kwargs):
-    # Mapping is a container for key-value pairs
-    return YamlBox("Mapping", nested=inside, tag=tag, **kwargs)
+    if not inside:
+        return YamlBox("Mapping", nested=inside, tag=tag, **kwargs)
+    
+    n = len(inside)
+    # Tensor product of all items
+    tensor = inside[0]
+    for item in inside[1:]:
+        tensor = tensor @ item
+    
+    # Wrap with Copy and Merge
+    # Use frobenius.Box to match category of tensor
+    copy_box = frobenius.Box("Δ", Node, Node ** n)
+    merge_box = frobenius.Box("μ", Node ** n, Node)
+    diag = copy_box >> tensor >> merge_box
+
+    if tag:
+         return YamlBox(tag, dom=diag.dom, cod=diag.cod, nested=diag, kind="Tagged", tag=tag)
+    
+    return diag
 
 def Titi(inside, **kwargs):
     # Titi endofunctor wraps everything into a single I/O stream handler

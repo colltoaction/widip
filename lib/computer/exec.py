@@ -222,7 +222,7 @@ def exec_box(box: closed.Box) -> Process:
                   results = []
                   for item in stream_items:
                        # CLEAR ANCHORS before each document
-                       ctx.anchors.clear()
+                       # ctx.anchors.clear()
                        item_proc = exec_functor(item)
                        
                        item_in = (stdin_val,) if len(item_proc.dom) > 0 else ()

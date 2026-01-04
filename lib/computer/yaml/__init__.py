@@ -67,8 +67,14 @@ def construct_dispatch(box: Any) -> closed.Diagram:
     is_yaml_box = isinstance(box, ren.YamlBox) or type(box).__name__ == "YamlBox"
     if is_yaml_box:
         res = con.construct_box(box)
-    elif isinstance(box, closed.Box) and not isinstance(box, frobenius.Box):
-        res = box >> closed.Id(box.cod)
+    elif isinstance(box, (closed.Box, frobenius.Box)):
+        # Promote generic boxes to Program boxes in the Language category
+        name = getattr(box, 'name', str(box))
+        from ..core import Program, Copy, Merge, Discard
+        if name == "Δ": return Copy(Language, n_cod)
+        if name == "μ": return Merge(Language, n_dom)
+        if name == "ε": return Discard(Language)
+        res = Program(name, dom=target_dom, cod=target_cod)
     else:
         # Default for unidentified wires/atoms
         return closed.Id(target_dom)

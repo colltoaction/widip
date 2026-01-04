@@ -47,7 +47,8 @@ WS          [ \t]
 DIGIT       [0-9]
 ALPHA       [a-zA-Z_]
 ALNUM       [a-zA-Z0-9_]
-PLAIN_CHAR  [a-zA-Z0-9_\-./!@#$%&()=+~\\:]
+PLAIN_START [a-zA-Z0-9_./@#$%&()=+~\\]
+PLAIN_CONT  [a-zA-Z0-9_\-./@#$%&()=+~\\]
 
 %%
 
@@ -100,7 +101,7 @@ PLAIN_CHAR  [a-zA-Z0-9_\-./!@#$%&()=+~\\:]
 
 "&"{ALNUM}+             { yylval.str = strdup(yytext+1); return ANCHOR; }
 "*"{ALNUM}+             { yylval.str = strdup(yytext+1); return ALIAS; }
-"!"{PLAIN_CHAR}*        { yylval.str = strdup(yytext+1); return TAG; }
+"!"{PLAIN_CONT}*        { yylval.str = strdup(yytext+1); return TAG; }
 
 "#"[^\n\r]*             { /* Comment - ignore */ }
 
@@ -114,7 +115,10 @@ PLAIN_CHAR  [a-zA-Z0-9_\-./!@#$%&()=+~\\:]
                           return SQUOTE_STRING;
                         }
 
-{PLAIN_CHAR}+({WS}+{PLAIN_CHAR}+)*  { yylval.str = strdup(yytext); return PLAIN_SCALAR; }
+{PLAIN_START}{PLAIN_CONT}*({WS}+{PLAIN_CONT}+)*  { yylval.str = strdup(yytext); return PLAIN_SCALAR; }
+
+"-"[0-9]+            { yylval.str = strdup(yytext); return PLAIN_SCALAR; }
+"-"[a-zA-Z0-9_./]+   { yylval.str = strdup(yytext); return PLAIN_SCALAR; }
 
 {NEWLINE}               { return NEWLINE; }
 {WS}+                   { /* Ignore other whitespace */ }
