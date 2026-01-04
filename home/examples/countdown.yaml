@@ -1,8 +1,7 @@
 #!/home/colltoaction/GitHub/widip/bin/titi
 &countdown
 !xargs { test, 0, -eq }: Liftoff!
-!xargs { test, 0, -lt }:
-  !seq
+!xargs { test, 0, -lt }: !seq
   - !print
   - !xargs { -I, "{}", sh, -c, "expr {} - 1 || true" }
   - *countdown

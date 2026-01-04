@@ -37,8 +37,6 @@ int yylex() {
 %option noyywrap
 %option yylineno
 
-%x LINESTART
-
 SPACE       [ ]
 TAB         [\t]
 NEWLINE     \n|\r\n|\r
@@ -47,26 +45,11 @@ WS          [ \t]
 DIGIT       [0-9]
 ALPHA       [a-zA-Z_]
 ALNUM       [a-zA-Z0-9_]
-PLAIN_START [a-zA-Z0-9_./@#$%&()=+~\\]
-PLAIN_CONT  [a-zA-Z0-9_\-./@#$%&()=+~\\]
+PLAIN_CONT  [a-zA-Z0-9_\-./!@#$%&()=+~\\]
 
 %%
 
-<INITIAL>^{SPACE}*      { BEGIN(LINESTART); yyless(0); }
-
-<LINESTART>{SPACE}*/{NEWLINE} {
-                          /* Ignore whitespace-only lines */
-                          BEGIN(INITIAL);
-                        }
-
-<LINESTART>{SPACE}*"#" {
-                          /* Ignore indentation for comment lines */
-                          BEGIN(INITIAL);
-                          yyless(yyleng - 1);
-                        }
-
-<LINESTART>{SPACE}*     {
-                          BEGIN(INITIAL);
+<INITIAL>^[ ]*          { 
                           int indent = yyleng;
                           if (indent > indent_stack[indent_level]) {
                               indent_stack[++indent_level] = indent;
@@ -74,10 +57,12 @@ PLAIN_CONT  [a-zA-Z0-9_\-./@#$%&()=+~\\]
                           } else if (indent < indent_stack[indent_level]) {
                               while (indent < indent_stack[indent_level]) {
                                   indent_level--;
+                                  if (indent == indent_stack[indent_level]) break;
                                   enqueue(DEDENT);
                               }
-                              return dequeue();
+                              return DEDENT;
                           }
+                          /* Same indentation, just continue */
                         }
 
 ^%.*                    { /* Ignore directives */ }
@@ -115,10 +100,13 @@ PLAIN_CONT  [a-zA-Z0-9_\-./@#$%&()=+~\\]
                           return SQUOTE_STRING;
                         }
 
-{PLAIN_START}{PLAIN_CONT}*({WS}+{PLAIN_CONT}+)*  { yylval.str = strdup(yytext); return PLAIN_SCALAR; }
+"-"[a-zA-Z0-9_\-./!@#$%&()=+~\\]+({WS}+[a-zA-Z0-9_\-./!@#$%&()=+~\\]+)* { 
+                          yylval.str = strdup(yytext); return PLAIN_SCALAR; 
+                        }
 
-"-"[0-9]+            { yylval.str = strdup(yytext); return PLAIN_SCALAR; }
-"-"[a-zA-Z0-9_./]+   { yylval.str = strdup(yytext); return PLAIN_SCALAR; }
+[a-zA-Z0-9_./@#$%&()=+~\\][a-zA-Z0-9_\-./!@#$%&()=+~\\]*({WS}+[a-zA-Z0-9_\-./!@#$%&()=+~\\]+)* { 
+                          yylval.str = strdup(yytext); return PLAIN_SCALAR; 
+                        }
 
 {NEWLINE}               { return NEWLINE; }
 {WS}+                   { /* Ignore other whitespace */ }

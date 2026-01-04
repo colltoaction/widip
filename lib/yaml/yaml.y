@@ -174,12 +174,14 @@ void print_node(Node *n, int depth) {
 %token <str> ANCHOR ALIAS TAG
 %token <str> PLAIN_SCALAR DQUOTE_STRING SQUOTE_STRING
 
-%type <node> stream document node scalar optional_node
-%type <node> flow_sequence flow_mapping flow_seq_items flow_map_entries
+%type <node> stream document document_list node optional_node
+%type <node> flow_seq_items flow_map_entries flow_map_entry
 %type <node> block_sequence block_mapping block_seq_items block_map_entries
-%type <node> tagged_node anchored_node document_list
 
 %start stream
+
+/* High precedence for COLON to favor mapping entry reduction over document list repetition */
+%right COLON
 
 %%
 
@@ -195,9 +197,7 @@ document_list
 
 document
     : node opt_newlines { $$ = $1; }
-    | DOC_START opt_newlines optional_node opt_newlines       { $$ = $3; }
-    | DOC_START opt_newlines optional_node opt_newlines DOC_END opt_newlines { $$ = $3; }
-    | DOC_END opt_newlines { $$ = make_null(); }
+    | DOC_START opt_newlines optional_node opt_newlines { $$ = $3; }
     ;
 
 opt_newlines
@@ -208,18 +208,6 @@ opt_newlines
 newlines
     : NEWLINE
     | newlines NEWLINE
-    | newlines INDENT DEDENT
-    ;
-
-node
-    : scalar                { $$ = $1; }
-    | flow_sequence         { $$ = $1; }
-    | flow_mapping          { $$ = $1; }
-    | block_sequence        { $$ = $1; }
-    | block_mapping         { $$ = $1; }
-    | tagged_node           { $$ = $1; }
-    | anchored_node         { $$ = $1; }
-    | ALIAS                 { $$ = make_alias($1); }
     ;
 
 optional_node
@@ -227,30 +215,24 @@ optional_node
     | /* empty */ { $$ = make_null(); }
     ;
 
-scalar
+node
     : PLAIN_SCALAR          { $$ = make_scalar($1); }
     | DQUOTE_STRING         { $$ = make_scalar($1); }
     | SQUOTE_STRING         { $$ = make_scalar($1); }
-    ;
-
-tagged_node
-    : TAG opt_newlines node { $$ = make_tag($1, $3); }
-    ;
-
-anchored_node
-    : ANCHOR opt_newlines node { 
+    | ALIAS                 { $$ = make_alias($1); }
+    | LBRACKET flow_seq_items RBRACKET { $$ = make_seq($2); }
+    | LBRACE flow_map_entries RBRACE   { $$ = make_map($2); }
+    | block_sequence        { $$ = $1; }
+    | block_mapping         { $$ = $1; }
+    | TAG opt_newlines node { $$ = make_tag($1, $3); }
+    | ANCHOR opt_newlines node { 
                               $$ = malloc(sizeof(Node));
                               $$->type = NODE_ANCHOR;
                               $$->anchor = $1;
                               $$->children = $3;
                               $$->next = NULL;
                             }
-    ;
-
-/* Flow Sequence: [a, b, c] */
-flow_sequence
-    : LBRACKET RBRACKET                     { $$ = make_seq(NULL); }
-    | LBRACKET flow_seq_items RBRACKET      { $$ = make_seq($2); }
+    | INDENT node DEDENT    { $$ = $2; }
     ;
 
 flow_seq_items
@@ -258,22 +240,19 @@ flow_seq_items
     | flow_seq_items COMMA optional_node    { $$ = append_node($1, $3); }
     ;
 
-/* Flow Mapping: {key: value} */
-flow_mapping
-    : LBRACE RBRACE                         { $$ = make_map(NULL); }
-    | LBRACE flow_map_entries RBRACE        { $$ = make_map($2); }
-    ;
-
 flow_map_entries
-    : node COLON optional_node              { $$ = append_node($1, $3); }
-    | flow_map_entries COMMA node COLON optional_node{ $$ = append_node($1, append_node($3, $5)); }
+    : flow_map_entry                        { $$ = $1; }
+    | flow_map_entries COMMA flow_map_entry { $$ = append_node($1, $3); }
     | flow_map_entries COMMA                { $$ = $1; }
     ;
 
-/* Block Sequence: - item */
+flow_map_entry
+    : node COLON optional_node              { $$ = append_node($1, $3); }
+    | optional_node                         { $$ = append_node($1, make_null()); }
+    ;
+
 block_sequence
     : block_seq_items                       { $$ = make_seq($1); }
-    | INDENT block_seq_items DEDENT         { $$ = make_seq($2); }
     ;
 
 block_seq_items
@@ -281,21 +260,13 @@ block_seq_items
     | block_seq_items opt_newlines SEQ_ENTRY optional_node{ $$ = append_node($1, $4); }
     ;
 
-/* Block Mapping: key: value */
 block_mapping
     : block_map_entries                     { $$ = make_map($1); }
-    | INDENT block_map_entries DEDENT         { $$ = make_map($2); }
     ;
 
 block_map_entries
-    : node COLON opt_newlines optional_node     { $$ = append_node($1, $4); }
-    | MAP_KEY node COLON opt_newlines optional_node { $$ = append_node($2, $5); }
-    | MAP_KEY node { $$ = append_node($2, make_null()); }
-    | block_map_entries opt_newlines node COLON opt_newlines optional_node
-                                            { $$ = append_node($1, append_node($3, $6)); }
-    | block_map_entries opt_newlines MAP_KEY node COLON opt_newlines optional_node
-                                            { $$ = append_node($1, append_node($4, $7)); }
-    | block_map_entries opt_newlines MAP_KEY node { $$ = append_node($1, append_node($4, make_null())); }
+    : node COLON optional_node              { $$ = append_node($1, $3); }
+    | block_map_entries opt_newlines node COLON optional_node { $$ = append_node($1, append_node($3, $5)); }
     ;
 
 %%
