@@ -42,26 +42,22 @@ class StreamBox(monoidal.Bubble, symmetric.Box):
     def __init__(self, inside: symmetric.Diagram, dom=Node, cod=Node):
         super().__init__(inside, dom, cod)
 
-
 # --- Factories ---
 
-def Scalar(tag: str, value: Any):
-    return ScalarBox(tag, value)
+Scalar = lambda tag, val: ScalarBox(tag, val)
+Sequence = lambda inside, tag="": SequenceBox(inside, tag)
+Mapping = lambda inside, tag="": MappingBox(inside, tag)
+Anchor = lambda name, inside: AnchorBox(name, inside)
+Alias = lambda name: AliasBox(name)
+Document = lambda inside: DocumentBox(inside)
+Stream = lambda inside: StreamBox(inside)
 
-def Sequence(inside: symmetric.Diagram, tag: str = ""):
-    return SequenceBox(inside, tag)
+# --- Compose Implementation Functions ---
 
-def Mapping(inside: symmetric.Diagram, tag: str = ""):
-    return MappingBox(inside, tag)
-
-def Anchor(name: str, inside: symmetric.Diagram):
-    return AnchorBox(name, inside)
-
-def Alias(name: str):
-    return AliasBox(name)
-
-def Document(inside: symmetric.Diagram):
-    return DocumentBox(inside)
-
-def Stream(inside: symmetric.Diagram):
-    return StreamBox(inside)
+def comp_seq(box, compose): return Sequence(compose(box.inside), tag=box.tag)
+def comp_map(box, compose): return Mapping(compose(box.inside), tag=box.tag)
+def comp_doc(box, compose): return Document(compose(box.inside))
+def comp_str(box, compose): return Stream(compose(box.inside))
+def comp_anc(box, compose): return Anchor(box.name, compose(box.inside))
+def comp_sca(box): return Scalar(box.data[0], box.data[1])
+def comp_ali(box): return Alias(box.data)

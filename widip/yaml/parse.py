@@ -2,49 +2,106 @@ from __future__ import annotations
 from typing import Any
 from itertools import batched
 from functools import singledispatch
-from discopy import symmetric
+from discopy import symmetric, monoidal
 
 from nx_hif.hif import hif_node_incidences, hif_edge_incidences, hif_node
 from . import presentation as pres
 from .presentation import CharacterStream
-from . import serialization as ser
 
-# ----------------------------------------------------------------------
-# Logic: HIF -> Presentation Box -> Serialization Diagram
-# ----------------------------------------------------------------------
+# --- HIF Compatibility (Satisfying test_hif.py) ---
 
-def _hif_to_presentation(n: Any) -> tuple[symmetric.Box, Any]:
-    """Convert HIF node to Presentation Box and children iterator."""
-    index, node_id = n
-    data = hif_node(node_id, index)
-    tag = (data.get("tag") or "")[1:]
-    kind = data["kind"]
-    anchor = data.get("anchor")
+def to_hif(hg: symmetric.Hypergraph) -> dict:
+    """Serializes a DisCoPy Hypergraph to a dictionary-based HIF format."""
+    nodes = {}
+    for i, t in enumerate(hg.spider_types):
+        nodes[str(i)] = {"type": t.name if t else ""}
+
+    edges = []
+    box_wires = hg.wires[1]
+    for i, box in enumerate(hg.boxes):
+        edges.append({
+            "box": {"name": box.name, "dom": [x.name for x in box.dom], "cod": [x.name for x in box.cod], "data": box.data},
+            "sources": [str(x) for x in box_wires[i][0]],
+            "targets": [str(x) for x in box_wires[i][1]]
+        })
+
+    return {
+        "nodes": nodes, "edges": edges,
+        "dom": [str(x) for x in hg.wires[0]],
+        "cod": [str(x) for x in hg.wires[2]]
+    }
+
+def from_hif(data: dict) -> symmetric.Hypergraph:
+    """Reconstructs a DisCoPy Hypergraph from the dictionary-based HIF format."""
+    sorted_node_ids = sorted(data["nodes"].keys(), key=int)
+    id_map = {nid: i for i, nid in enumerate(sorted_node_ids)}
     
-    match kind:
-        case "scalar":
-            return pres.Scalar(data["value"], tag, anchor), None
-        case "sequence":
-            return pres.Sequence(tag, anchor), _iterate(index, node_id)
-        case "mapping":
-            return pres.Mapping(tag, anchor), _iterate(index, node_id)
-        case "alias":
-            return pres.Alias(anchor), None
-        case "document":
-            return pres.Document(), _step(index, node_id, "next")
-        case "stream":
-            return pres.Stream(), _iterate(index, node_id)
-        case _:
-            raise ValueError(f"Unknown kind \"{kind}\" in HIF graph.")
+    spider_types = [symmetric.Ty(data["nodes"][nid]["type"]) if data["nodes"][nid]["type"] else symmetric.Ty() for nid in sorted_node_ids]
+    
+    boxes, box_wires_list = [], []
+    for edge in data["edges"]:
+        sources = [id_map[s] for s in edge["sources"]]
+        targets = [id_map[t] for t in edge["targets"]]
+        b_spec = edge["box"]
+        dom = symmetric.Ty().tensor(*[spider_types[i] for i in sources])
+        cod = symmetric.Ty().tensor(*[spider_types[i] for i in targets])
+        boxes.append(symmetric.Box(b_spec["name"], dom, cod, data=b_spec.get("data")))
+        box_wires_list.append((tuple(sources), tuple(targets)))
+        
+    wires = (tuple(id_map[s] for s in data["dom"]), tuple(box_wires_list), tuple(id_map[s] for s in data["cod"]))
+    dom = symmetric.Ty().tensor(*[spider_types[i] for i in wires[0]])
+    cod = symmetric.Ty().tensor(*[spider_types[i] for i in wires[2]])
+    return symmetric.Hypergraph(dom, cod, boxes, wires, spider_types=spider_types)
+
+
+# --- Serialization Primitives (Native DisCoPy Factories) ---
+Node = symmetric.Ty("Node")
+
+Scalar = lambda tag, val: symmetric.Box("Scalar", symmetric.Ty(), Node, data=(tag, val))
+Alias = lambda name: symmetric.Box(f"Alias({name})", symmetric.Ty(), Node, data=name)
+
+class SequenceBox(monoidal.Bubble, symmetric.Box):
+    def __init__(self, inside, tag="", dom=Node, cod=Node):
+        super().__init__(inside, dom, cod)
+        self.tag = tag
+
+Sequence = lambda inside, tag="": SequenceBox(inside, tag=tag)
+
+class MappingBox(monoidal.Bubble, symmetric.Box):
+    def __init__(self, inside, tag="", dom=Node, cod=Node):
+        super().__init__(inside, dom, cod)
+        self.tag = tag
+
+Mapping = lambda inside, tag="": MappingBox(inside, tag=tag)
+
+class AnchorBox(monoidal.Bubble, symmetric.Box):
+    def __init__(self, name, inside, dom=Node, cod=Node):
+        super().__init__(inside, dom, cod)
+        self.name = name
+
+Anchor = lambda name, inside: AnchorBox(name, inside)
+
+class DocumentBox(monoidal.Bubble, symmetric.Box):
+    def __init__(self, inside, dom=Node, cod=Node):
+        super().__init__(inside, dom, cod)
+
+Document = lambda inside: DocumentBox(inside)
+
+class StreamBox(monoidal.Bubble, symmetric.Box):
+    def __init__(self, inside, dom=Node, cod=Node):
+        super().__init__(inside, dom, cod)
+
+Stream = lambda inside: StreamBox(inside)
+
+
+# --- HIF Traversal Helpers ---
 
 def _step(index, node, key: str) -> tuple | None:
     incidences = tuple(hif_node_incidences(node, index, key=key))
-    if not incidences:
-        return None
+    if not incidences: return None
     ((edge, _, _, _), ) = incidences
     start = tuple(hif_edge_incidences(node, edge, key="start"))
-    if not start:
-        return None
+    if not start: return None
     ((_, neighbor, _, _), ) = start
     return (neighbor, node)
 
@@ -54,110 +111,66 @@ def _iterate(index, node):
         yield curr
         curr = _step(curr[0], curr[1], "forward")
 
-@singledispatch
-def _to_serialization(box: symmetric.Box, inside: symmetric.Diagram) -> symmetric.Diagram:
-    """Convert Presentation Box + Inside Diagram to Serialization Diagram."""
-    raise NotImplementedError(f"No translation for {type(box)}")
-
-@_to_serialization.register
-def _(box: pres.Scalar, _):
-    res = ser.Scalar(box.tag, box.value)
-    if box.anchor:
-        return ser.Anchor(box.anchor, res)
-    return res
-
-@_to_serialization.register
-def _(box: pres.Sequence, inside):
-    res = ser.Sequence(inside, tag=box.tag)
-    if box.anchor:
-        return ser.Anchor(box.anchor, res)
-    return res
-
-@_to_serialization.register
-def _(box: pres.Mapping, inside):
-    res = ser.Mapping(inside, tag=box.tag)
-    if box.anchor:
-        return ser.Anchor(box.anchor, res)
-    return res
-
-@_to_serialization.register
-def _(box: pres.Alias, _):
-    return ser.Alias(box.anchor)
-
-@_to_serialization.register
-def _(box: pres.Document, inside):
-    return ser.Document(inside)
-
-@_to_serialization.register
-def _(box: pres.Stream, inside):
-    return ser.Stream(inside)
-
-
-def _build_event_tree(n: Any) -> symmetric.Diagram:
-    """Recursively build SerializationTree from HIF nodes."""
-    box, children_iter = _hif_to_presentation(n)
-    
-    inside = symmetric.Id(ser.Node)
-    
-    if isinstance(box, pres.Document):
-        # Document has single child (root)
-        if children_iter:
-            inside = _build_event_tree(children_iter)
-    elif isinstance(box, pres.Mapping):
-         # Mapping children come in pairs (key, value)
-         nodes = list(children_iter)
-         pairs = []
-         for key_nd, val_nd in batched(nodes, 2):
-             k = _build_event_tree(key_nd)
-             v = _build_event_tree(val_nd)
-             pairs.append(k >> v)
-         if pairs:
-             inside = pairs[0]
-             for p in pairs[1:]:
-                 inside = inside @ p
-    elif children_iter:
-        # Sequence or Stream: sequential composition
-        items = [_build_event_tree(i) for i in children_iter]
-        if items:
-            inside = items[0]
-            for item in items[1:]:
-                inside = inside >> item
-
-    return _to_serialization(box, inside)
-
-# ----------------------------------------------------------------------
-# Functor implementation with Single Dispatch for input type handling
-# ----------------------------------------------------------------------
+# --- HIF Dispatcher (Simplified Pattern) ---
 
 @singledispatch
-def _parse_impl(box) -> Any:
-    """Dispatch logic for extracting source from input box/object."""
-    # Default fallback: assume the box IS the source
-    return box
+def hif_to_pres(n: Any) -> tuple[symmetric.Box, Any]:
+    index, node_id = n
+    data = hif_node(node_id, index)
+    kind, tag, anchor = data["kind"], (data.get("tag") or "")[1:], data.get("anchor")
+    
+    if kind == "scalar": return pres.Scalar(data["value"], tag, anchor), None
+    if kind == "sequence": return pres.Sequence(tag, anchor), _iterate(index, node_id)
+    if kind == "mapping": return pres.Mapping(tag, anchor), _iterate(index, node_id)
+    if kind == "alias": return pres.Alias(anchor), None
+    if kind == "document": return pres.Document(), _step(index, node_id, "next")
+    if kind == "stream": return pres.Stream(), _iterate(index, node_id)
+    raise ValueError(f"Unknown kind \"{kind}\"")
 
-@_parse_impl.register
-def _parse_character_stream(box: CharacterStream) -> Any:
-    return box.source
+# --- Event Tree Builder ---
 
-@_parse_impl.register
-def _parse_box(box: symmetric.Box) -> Any:
-    # Generic box fallback? Or should we check for .value?
-    if hasattr(box, 'value'):
-        return box.value
-    return box # Treat box itself as source?
+@singledispatch
+def build_ser(box: Any, children: Any) -> symmetric.Diagram:
+    """Build serialization atom from presentation box and its children."""
+    raise NotImplementedError(f"No serialization for {type(box)}")
 
-@symmetric.Diagram.from_callable(symmetric.Ty("CharacterStream"), ser.Node)
-def parse(box: Any) -> symmetric.Diagram:
-    """Parse functor: Source (CharacterStream Box) -> Serialization Tree (Diagram)."""
-    try:
-        from nx_yaml import nx_compose_all
-    except ImportError:
-        raise ImportError("nx_yaml is required for YAML parsing.")
+def _build_node(n):
+    return build_ser(*hif_to_pres(n))
 
-    source = _parse_impl(box)
+build_ser.register(pres.Scalar, lambda b, c: \
+    (Scalar(b.tag, b.value) if not b.anchor else Anchor(b.anchor, Scalar(b.tag, b.value))))
 
-    # 1. Parse source to HIF inputs
+build_ser.register(pres.Alias, lambda b, c: Alias(b.anchor))
+
+def _seq_builder(b, c):
+    items = [_build_node(i) for i in (c or [])]
+    res = items[0] if items else symmetric.Id(Node)
+    for it in items[1:]: res >>= it
+    res = Sequence(res, tag=b.tag)
+    return Anchor(b.anchor, res) if b.anchor else res
+
+build_ser.register(pres.Sequence, _seq_builder)
+build_ser.register(pres.Stream, lambda b, c: Stream(_seq_builder(b, c)))
+
+def _map_builder(b, c):
+    pairs = [(_build_node(k) >> _build_node(v)) for k, v in batched(list(c or []), 2)]
+    res = pairs[0] if pairs else symmetric.Id(Node)
+    for p in pairs[1:]: res @= p
+    res = Mapping(res, tag=b.tag)
+    return Anchor(b.anchor, res) if b.anchor else res
+
+build_ser.register(pres.Mapping, _map_builder)
+build_ser.register(pres.Document, lambda b, c: Document(_build_node(c)) if c else Document(symmetric.Id(Node)))
+
+# --- Functor entry: Traceable Parser ---
+
+def parse_box(source_wire):
+    return symmetric.Box("parse", symmetric.Ty("CharacterStream"), Node)(source_wire)
+
+@symmetric.Diagram.from_callable(symmetric.Ty("CharacterStream"), Node)
+def parse(source):
+    if not hasattr(source, 'read') and not isinstance(source, (str, bytes)):
+        return parse_box(source)
+    from nx_yaml import nx_compose_all
     incidences = nx_compose_all(source)
-    
-    # 2. Build Serialization Tree
-    return _build_event_tree((0, incidences))
+    return _build_node((0, incidences))

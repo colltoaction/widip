@@ -1,7 +1,8 @@
 import pytest
 from discopy.frobenius import Box, Ty, Swap, Id
 
-from .hif import to_hif, from_hif
+# Import from parse.py instead of hif.py
+from .yaml.parse import to_hif, from_hif
 
 
 @pytest.mark.parametrize("diagram", [

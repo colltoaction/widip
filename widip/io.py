@@ -18,26 +18,21 @@ AnyTy = symmetric.Ty()
 # --- Standard Input/Output ---
 
 @symmetric.Diagram.from_callable(IO, Bytes)
-def read_stdin():
+def read_stdin(*args): 
     """Read from stdin if available, otherwise return empty BytesIO."""
-    if not sys.stdin.isatty():
-        return sys.stdin.buffer
-    return BytesIO(b"")
+    # args[0] is the input wire.
+    def impl():
+        if not sys.stdin.get('isatty', lambda: False)():
+            return sys.stdin.buffer
+        return BytesIO(b"")
+    return symmetric.Box("read_stdin", IO, Bytes, data=impl)(*args)
 
 
 @symmetric.Diagram.from_callable(AnyTy, Bytes)
-def value_to_bytes(val: Any) -> bytes:
+def value_to_bytes(*args):
     """Convert a value to bytes (sync I/O operations)."""
-    if isinstance(val, (bytes, bytearray)): 
-        return bytes(val)
-    if isinstance(val, str): 
-        return val.encode()
-    if hasattr(val, 'read'):
-        if hasattr(val, 'seek'): 
-            val.seek(0)
-        res = val.read()
-        return res if isinstance(res, (bytes, bytearray)) else str(res).encode()
-    return str(val).encode()
+    # AnyTy is empty, so args is empty.
+    return symmetric.Box("value_to_bytes", AnyTy, Bytes)(*args)
 
 
 # --- File and Diagram Parsing ---
@@ -55,9 +50,9 @@ Parser = symmetric.Ty("Parser")
 Diagram = symmetric.Ty("Diagram")
 
 @symmetric.Diagram.from_callable(Source @ Parser, Diagram)
-def read_diagram_file(source: Any, parser_fn) -> Any:
+def read_diagram_file(*args):
     """Parse a stream or file path using a parser function."""
-    return _read_impl(source, parser_fn)
+    return symmetric.Box("read_diagram_file", Source @ Parser, Diagram)(*args)
 
 
 Int = symmetric.Ty("Int")
@@ -65,26 +60,25 @@ Int = symmetric.Ty("Int")
 # --- Sync System Wrappers ---
 
 @symmetric.Diagram.from_callable(Int, IO)
-def set_recursion_limit(n: int):
-    sys.setrecursionlimit(n)
+def set_recursion_limit(*args):
+    return symmetric.Box("set_recursion_limit", Int, IO)(*args)
 
 
 @symmetric.Diagram.from_callable(IO, Bool)
-def stdin_isatty() -> bool:
-    return sys.stdin.isatty()
+def stdin_isatty(*args) -> bool:
+    return symmetric.Box("stdin_isatty", IO, Bool)(*args)
 
 
 @symmetric.Diagram.from_callable(IO, Str)
-def stdin_read() -> str:
-    return sys.stdin.read()
+def stdin_read(*args) -> str:
+    return symmetric.Box("stdin_read", IO, Str)(*args)
 
 
 @symmetric.Diagram.from_callable(Bytes, IO)
-def stdout_write(data: bytes):
-    sys.stdout.buffer.write(data)
-    sys.stdout.buffer.flush()
+def stdout_write(*args):
+    return symmetric.Box("stdout_write", Bytes, IO)(*args)
 
 
 @symmetric.Diagram.from_callable(IO, Str)
-def get_executable() -> str:
-    return sys.executable
+def get_executable(*args) -> str:
+    return symmetric.Box("get_executable", IO, Str)(*args)

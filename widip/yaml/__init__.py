@@ -3,8 +3,7 @@ from typing import Any
 from functools import singledispatch
 from discopy import symmetric, closed
 
-from .parse import parse
-from . import serialization as ser
+from .parse import parse, SequenceBox, MappingBox, AnchorBox, DocumentBox, StreamBox
 from . import representation as ren
 from . import construct as con
 from . import presentation as pres
@@ -16,42 +15,52 @@ get_node_data = pres.GetNodeData()
 step = pres.Step()
 iterate = pres.Iterate()
 
-# --- Compose Functor: Serialization -> Semantic (Representation) ---
+# --- Compose Functor ---
 
 @singledispatch
 def compose_dispatch(box: Any) -> symmetric.Diagram:
-    """Default dispatcher for serialization nodes."""
+    """Default dispatcher for serialization items."""
     return box
 
-compose_dispatch.register(ser.Sequence, lambda box: ren.Sequence(compose(box.inside), tag=box.tag))
-compose_dispatch.register(ser.Mapping, lambda box: ren.Mapping(compose(box.inside), tag=box.tag))
-compose_dispatch.register(ser.Document, lambda box: ren.Document(compose(box.inside)))
-compose_dispatch.register(ser.Stream, lambda box: ren.Stream(compose(box.inside)))
-compose_dispatch.register(ser.Anchor, lambda box: ren.Anchor(box.name, compose(box.inside)))
-compose_dispatch.register(ser.Scalar, lambda box: ren.Scalar(box.tag, box.value))
-compose_dispatch.register(ser.Alias, lambda box: ren.Alias(box.name))
+# Registrations using functions from representation
+compose_dispatch.register(SequenceBox, lambda b: ren.comp_seq(b, compose_functor))
+compose_dispatch.register(MappingBox, lambda b: ren.comp_map(b, compose_functor))
+compose_dispatch.register(AnchorBox, lambda b: ren.comp_anc(b, compose_functor))
+compose_dispatch.register(DocumentBox, lambda b: ren.comp_doc(b, compose_functor))
+compose_dispatch.register(StreamBox, lambda b: ren.comp_str(b, compose_functor))
 
-@symmetric.Diagram.from_callable(ser.Node, ren.Node)
-def compose(box: Any) -> symmetric.Diagram:
-    """Functorial mapping: Serialization Tree -> Semantic Node Graph."""
+def _compose_ar(box):
+    if hasattr(box, 'name'):
+        if box.name == "Scalar": return ren.comp_sca(box)
+        if box.name.startswith("Alias"): return ren.comp_ali(box)
     return compose_dispatch(box)
 
-# --- Construct Functor: Semantic (Representation) -> Computer ---
+compose_functor = symmetric.Functor(ob={symmetric.Ty("Node"): ren.Node}, ar=_compose_ar)
+
+@symmetric.Diagram.from_callable(symmetric.Ty("Node"), ren.Node)
+def compose(node_wire):
+    """Traceable compose diagram."""
+    return symmetric.Box("compose", symmetric.Ty("Node"), ren.Node)(node_wire)
+
+# --- Construct Functor ---
 
 @singledispatch
 def construct_dispatch(box: Any) -> closed.Diagram:
-    """Default dispatcher acting as identity for wires."""
-    return closed.Id(Language ** len(box.dom))
+    # Default for wires/nodes
+    if not hasattr(box, 'dom'): return closed.Id(Language)
+    # Ensure we use closed.Ty for powers
+    return closed.Id(Language**len(box.dom))
 
 construct_dispatch.register(ren.ScalarBox, con.construct_scalar)
 construct_dispatch.register(ren.SequenceBox, con.construct_sequence)
 construct_dispatch.register(ren.MappingBox, con.construct_mapping)
 
+construct_functor = closed.Functor(ob={ren.Node: Language}, ar=construct_dispatch)
+
 @closed.Diagram.from_callable(Language, Language)
-def construct(box: Any) -> closed.Diagram:
-    """Functor entry point mapping NodeGraph to Computer diagrams."""
-    return construct_dispatch(box)
+def construct(lang_wire):
+    """Traceable construct diagram."""
+    return closed.Box("construct", Language, Language)(lang_wire)
 
 # --- Load Pipeline ---
-
-load = parse >> compose >> construct
+load = lambda source: construct_functor(compose_functor(parse(source)))
