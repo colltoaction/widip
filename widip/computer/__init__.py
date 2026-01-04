@@ -12,7 +12,7 @@ class Partial(closed.Box):
         # Manually construct closed.Ty to avoid monoidal fallback
         dom = closed.Ty(*[obj.name for obj in arg.dom[n:]])
         cod = closed.Ty(*[obj.name for obj in arg.cod])
-        super().__init__(f"[{arg.name}]_{n}", dom, cod)
+        closed.Box.__init__(self, f"[{arg.name}]_{n}", dom, cod)
 
 # --- Computer Boxes (Traceable factories) ---
 
@@ -22,9 +22,28 @@ def Data(value):
         return closed.Box(f"⌜{value}⌝", closed.Ty(), Language, data=value)()
     return diag
 
-def Program(name, args=()):
-    """Create a Program box."""
-    return closed.Box(name, Language, Language, data=args)
+class Program:
+    """Program box factory with decorator support."""
+    
+    def __new__(cls, name, args=()):
+        """Create a Program box."""
+        return closed.Box(name, Language, Language, data=args)
+    
+    @classmethod
+    def as_diagram(cls, dom=None, cod=None):
+        """
+        Decorator to create a diagram from a function.
+        
+        Usage:
+            @Program.as_diagram()
+            def my_func(x, y):
+                return result
+        """
+        def decorator(func):
+            # Return the function itself for now
+            # This allows the function to be used directly
+            return func
+        return decorator
 
 def Discard():
     @closed.Diagram.from_callable(Language, closed.Ty())
@@ -35,25 +54,14 @@ def Discard():
 from .composition import Sequential, Parallel
 Computation = closed.Category(closed.Ty, closed.Diagram)
 
-# --- Futamura Projections (Super-Computer) ---
+# --- Futamura Projections & Hypercomputation ---
 
-# Manually construct closed.Ty for two Language arguments
-Language2 = closed.Ty("ℙ", "ℙ")
+from .super import Language2, specializer_box, interpreter_box, specializer, interpreter
+from .hyper import ackermann
 
-specializer_box = closed.Box("specializer", Language2, Language)
-interpreter_box = closed.Box("interpreter", Language2, Language)
-
-# Boxes are already diagrams
-specializer = specializer_box
-interpreter = interpreter_box
-
-# Futamura's Projections
+# Futamura's Projections using Partial
 compiler = lambda program: Partial(interpreter_box, 1)
 compiler_generator = lambda: Partial(specializer_box, 1)
-
-# --- Hypercomputation ---
-
-ackermann = closed.Box("ackermann", Language2, Language)
 
 # --- Bootstrap Functors ---
 
