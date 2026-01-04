@@ -1,8 +1,8 @@
 import pytest
 from discopy import closed
-from .yaml import Sequence, Mapping, Scalar
-from .yaml.representation import YamlBox, Node
-from titi.yaml import construct_functor as SHELL_COMPILER
+from computer.yaml import Sequence, Mapping, Scalar
+from computer.yaml.representation import YamlBox, Node
+from computer.yaml import construct_functor as SHELL_COMPILER
 from computer import Data, Program, Language
 
 # Helper to create dummy scalars for testing

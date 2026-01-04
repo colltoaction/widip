@@ -2,8 +2,8 @@
 import pytest
 from computer import Data, Program, Partial, Copy, Merge, Discard
 from computer.core import Language
-from titi.exec import titi_runner
-from titi.asyncio import unwrap
+from computer.exec import titi_runner
+from computer.asyncio import unwrap
 from discopy import closed
 
 # --- Fixtures ---

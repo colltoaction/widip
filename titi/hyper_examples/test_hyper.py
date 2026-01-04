@@ -1,7 +1,7 @@
 import pytest
 from discopy import closed
 from computer import Language
-from computer.super import Language2
+from computer.core import Language2
 from computer.hyper import ackermann
 
 def test_ackermann_structure():
