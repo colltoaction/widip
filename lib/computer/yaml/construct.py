@@ -102,9 +102,18 @@ def construct_box(box) -> closed.Diagram:
         return Data(value)
 
     # Special: Treat untagged sequences as accumulative pipelines (print taps)
-    if kind == "Sequence" and not tag and hasattr(nested, 'inside'):
+    is_seq = kind == "Sequence" and not tag
+    has_inside = hasattr(nested, 'inside') or isinstance(nested, list)
+    if is_seq and has_inside:
           res = None
-          for layer in nested.inside:
+          items = nested.inside if hasattr(nested, 'inside') else nested
+          
+          # Edge case: If 1 item and it's a Program, just return it directly (unwrap)
+          # unless specifically intended as a Sequence of 1.
+          if len(items) == 1:
+               return computer.yaml.construct_functor(items[0])
+
+          for layer in items:
                layer_diag = computer.yaml.construct_functor(layer)
                if res is None:
                     res = layer_diag

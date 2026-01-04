@@ -26,7 +26,7 @@ YACC_SRC := $(LIB_DIR)/yaml.y
 LEX_OUT := $(LIB_DIR)/lex.yy.c
 YACC_OUT := $(LIB_DIR)/y.tab.c
 YACC_HEADER := $(LIB_DIR)/y.tab.h
-PARSER_BIN := $(LIB_DIR)/yaml_parser
+PARSER_BIN := $(LIB_DIR)/_yaml_parser
 
 # YAML files
 YAML_FILES := $(shell find $(EXAMPLES_DIR) -name '*.yaml' 2>/dev/null)

@@ -12,7 +12,7 @@ from computer.exec import titi_runner
     # 2. Anchors and Aliases with explicit document separators
     ("&v !Data 42\n---\n*v", ["42\n"]),
     # 3. Mapping Fan-out
-    ("key:\n  !echo K\n  !echo V", ["K\n", "V\n"]),
+    ("key:\n  - !echo K\n  - !echo V", ["K\n", "V\n"]),
     # 4. Partial/Currying (if supported)
     # ("!echo:\n  - hello\n  - world", ["hello world\n"]),
 ])
@@ -46,7 +46,9 @@ def test_high_level_logic(yaml_src, expected_substrings):
                         hooks['stdout_write'](hooks['value_to_bytes'](r))
                  else:
                      if hasattr(res, 'read'): res = await res.read()
-                     hooks['stdout_write'](hooks['value_to_bytes'](res))
+                     val = hooks['value_to_bytes'](res).decode()
+                     if not val.endswith('\n'): val += '\n'
+                     hooks['stdout_write'](val.encode())
              
     asyncio.run(run_it())
     combined = "".join(output)

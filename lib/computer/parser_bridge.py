@@ -31,9 +31,9 @@ class YAMLParserBridge:
             parser_path: Path to the yaml_parser executable
         """
         if parser_path is None:
-            # Default to lib/computer/yaml_parser
+            # Default to lib/computer/_yaml_parser
             base_dir = os.path.dirname(os.path.abspath(__file__))
-            parser_path = os.path.join(base_dir, "yaml_parser")
+            parser_path = os.path.join(base_dir, "_yaml_parser")
         
         self.parser_path = parser_path
         

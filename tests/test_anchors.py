@@ -35,7 +35,9 @@ def test_anchor_alias_execution(yaml_src, expected_output):
                         hooks['stdout_write'](hooks['value_to_bytes'](r))
                 else:
                     if hasattr(res, 'read'): res = await res.read()
-                    hooks['stdout_write'](hooks['value_to_bytes'](res))
+                    val = hooks['value_to_bytes'](res).decode()
+                    if not val.endswith('\n'): val += '\n'
+                    hooks['stdout_write'](val.encode())
     
     asyncio.run(run_test())
     # Note: anchor execution + alias execution = 2 prints for echo

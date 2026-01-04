@@ -177,5 +177,5 @@ cython_debug/
 /lib/computer/lex.yy.c
 /lib/computer/y.tab.c
 /lib/computer/y.tab.h
-/lib/computer/yaml_parser
+/lib/computer/_yaml_parser
 /titi/yaml_parser
