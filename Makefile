@@ -105,14 +105,14 @@ examples: $(SVG_FILES) ## Generate SVG diagrams from all YAML examples
 # --- Demonstration Targets ---
 demo-bootstrap: parser ## Run the bootstrap demonstration
 	@echo "→ Running bootstrap example..."
-	@$(PYTHON) -m titi $(HOME_DIR)/examples/bootstrap.yaml
+	@$(PYTHON) -m titi $(HOME_DIR)/$(EXAMPLES_DIR)/bootstrap.yaml
 
 demo-supercompile: ## Run supercompilation examples
 	@echo "→ Running supercompilation examples..."
-	@$(PYTHON) -m titi $(HOME_DIR)/examples/supercompile.yaml
+	@$(PYTHON) -m titi $(HOME_DIR)/$(EXAMPLES_DIR)/supercompile.yaml
 
 demo-hello: ## Run hello world example
-	@$(PYTHON) -m titi $(HOME_DIR)/hello-world.yaml
+	@$(PYTHON) -m titi $(HOME_DIR)/$(EXAMPLES_DIR)/hello-world.yaml
 
 # --- Verification Targets ---
 verify-parser: $(PARSER_BIN) ## Verify parser works on test YAML

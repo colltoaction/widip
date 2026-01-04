@@ -10,8 +10,9 @@ categorical execution model, enabling:
 
 from __future__ import annotations
 from typing import Any
-from discopy import closed
-from .core import Language, Program, Data, Copy, Merge
+from discopy import closed, frobenius
+from .core import Language
+from .yaml.representation import Scalar, Sequence, Mapping, Alias, Anchor, Node, YamlBox
 import subprocess
 import json
 import os
@@ -153,30 +154,31 @@ class YAMLParserBridge:
         node_type = node.get('type', '')
         
         if node_type == 'SCALAR':
-            # Scalar values become Data boxes
+            # Scalar values become Scalar boxes
             value = node.get('value', '')
-            return Data(value) >> closed.Id(Language)
+            # TODO: Extract tag/anchor from AST if available
+            return Scalar(tag="", value=value)
         
         elif node_type == 'SEQUENCE':
-            # Sequences become compositions
+            # Sequences become nested Sequence boxes
             children = node.get('children', [])
             if not children:
-                return closed.Id(Language)
+                return Sequence(frobenius.Id(Node), tag="")
             
             # Compose all children sequentially
+            # Each child is a Diagram(Node, Node)
             diagrams = [self._convert_node(child) for child in children]
             result = diagrams[0]
             for diag in diagrams[1:]:
                 result = result >> diag
-            return result
+            return Sequence(result, tag="")
         
         elif node_type == 'MAPPING':
-            # Mappings become tensor products
+            # Mappings become nested Mapping boxes with tensor product structure
             children = node.get('children', [])
             if not children:
-                return closed.Id(Language)
+                return Mapping(frobenius.Id(Node), tag="")
             
-            # Tensor all children
             # Children come in pairs (key, value)
             diagrams = []
             for i in range(0, len(children), 2):
@@ -186,17 +188,17 @@ class YAMLParserBridge:
                     diagrams.append(key_diag @ val_diag)
             
             if not diagrams:
-                return closed.Id(Language)
+                return Mapping(frobenius.Id(Node), tag="")
             
             result = diagrams[0]
             for diag in diagrams[1:]:
                 result = result @ diag
-            return result
+            return Mapping(result, tag="")
         
         elif node_type == 'ALIAS':
-            # Aliases become Program boxes with alias tag
+            # Aliases become Alias boxes
             alias_name = node.get('value', '')
-            return Program("alias", [alias_name]) >> closed.Id(Language)
+            return Alias(alias_name)
         
         elif node_type == 'ANCHOR':
             # Anchors wrap their children
@@ -206,13 +208,13 @@ class YAMLParserBridge:
             if children:
                 inner_diag = self._convert_node(children[0])
             else:
-                inner_diag = closed.Id(Language)
+                inner_diag = frobenius.Id(Node)
             
-            return Program("anchor", [anchor_name, inner_diag]) >> closed.Id(Language)
+            return Anchor(anchor_name, inner_diag)
         
         else:
-            # Unknown node type - return identity
-            return closed.Id(Language)
+            # Unknown node type - return identity on Node
+            return frobenius.Id(Node)
     
     def parse(self, yaml_source: str) -> closed.Diagram:
         """

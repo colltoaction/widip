@@ -179,15 +179,15 @@ scalar
     ;
 
 tagged_node
-    : TAG node              { $$ = $2; $$->tag = $1; }
+    : TAG optional_newlines node { $$ = $3; $$->tag = $1; }
     ;
 
 anchored_node
-    : ANCHOR node           { 
+    : ANCHOR optional_newlines node { 
                               $$ = malloc(sizeof(Node));
                               $$->type = NODE_ANCHOR;
                               $$->anchor = $1;
-                              $$->children = $2;
+                              $$->children = $3;
                               $$->next = NULL;
                             }
     ;
