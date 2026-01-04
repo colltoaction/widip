@@ -1,0 +1,3 @@
+!cat examples/mutation.yaml:
+  !awk '{ if ($0 ~ /# generation: [0-9]+/) { match($0, /[0-9]+/); val = substr($0, RSTART, RLENGTH); sub(val, val+1); } print }'
+# generation: 1
