@@ -9,11 +9,11 @@ import pytest
 from discopy import closed
 from lib.computer.core import Language, Language2, Program, Data
 from lib.computer.super_extended import (
-    partial_eval, specialize, futamura_1, futamura_2, futamura_3,
-    Supercompiler, interpreter_box, specializer_box
+    partial_eval, specialize, interpreter,
+    futamura_1, futamura_2, futamura_3, Supercompiler
 )
 from lib.computer.hyper_extended import (
-    ackermann_impl, ackermann_box, busy_beaver_impl, busy_beaver_box,
+    ackermann_impl, busy_beaver_impl,
     OrdinalNotation, fast_growing, goodstein_sequence,
     iterate_omega, diagonal
 )
@@ -41,21 +41,21 @@ class TestSupercompilation:
     
     def test_futamura_1(self):
         """First Futamura projection should specialize interpreter."""
-        interp = interpreter_box >> closed.Id(Language)
+        interp = closed.Box("interpreter", Language2, Language) >> closed.Id(Language)
         prog = Program("test_prog") >> closed.Id(Language)
         result = futamura_1(interp, prog)
         assert isinstance(result, closed.Diagram)
     
     def test_futamura_2(self):
         """Second Futamura projection should create compiler."""
-        interp = interpreter_box >> closed.Id(Language)
-        spec = specializer_box >> closed.Id(Language)
+        interp = closed.Box("interpreter", Language2, Language) >> closed.Id(Language)
+        spec = closed.Box("specializer", Language2, Language) >> closed.Id(Language)
         result = futamura_2(interp, spec)
         assert isinstance(result, closed.Diagram)
     
     def test_futamura_3(self):
         """Third Futamura projection should create compiler generator."""
-        spec = specializer_box >> closed.Id(Language)
+        spec = closed.Box("specializer", Language2, Language) >> closed.Id(Language)
         result = futamura_3(spec)
         assert isinstance(result, closed.Diagram)
     
@@ -92,6 +92,8 @@ class TestHypercomputation:
     
     def test_ackermann_box(self):
         """Ackermann box has correct type."""
+        # Box is now defined in YAML, create it for testing
+        ackermann_box = closed.Box("ackermann", Language2, Language)
         assert ackermann_box.dom == Language2
         assert ackermann_box.cod == Language
     

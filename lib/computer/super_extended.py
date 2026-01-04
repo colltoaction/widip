@@ -202,13 +202,6 @@ class Supercompiler:
         return str(d1).startswith(str(d2)[:20]) if len(str(d2)) > 20 else False
 
 
-# --- Boxes for YAML Integration ---
-
-interpreter_box = closed.Box("interpreter", Language2, Language)
-specializer_box = closed.Box("specializer", Language2, Language)
-compiler_box = closed.Box("compiler", Language2, Language)
-compiler_generator_box = closed.Box("compiler_generator", Language, Language)
-
 __all__ = [
     'partial_eval',
     'specialize',
@@ -217,8 +210,4 @@ __all__ = [
     'futamura_2', 
     'futamura_3',
     'Supercompiler',
-    'interpreter_box',
-    'specializer_box',
-    'compiler_box',
-    'compiler_generator_box',
 ]

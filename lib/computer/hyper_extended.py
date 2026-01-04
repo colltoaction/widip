@@ -16,34 +16,12 @@ from __future__ import annotations
 from typing import Any
 from discopy import closed
 from .core import Language, Language2, Program, Data, Copy, Merge
+from .hyper import ackermann_impl
 import sys
-
-
-# --- Ackermann Function ---
-
-def ackermann_impl(m: int, n: int) -> int:
-    """
-    Pure implementation of the Ackermann function.
-    
-    A(m, n) is defined as:
-    - A(0, n) = n + 1
-    - A(m, 0) = A(m-1, 1)
-    - A(m, n) = A(m-1, A(m, n-1))
-    
-    This function grows faster than any primitive recursive function.
-    """
-    if m == 0:
-        return n + 1
-    if n == 0:
-        return ackermann_impl(m - 1, 1)
-    return ackermann_impl(m - 1, ackermann_impl(m, n - 1))
 
 
 # Increase recursion limit for Ackermann computation
 sys.setrecursionlimit(10000)
-
-# Create ackermann as a closed.Box with type ℙ ⊗ ℙ → ℙ
-ackermann_box = closed.Box("ackermann", Language2, Language)
 
 
 # --- Busy Beaver Function ---
@@ -75,9 +53,6 @@ def busy_beaver_impl(n: int) -> int:
         return known_values[n]
     else:
         raise ValueError(f"BB({n}) is unknown/uncomputable")
-
-
-busy_beaver_box = closed.Box("busy_beaver", Language, Language)
 
 
 # --- Ordinal Hierarchies ---
@@ -159,9 +134,6 @@ def fast_growing(alpha: int, n: int) -> int:
     return result
 
 
-fast_growing_box = closed.Box("fast_growing", Language2, Language)
-
-
 # --- Transfinite Recursion ---
 
 def transfinite_recursion(
@@ -236,9 +208,6 @@ def goodstein_sequence(n: int, max_steps: int = 100) -> list[int]:
     return sequence
 
 
-goodstein_box = closed.Box("goodstein", Language, Language)
-
-
 # --- Hypercomputation Combinators ---
 
 def iterate_omega(f: closed.Diagram) -> closed.Diagram:
@@ -268,26 +237,13 @@ def diagonal(f: closed.Diagram) -> closed.Diagram:
     return (f @ f) >> merge
 
 
-# --- Boxes for YAML Integration ---
-
-hypercompute_box = closed.Box("hypercompute", Language2, Language)
-transfinite_box = closed.Box("transfinite", Language2, Language)
-diagonal_box = closed.Box("diagonal", Language, Language)
-
 __all__ = [
     'ackermann_impl',
-    'ackermann_box',
     'busy_beaver_impl',
-    'busy_beaver_box',
     'OrdinalNotation',
     'fast_growing',
-    'fast_growing_box',
     'transfinite_recursion',
     'goodstein_sequence',
-    'goodstein_box',
     'iterate_omega',
     'diagonal',
-    'hypercompute_box',
-    'transfinite_box',
-    'diagonal_box',
 ]

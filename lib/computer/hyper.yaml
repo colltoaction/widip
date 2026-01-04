@@ -1,7 +1,142 @@
-# titi/computer/hyper.yaml
-# Hypercomputation - Functions beyond primitive recursion
+# lib/computer/hyper.yaml
+# Hypercomputation - Functions Beyond Primitive Recursion
+
+# --- Core Hypercomputation Functions ---
 
 ackermann: &ackermann
-  !desc: "Ackermann function"
-  !type: [Language2, Language]
-  !id: ackermann
+  !box
+    name: ackermann
+    type: [Language2, Language]
+    desc: "Ackermann function - grows faster than any primitive recursive function"
+
+busy_beaver: &busy_beaver
+  !box
+    name: busy_beaver
+    type: [Language, Language]
+    desc: "Busy Beaver function - uncomputable for large n"
+
+fast_growing: &fast_growing
+  !box
+    name: fast_growing
+    type: [Language2, Language]
+    desc: "Fast-growing hierarchy f_α(n)"
+
+goodstein: &goodstein
+  !box
+    name: goodstein
+    type: [Language, Language]
+    desc: "Goodstein sequence - demonstrates transfinite descent"
+
+# --- Ordinal Arithmetic ---
+
+omega: &omega
+  !box
+    name: omega
+    type: [Language, Language]
+    desc: "First infinite ordinal ω"
+
+omega_squared: &omega_squared
+  !box
+    name: omega_squared
+    type: [Language, Language]
+    desc: "ω² = ω × ω"
+
+epsilon_0: &epsilon_0
+  !box
+    name: epsilon_0
+    type: [Language, Language]
+    desc: "ε₀ - first fixed point of α ↦ ω^α"
+
+ordinal: &ordinal
+  !box
+    name: ordinal
+    type: [Language, Language]
+    desc: "General ordinal construction"
+
+ordinal_lt: &ordinal_lt
+  !box
+    name: ordinal_lt
+    type: [Language2, Language]
+    desc: "Ordinal comparison (<)"
+
+# --- Transfinite Operations ---
+
+transfinite: &transfinite
+  !box
+    name: transfinite
+    type: [Language2, Language]
+    desc: "Transfinite recursion up to ordinal"
+
+omega_iterate: &omega_iterate
+  !box
+    name: omega_iterate
+    type: [Language, Language]
+    desc: "Iterate a function ω times (transfinitely)"
+
+# --- Hypercomputation Combinators ---
+
+diagonal: &diagonal
+  !box
+    name: diagonal
+    type: [Language, Language]
+    desc: "Diagonalization - apply function to its own encoding"
+
+hypercompute: &hypercompute
+  !box
+    name: hypercompute
+    type: [Language2, Language]
+    desc: "General hypercomputation operation"
+
+# --- Advanced Hyperoperations ---
+
+hyperop: &hyperop
+  !box
+    name: hyperop
+    type: [Language2, Language]
+    desc: "Hyperoperations - generalized arithmetic (addition, multiplication, exponentiation, tetration, ...)"
+
+tetration: &tetration
+  !box
+    name: tetration
+    type: [Language2, Language]
+    desc: "Tetration - iterated exponentiation"
+
+fixed_point: &fixed_point
+  !box
+    name: fixed_point
+    type: [Language, Language]
+    desc: "Fixed point of increasing function"
+
+collatz: &collatz
+  !box
+    name: collatz
+    type: [Language, Language]
+    desc: "Collatz sequence (3n+1 problem)"
+
+chaitin_omega: &chaitin_omega
+  !box
+    name: chaitin_omega
+    type: [Language, Language]
+    desc: "Chaitin's Ω - uncomputable halting probability"
+
+# --- Exports ---
+
+__all__:
+  - ackermann
+  - busy_beaver
+  - fast_growing
+  - goodstein
+  - omega
+  - omega_squared
+  - epsilon_0
+  - ordinal
+  - ordinal_lt
+  - transfinite
+  - omega_iterate
+  - diagonal
+  - hypercompute
+  - hyperop
+  - tetration
+  - fixed_point
+  - collatz
+  - chaitin_omega
