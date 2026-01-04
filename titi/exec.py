@@ -120,6 +120,11 @@ def exec_copy(box: closed.Box) -> Process:
         loop = _EXEC_CTX.get().loop
         from .asyncio import unwrap
         import io
+        import asyncio
+
+        # Use a Future to share the result of the loader
+        fut = loop.create_future()
+        started = False
 
         async def loader():
              val = await unwrap(x, loop)
@@ -128,11 +133,18 @@ def exec_copy(box: closed.Box) -> Process:
                   content = await val.read()
                   return tuple(io.BytesIO(content) for _ in range(n))
              return (val,) * n
-        
-        task = loop.create_task(loader())
-        
+
         async def getter(i):
-             res_tuple = await task
+             nonlocal started
+             if not started:
+                 started = True
+                 try:
+                     res = await loader()
+                     fut.set_result(res)
+                 except Exception as e:
+                     fut.set_exception(e)
+             
+             res_tuple = await fut
              return res_tuple[i]
              
         return tuple(getter(i) for i in range(n))
