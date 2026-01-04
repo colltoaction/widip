@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Any, TypeVar, Dict, Callable
-from discopy import closed, python, symmetric
+from discopy import closed, python, symmetric, frobenius
 from .asyncio import run_command, unwrap
 from contextlib import contextmanager
 import discopy
@@ -37,7 +37,6 @@ def exec_box(box: closed.Box) -> Process:
     # Program box logic
     async def prog_fn(*args):
         ctx = _EXEC_CTX.get()
-        print(f"DEBUG: Executing box {box.name} with args {getattr(box, 'args', [])}")
         unwrapped_args = []
         for stage in args:
             unwrapped_args.append(await unwrap(ctx.loop, stage))
@@ -92,14 +91,19 @@ def exec_swap(box: symmetric.Swap) -> Process:
 # --- Dispatcher ---
 
 def exec_dispatch(box: Any) -> Process:
-    print(f"DEBUG: Dispatching {type(box)} - {getattr(box, 'name', 'no name')}")
-    if isinstance(box, (closed.Box, symmetric.Box)):
+    # 1. Handle algebraic operations regardless of exact class
+    name = getattr(box, 'name', None)
+    if name == "Δ": return exec_copy(box)
+    if name == "μ": return exec_merge(box)
+    if name == "ε": return exec_discard(box)
+    if hasattr(box, 'is_swap') and box.is_swap: return exec_swap(box)
+
+    # 2. Handle known box categories
+    if isinstance(box, (closed.Box, symmetric.Box, frobenius.Box)):
         if isinstance(box, symmetric.Swap): return exec_swap(box)
-        if hasattr(box, 'name'):
-            if box.name == "Δ": return exec_copy(box)
-            if box.name == "μ": return exec_merge(box)
-            if box.name == "ε": return exec_discard(box)
         return exec_box(box)
+    
+    # 3. Default to identity
     return Process.id(any_ty(len(getattr(box, 'dom', closed.Ty()))))
 
 # --- Core Combinators Execution ---
@@ -164,7 +168,11 @@ async def execute(diag: closed.Diagram, hooks: dict, executable: str, loop: Any,
     token = _EXEC_CTX.set(ctx)
     try:
         proc = exec_functor(diag)
-        arg = (stdin,) if proc.dom else ()
+        # Default to empty bytes if no stdin provided but domain is non-empty
+        active_stdin = stdin
+        if active_stdin is None and len(proc.dom) > 0:
+            active_stdin = b""
+        arg = (active_stdin,) if proc.dom else ()
         res = await unwrap(loop, proc(*arg))
         return res
     finally:

@@ -1,12 +1,8 @@
-from titi.loader import load_file
-import sys
+from titi.yaml import load
+from discopy import closed
 
-try:
-    d = load_file("examples/countdown.yaml")
-    print(d)
-    # If possible, inspect inner structure
-    # This might print the Discopy diagram
-    for box in d.boxes:
-        print(f"Box: {box.name}, Data: {getattr(box, 'data', 'N/A')}")
-except Exception as e:
-    print(e)
+src = "&hello !echo world\n*hello"
+diag = load(src)
+print(f"Diagram: {diag}")
+for i, box in enumerate(diag.boxes):
+    print(f"Box {i}: {box.name} (args: {getattr(box, 'args', 'N/A')})")

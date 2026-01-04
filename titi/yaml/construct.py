@@ -49,7 +49,7 @@ def construct_box(box) -> closed.Diagram:
     value = getattr(box, 'value', None)
     nested = getattr(box, 'nested', None)
     name = getattr(box, 'name', None)
-    kind = name 
+    kind = getattr(box, 'kind', name)
     anchor_name = getattr(box, 'anchor_name', None)
 
     # 1. Handle Titi Special Case
@@ -90,6 +90,11 @@ def construct_box(box) -> closed.Diagram:
             args = (value,) if value is not None else ()
             if tag == "id": return closed.Id(Language)
             if tag == "xargs": return Program("xargs", (value,))
+            if tag == "Data": return Data(value)
+            # Handle Partial specially
+            if tag == "Partial":
+                 from computer import Partial
+                 return Partial(value)
             return Program(tag, args)
         if value is None or value == "":
             return closed.Id(Language)
