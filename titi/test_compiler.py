@@ -1,7 +1,7 @@
 import pytest
 from discopy import closed
 from .yaml import Sequence, Mapping, Scalar
-from .yaml.representation import YamlBox
+from .yaml.representation import YamlBox, Node
 from titi.yaml import construct_functor as SHELL_COMPILER
 from computer import Data, Program, Language
 
@@ -34,8 +34,28 @@ def mk_scalar(name):
         YamlBox
     ),
     (
+        # Partial scalar
+        Scalar("Partial", "echo"),
+        YamlBox
+    ),
+    (
+        # xargs tag
+        Scalar("xargs", "-I {}"),
+        YamlBox
+    ),
+    (
         # Nested Mapping (Valid composition)
         Mapping((mk_scalar("K1") >> mk_scalar("V1")) @ (mk_scalar("K2") >> mk_scalar("V2"))),
+        YamlBox
+    ),
+    (
+        # Empty Sequence
+        Sequence(closed.Id(Node), tag="empty"),
+        YamlBox
+    ),
+    (
+        # !echo command
+        Scalar("echo", "hello"),
         YamlBox
     ),
 ])

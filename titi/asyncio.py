@@ -56,39 +56,15 @@ class loop_scope:
             self.loop.close()
 
 
-# --- Memoization ---
-
-Memo = dict[int, tuple[Any, asyncio.Future]]
-memo_var: contextvars.ContextVar[Memo | None] = contextvars.ContextVar("memo", default=None)
-
-class recursion_scope:
-    """Class-based context manager for recursion memoization."""
-    def __init__(self):
-        self.token = None
-
-    def __enter__(self):
-        memo = memo_var.get()
-        if memo is None:
-            memo = {}
-            self.token = memo_var.set(memo)
-        return memo
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.token:
-            try:
-                memo_var.reset(self.token)
-            except ValueError: pass # Guard against cross-context reset
-
-
 # --- Unwrapping ---
 
-async def callable_unwrap(func: Callable[[], Any]) -> Any:
+async def callable_unwrap(func: Callable[[], Any], loop: EventLoop, memo: dict) -> Any:
     """Unwrap a callable."""
     result = func()
-    return await awaitable_unwrap(result)
+    return await awaitable_unwrap(result, loop, memo)
 
 
-async def awaitable_unwrap(aw: Any) -> Any:
+async def awaitable_unwrap(aw: Any, loop: EventLoop, memo: dict) -> Any:
     """Unwrap an awaitable until we get a concrete value."""
     while True:
         match aw:
@@ -98,14 +74,14 @@ async def awaitable_unwrap(aw: Any) -> Any:
                 return aw
 
 
-async def unwrap_step(rec: Callable[[Any], Awaitable[T]], x: Any) -> T | tuple[T, ...]:
+async def unwrap_step(rec: Callable[[Any], Awaitable[T]], x: Any, loop: EventLoop, memo: dict) -> T | tuple[T, ...]:
     """Step function for recursive unwrapping."""
     while True:
         match x:
             case _ if callable(x) and not isinstance(x, (list, tuple, dict, str, bytes)):
-                 x = await callable_unwrap(x)
+                 x = await rec(await x() if inspect.iscoroutinefunction(x) else x())
             case _ if inspect.iscoroutine(x) or inspect.isawaitable(x):
-                 x = await awaitable_unwrap(x)
+                 x = await x
             case _:
                  break
 
@@ -121,38 +97,31 @@ async def recurse(
         f: Callable[..., Any],
         x: Any,
         loop: EventLoop,
-        state: tuple[Memo, frozenset[int]] | None = None) -> Any:
+        memo: dict,
+        path: frozenset[int] = frozenset()) -> Any:
     """Recursively apply a function with memoization."""
-    if state is None:
-         with recursion_scope() as memo:
-             return await recurse(f, x, loop, (memo, frozenset()))
-
-    memo, path = state
     id_x = id(x)
-    
     if id_x in memo:
         _, fut = memo[id_x]
-        if id_x in path:
-            return x
+        if id_x in path: return x
         return await fut
 
     fut = loop.create_future()
     memo[id_x] = (x, fut)
     
     async def callback(item):
-         return await recurse(f, item, loop, (memo, path | {id_x}))
+         return await recurse(f, item, loop, memo, path | {id_x})
          
-    res = await callable_unwrap(lambda: f(callback, x))
+    res = await f(callback, x, loop, memo)
     fut.set_result(res)
     return res
 
 
-async def unwrap(loop: EventLoop, x: Any) -> T | tuple[T, ...]:
+async def unwrap(x: Any, loop: EventLoop, memo: dict | None = None) -> Any:
     """Unwrap a lazy value to its final value."""
     if x is None: return None
-    if loop is None:
-         loop = loop_var.get() or asyncio.get_event_loop()
-    return await recurse(unwrap_step, x, loop)
+    if memo is None: memo = {}
+    return await recurse(unwrap_step, x, loop, memo)
 
 
 # --- Async Composition Helpers ---
@@ -194,61 +163,34 @@ async def read_multi_stream(streams_list: list, index: list[int], hooks: dict, n
     return b""
 
 
-async def read_subprocess_stream(stream: Any, process: asyncio.subprocess.Process, n: int = -1) -> bytes:
-    """Read from subprocess stream and wait for process on EOF."""
-    res = await stream.read(n)
-    if not res:
-         try:
-             await process.wait()
-         except Exception:
-             pass
-    return res
+async def to_bytes(item: Any, loop: EventLoop, hooks: dict) -> bytes:
+    """Convert any value to bytes asynchronously."""
+    val = await unwrap(item, loop)
+    if val is None: return b""
+    if isinstance(val, bytes): return val
+    if isinstance(val, (str, int, float, bool)): return str(val).encode()
+    if isinstance(val, (list, tuple)):
+        return b"".join([await to_bytes(i, loop, hooks) for i in val])
+    if hasattr(val, 'read'):
+        res = val.read()
+        chunk = await res if asyncio.iscoroutine(res) else res
+        return chunk if isinstance(chunk, bytes) else str(chunk).encode()
+    return hooks['value_to_bytes'](val)
 
+async def unwrap_to_str(item: Any, loop: EventLoop, hooks: dict) -> str:
+    """Unwrap a value and return it as a string."""
+    res = await to_bytes(item, loop, hooks)
+    return res.decode()
 
 async def drain_stream(stream: Any):
     """Lazily read and yield chunks from a stream."""
     while True:
-        chunk_coro = stream.read(8192)
-        chunk = await chunk_coro if asyncio.iscoroutine(chunk_coro) else chunk_coro
-        if not chunk:
-            break
-        yield chunk
-
-
-# --- Stream Factories ---
-
-def make_multi_stream_reader(streams: Iterator[Any], hooks: dict):
-    """Create a multi-stream reader that lazily reads from multiple streams."""
-    streams_list = list(streams)
-    index = [0]
-    
-    class MultiStreamReader:
-        def read(self, n: int = -1):
-            return read_multi_stream(streams_list, index, hooks, n)
-            
-    return MultiStreamReader()
-
-
-def make_subprocess_stream(stream: Any, process: asyncio.subprocess.Process, feeder_task: asyncio.Task | None = None):
-    """Create a subprocess stream wrapper."""
-    class SubprocessStream:
-        def __init__(self, s, p, t):
-            self.stream, self.process, self.feeder_task = s, p, t
-        def read(self, n: int = -1):
-            return read_subprocess_stream(self.stream, self.process, n)
-            
-    return SubprocessStream(stream, process, feeder_task)
-
-
-# --- Subprocess and I/O Operations ---
-
-async def to_bytes(item: Any, loop: EventLoop, hooks: dict) -> bytes:
-    """Convert any value to bytes asynchronously."""
-    val = await unwrap(loop, item)
-    if val is None: return b""
-    if isinstance(val, (list, tuple)):
-        return b"".join([await to_bytes(i, loop, hooks) for i in val])
-    return hooks['value_to_bytes'](val)
+        try:
+            chunk_coro = stream.read(8192)
+            chunk = await chunk_coro if asyncio.iscoroutine(chunk_coro) else chunk_coro
+            if not chunk: break
+            yield chunk
+        except Exception: break
 
 
 async def feed_stdin(loop: EventLoop, stdin: Any, process: asyncio.subprocess.Process, hooks: dict):
@@ -297,8 +239,8 @@ async def run_command(runner: Callable, loop: EventLoop,
     """Starts an async subprocess and returns its output stream."""
     from computer import get_anchor, set_anchor
     
-    # Check for recursive anchor
-    name_str = (await to_bytes(name, loop, hooks)).decode()
+    # 1. Recursive anchor check
+    name_str = await unwrap_to_str(name, loop, hooks)
     item = get_anchor(name_str)
     if item is not None:
          if not callable(item):
@@ -306,35 +248,38 @@ async def run_command(runner: Callable, loop: EventLoop,
               set_anchor(name_str, item)
          return await unwrap(loop, item(stdin))
 
-    # Execute subprocess
-    args_str = [(await to_bytes(a, loop, hooks)).decode() for a in args]
+    # 2. Execute subprocess
+    args_str = [await unwrap_to_str(a, loop, hooks) for a in args]
     
-    # xargs as a GUARD special handling
+    # xargs as a GUARD (Special Case)
     if name_str == "xargs":
          process = await asyncio.create_subprocess_exec(
              hooks['fspath'](name_str), *args_str,
-             stdin=asyncio.subprocess.PIPE,
-             stdout=asyncio.subprocess.PIPE,
-             stderr=asyncio.subprocess.PIPE
+             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
          )
          await feed_stdin(loop, stdin, process, hooks)
          stdout_data, _ = await process.communicate()
-         if process.returncode != 0:
-              return None
-         # If no stdout, return original stdin (it's a guard)
-         if not stdout_data.strip():
-              return stdin
-         return stdout_data
+         return None if process.returncode != 0 else (stdout_data if stdout_data.strip() else stdin)
 
     process = await asyncio.create_subprocess_exec(
         hooks['fspath'](name_str), *args_str,
-        stdin=asyncio.subprocess.PIPE,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
+        stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
     )
     
-    task = loop.create_task(feed_stdin(loop, stdin, process, hooks))
-    return make_subprocess_stream(process.stdout, process, task)
+    # Fire-and-forget stdin feeder
+    loop.create_task(feed_stdin(loop, stdin, process, hooks))
+    
+    # Attach a simple 'waiter' to the stream so it cleans up the process on EOF
+    original_read = process.stdout.read
+    async def wrapped_read(n=-1):
+        res = await original_read(n)
+        if not res: 
+             try: await process.wait()
+             except: pass
+        return res
+    process.stdout.read = wrapped_read
+    
+    return process.stdout
 
 
 async def drain_to_stdout(stream: Any, hooks: dict):

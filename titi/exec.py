@@ -22,23 +22,16 @@ def exec_box(box: closed.Box) -> Process:
     dom = any_ty(len(box.dom))
     cod = any_ty(len(box.cod))
     
-    # Check for Data box (Identity with value)
-    if not hasattr(box, 'args'):
-        async def data_fn(*args):
-            ctx = _EXEC_CTX.get()
-            # Special case for ℙ -> ℙ data boxes (Identity/Pass-through)
-            if args:
-                 val = await unwrap(ctx.loop, args[0])
-                 if val is None: return None
-            return box.name
-        return Process(data_fn, dom, cod)
+    # The generic data/program box logic handles both tagged/untagged boxes.
+    # We only need one async function prog_fn that dispatches correctly.
     
     # Program box logic
     async def prog_fn(*args):
         ctx = _EXEC_CTX.get()
+        memo = {}
         unwrapped_args = []
         for stage in args:
-            unwrapped_args.append(await unwrap(ctx.loop, stage))
+            unwrapped_args.append(await unwrap(stage, ctx.loop, memo))
         
         # Choice/Guard logic: skip on None input
         if len(dom) > 0 and unwrapped_args and unwrapped_args[0] is None:
@@ -70,6 +63,12 @@ def exec_box(box: closed.Box) -> Process:
              result = () if not cod else stdin_val
         elif box.name == "read_stdin":
              result = ctx.hooks['stdin_read']()
+        elif box.name == "Data":
+             result = args_data[0] if args_data else b""
+        elif box.name == "Partial":
+             from computer import Partial
+             # Returning the box itself as a 'partial' application (callable/process)
+             result = box 
         else:
              result = await run_command(lambda x: x, ctx.loop, box.name, args_data, stdin_val, ctx.hooks)
         
@@ -77,7 +76,9 @@ def exec_box(box: closed.Box) -> Process:
         n_out = len(cod)
         if n_out == 0: return ()
         if n_out == 1:
-             return result[0] if isinstance(result, tuple) and len(result) == 1 else result
+             if isinstance(result, tuple):
+                  return result[0] if len(result) > 0 else None
+             return result
         return discopy.utils.tuplify(result)
     return Process(prog_fn, dom, cod)
 
@@ -112,21 +113,28 @@ def exec_dispatch(box: Any) -> Process:
 
 def exec_copy(box: closed.Box) -> Process:
     n = getattr(box, 'n', 2)
+    if n == 0:
+        return exec_discard(box)
+
     def copy_fn(x):
         loop = _EXEC_CTX.get().loop
         from .asyncio import unwrap
         import io
+
         async def loader():
-             val = await unwrap(loop, x)
+             val = await unwrap(x, loop)
              if val is None: return (None,) * n
              if hasattr(val, 'read'):
                   content = await val.read()
                   return tuple(io.BytesIO(content) for _ in range(n))
              return (val,) * n
+        
         task = loop.create_task(loader())
+        
         async def getter(i):
              res_tuple = await task
              return res_tuple[i]
+             
         return tuple(getter(i) for i in range(n))
     return Process(copy_fn, any_ty(1), any_ty(n))
 
@@ -136,7 +144,9 @@ def exec_merge(box: closed.Box) -> Process:
     async def merge_fn(*args):
         from .asyncio import unwrap
         loop = _EXEC_CTX.get().loop
-        results = [await unwrap(loop, a) for a in args]
+        # Await all inputs
+        results = [await unwrap(a, loop) for a in args]
+        # Return the last non-None result (shadowing/overwrite behavior)
         for r in reversed(results):
             if r is not None: return r
         return None
@@ -146,7 +156,14 @@ def exec_discard(box: closed.Box) -> Process:
     async def discard_fn(*args):
         from .asyncio import unwrap
         loop = _EXEC_CTX.get().loop
-        for a in args: await unwrap(loop, a)
+        import asyncio
+        for a in args: 
+             val = await unwrap(a, loop)
+             if val is not None and hasattr(val, 'read'):
+                 if asyncio.iscoroutinefunction(val.read): await val.read()
+                 else:
+                      res = val.read()
+                      if asyncio.iscoroutine(res): await res
         return ()
     return Process(discard_fn, any_ty(len(box.dom)), any_ty(0))
 
@@ -162,11 +179,16 @@ def _exec_functor_impl(diag: closed.Diagram) -> Process:
 from .yaml import Composable
 exec_functor = Composable(_exec_functor_impl)
 
-async def execute(diag: closed.Diagram, hooks: dict, executable: str, loop: Any, stdin: Any = None):
-    parent = _EXEC_CTX.get(None)
+async def execute(diag: closed.Diagram, hooks: Dict[str, Callable],
+                  executable: str = "python3", loop: Any = None, stdin: Any = None,
+                  memo: dict | None = None) -> Any:
+    """Execute a diagram using the async evaluation loop."""
+    if loop is None:
+        import asyncio
+        loop = asyncio.get_event_loop()
+    if memo is None: memo = {}
+    
     ctx = ExecContext(hooks, executable, loop)
-    if parent:
-        ctx.anchors.update(parent.anchors)
     token = _EXEC_CTX.set(ctx)
     try:
         proc = exec_functor(diag)
@@ -175,7 +197,7 @@ async def execute(diag: closed.Diagram, hooks: dict, executable: str, loop: Any,
         if active_stdin is None and len(proc.dom) > 0:
             active_stdin = b""
         arg = (active_stdin,) if proc.dom else ()
-        res = await unwrap(loop, proc(*arg))
+        res = await unwrap(proc(*arg), loop, memo)
         return res
     finally:
         try:
