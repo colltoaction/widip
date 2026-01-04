@@ -216,10 +216,11 @@ char *join_scalar_values(char *s1, char *s2) {
 %nonassoc TAG
 %nonassoc DEDENT
 
-%type <node> stream document node opt_node flow_node block_node opt_flow_node
-%type <node> flow_seq_items flow_map_entries flow_map_entry
-%type <node> block_sequence block_mapping block_seq_items block_map_entries map_entry
+%type <node> stream document node opt_node flow_node block_node
+%type <node> flow_seq_items flow_map_entries flow_entry flow_seq_item
+%type <node> block_sequence block_mapping map_entry
 %type <node> propertied_node
+%type <node> entry_key entry_value opt_entry_value
 %type <str> merged_plain_scalar
 
 %start stream
@@ -287,10 +288,7 @@ opt_node
     | /* empty */ { $$ = make_null(); }
     ;
 
-opt_flow_node
-    : flow_node { $$ = $1; }
-    | /* empty */ { $$ = make_null(); }
-    ;
+
 
 node
     : flow_node
@@ -338,51 +336,75 @@ merged_plain_scalar
     ;
 
 flow_seq_items
-    : opt_flow_node                         { $$ = $1; }
-    | flow_seq_items COMMA opt_flow_node    { $$ = append_node($1, $3); }
+    : flow_seq_item                         { $$ = $1; }
+    | flow_seq_items COMMA flow_seq_item    { $$ = append_node($1, $3); }
+    | flow_seq_items COMMA                  { $$ = append_node($1, make_null()); }
+    | COMMA flow_seq_item                   { $$ = append_node(make_seq(make_null())->children, $2); }
+    | COMMA                                 { $$ = append_node(make_seq(make_null())->children, make_null()); }
+    ;
+
+flow_seq_item
+    : flow_node entry_value         { $$ = make_map(append_node($1, $2)); }
+    | entry_key opt_entry_value     { $$ = make_map(append_node($1, $2)); }
+    | flow_node                     { $$ = $1; }
     ;
 
 flow_map_entries
-    : flow_map_entry                        { $$ = $1; }
-    | flow_map_entries COMMA flow_map_entry { $$ = append_node($1, $3); }
-    | flow_map_entries COMMA                { $$ = $1; }
+    : flow_entry
+    | flow_map_entries COMMA flow_entry { $$ = append_node($1, $3); }
+    | flow_map_entries COMMA            { $$ = $1; }
     ;
 
-flow_map_entry
-    : flow_node COLON opt_flow_node              { $$ = append_node($1, $3); }
-    | flow_node                                       { $$ = append_node($1, make_null()); }
-    | MAP_KEY opt_flow_node COLON opt_flow_node { $$ = append_node($2, $4); }
-    | MAP_KEY opt_flow_node                      { $$ = append_node($2, make_null()); }
+flow_entry
+    : map_entry
+    | flow_node { $$ = append_node($1, make_null()); }
     ;
 
 block_sequence
-    : block_seq_items opt_newlines          { $$ = make_seq($1); }
+    : SEQ_ENTRY opt_node                        { $$ = make_seq($2); }
+    | block_sequence opt_newlines SEQ_ENTRY opt_node { 
+          if ($1->children) append_node($1->children, $4);
+          else $1->children = $4;
+          $$ = $1; 
+      }
+    | block_sequence newlines                   { $$ = $1; }
     ;
 
-block_seq_items
-    : SEQ_ENTRY opt_node               { $$ = $2; }
-    | block_seq_items opt_newlines SEQ_ENTRY opt_node{ $$ = append_node($1, $4); }
-    ;
+/* block_seq_items removed */
 
 block_mapping
-    : block_map_entries opt_newlines            { $$ = make_map($1); }
+    : map_entry                                 { $$ = make_map($1); }
+    | block_mapping newlines map_entry          { 
+          if ($1->children) append_node($1->children, $3);
+          else $1->children = $3;
+          $$ = $1; 
+      }
+    | block_mapping newlines                    { $$ = $1; }
     ;
 
-/* Block mapping entries - key: value pairs at same indentation */
-block_map_entries
-    : map_entry                             { $$ = $1; }
-    
-    | block_map_entries newlines map_entry  { $$ = append_node($1, $3); }
-    ;
+/* block_map_entries removed */
 
-/* A single mapping entry: key: value (value can be inline or on next line indented) */
+/* A single mapping entry: key: value */
+/* A single mapping entry: key: value */
 map_entry
-    : flow_node COLON opt_newlines opt_node { $$ = append_node($1, $4); }
-    | flow_node COLON newlines INDENT node DEDENT { $$ = append_node($1, $5); }
-    | MAP_KEY opt_node COLON opt_newlines opt_node { $$ = append_node($2, $5); }
-    | MAP_KEY opt_node                 { $$ = append_node($2, make_null()); }
-    | MAP_KEY newlines INDENT opt_node DEDENT COLON opt_newlines opt_node { $$ = append_node($4, $8); }
-    | MAP_KEY newlines INDENT opt_node DEDENT { $$ = append_node($4, make_null()); }
+    : flow_node entry_value         { $$ = append_node($1, $2); }
+    | propertied_node entry_value   { $$ = append_node($1, $2); }
+    | entry_key opt_entry_value     { $$ = append_node($1, $2); }
+    ;
+
+entry_key
+    : MAP_KEY opt_node { $$ = $2; }
+    | MAP_KEY newlines INDENT opt_node DEDENT { $$ = $4; }
+    ;
+
+entry_value
+    : COLON opt_newlines opt_node { $$ = $3; }
+    | COLON newlines INDENT node DEDENT { $$ = $4; }
+    ;
+
+opt_entry_value
+    : entry_value
+    | /* empty */ { $$ = make_null(); }
     ;
 
 %%
