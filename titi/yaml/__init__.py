@@ -1,8 +1,7 @@
 from __future__ import annotations
 from typing import Any
-from functools import singledispatch
 import discopy
-from discopy import symmetric, closed
+from discopy import frobenius, closed
 
 from .parse import parse, impl_parse
 from . import representation as ren
@@ -19,30 +18,20 @@ iterate = pres.Iterate()
 
 # --- Compose Functor ---
 
-@singledispatch
-def compose_dispatch(box: Any) -> symmetric.Diagram:
-    """Default dispatcher for serialization items."""
+def compose_dispatch(box: Any) -> frobenius.Diagram:
+    """Manual dispatcher for serialization items."""
+    if hasattr(box, 'kind'):
+         kind = box.kind
+         if kind == "Scalar": return ren.Scalar(box.tag, box.value)
+         if kind == "Alias": return ren.Alias(box.anchor_name)
     return box
 
-# Registrations
-compose_dispatch.register(ren.YamlBox, lambda b: getattr(ren, f"comp_{b.kind[:3].lower()}")(b, compose_functor))
+compose_functor = frobenius.Functor(ob={frobenius.Ty("Node"): ren.Node}, ar=compose_dispatch)
 
-def _compose_ar(box):
-    if hasattr(box, 'kind'):
-         # YamlBox stores kind
-         if box.kind == "Scalar": return ren.comp_sca(box)
-         if box.kind == "Alias": return ren.comp_ali(box)
-    elif hasattr(box, 'name'):
-        if box.name == "Scalar": return ren.comp_sca(box)
-        if box.name.startswith("Alias"): return ren.comp_ali(box)
-    return compose_dispatch(box)
-
-compose_functor = symmetric.Functor(ob={symmetric.Ty("Node"): ren.Node}, ar=_compose_ar)
-
-@symmetric.Diagram.from_callable(symmetric.Ty("Node"), ren.Node)
+@frobenius.Diagram.from_callable(frobenius.Ty("Node"), ren.Node)
 def compose(node_wire):
     """Traceable compose diagram."""
-    return symmetric.Box("compose", symmetric.Ty("Node"), ren.Node)(node_wire)
+    return frobenius.Box("compose", frobenius.Ty("Node"), ren.Node)(node_wire)
 
 # --- Construct Functor ---
 
@@ -54,17 +43,17 @@ class MapAll:
     def __contains__(self, _): return True
     def __iter__(self): return iter([])
 
-@singledispatch
 def construct_dispatch(box: Any) -> closed.Diagram:
     # Handle raw closed.Box instances (Program, Data, etc.)
     if isinstance(box, closed.Box):
         return box >> closed.Id(box.cod)
     
+    if isinstance(box, ren.YamlBox):
+        return con.construct_box(box)
+    
     # Default for wires/nodes
     dom = getattr(box, 'dom', closed.Ty())
     return closed.Id(Language ** len(dom))
-
-construct_dispatch.register(ren.YamlBox, con.construct_box)
 
 # Original Functor that maps YamlBoxes to diagrams
 _construct_functor = closed.Functor(

@@ -1,8 +1,7 @@
 from __future__ import annotations
 from typing import Any
 from itertools import batched
-from functools import singledispatch
-from discopy import symmetric, monoidal, closed
+from discopy import frobenius, monoidal, closed
 
 from nx_hif.hif import hif_node_incidences, hif_edge_incidences, hif_node
 from . import presentation as pres
@@ -10,7 +9,7 @@ from .presentation import CharacterStream
 
 # --- HIF Compatibility (Satisfying test_hif.py) ---
 
-def to_hif(hg: symmetric.Hypergraph) -> dict:
+def to_hif(hg: frobenius.Hypergraph) -> dict:
     """Serializes a DisCoPy Hypergraph to a dictionary-based HIF format."""
     nodes = {}
     for i, t in enumerate(hg.spider_types):
@@ -31,27 +30,27 @@ def to_hif(hg: symmetric.Hypergraph) -> dict:
         "cod": [str(x) for x in hg.wires[2]]
     }
 
-def from_hif(data: dict) -> symmetric.Hypergraph:
+def from_hif(data: dict) -> frobenius.Hypergraph:
     """Reconstructs a DisCoPy Hypergraph from the dictionary-based HIF format."""
     sorted_node_ids = sorted(data["nodes"].keys(), key=int)
     id_map = {nid: i for i, nid in enumerate(sorted_node_ids)}
     
-    spider_types = [symmetric.Ty(data["nodes"][nid]["type"]) if data["nodes"][nid]["type"] else symmetric.Ty() for nid in sorted_node_ids]
+    spider_types = [frobenius.Ty(data["nodes"][nid]["type"]) if data["nodes"][nid]["type"] else frobenius.Ty() for nid in sorted_node_ids]
     
     boxes, box_wires_list = [], []
     for edge in data["edges"]:
         sources = [id_map[s] for s in edge["sources"]]
         targets = [id_map[t] for t in edge["targets"]]
         b_spec = edge["box"]
-        dom = symmetric.Ty().tensor(*[spider_types[i] for i in sources])
-        cod = symmetric.Ty().tensor(*[spider_types[i] for i in targets])
-        boxes.append(symmetric.Box(b_spec["name"], dom, cod, data=b_spec.get("data")))
+        dom = frobenius.Ty().tensor(*[spider_types[i] for i in sources])
+        cod = frobenius.Ty().tensor(*[spider_types[i] for i in targets])
+        boxes.append(frobenius.Box(b_spec["name"], dom, cod, data=b_spec.get("data")))
         box_wires_list.append((tuple(sources), tuple(targets)))
         
     wires = (tuple(id_map[s] for s in data["dom"]), tuple(box_wires_list), tuple(id_map[s] for s in data["cod"]))
-    dom = symmetric.Ty().tensor(*[spider_types[i] for i in wires[0]])
-    cod = symmetric.Ty().tensor(*[spider_types[i] for i in wires[2]])
-    return symmetric.Hypergraph(dom, cod, boxes, wires, spider_types=spider_types)
+    dom = frobenius.Ty().tensor(*[spider_types[i] for i in wires[0]])
+    cod = frobenius.Ty().tensor(*[spider_types[i] for i in wires[2]])
+    return frobenius.Hypergraph(dom, cod, boxes, wires, spider_types=spider_types)
 
 
 # --- Serialization Primitives (Native DisCoPy Factories) ---
@@ -80,8 +79,7 @@ def _iterate(index, node):
 
 # --- HIF Dispatcher (Simplified Pattern) ---
 
-@singledispatch
-def hif_to_pres(n: Any) -> tuple[symmetric.Box, Any]:
+def hif_to_pres(n: Any) -> tuple[frobenius.Box, Any]:
     index, node_id = n
     data = hif_node(node_id, index)
     kind, tag, anchor = data["kind"], (data.get("tag") or "")[1:], data.get("anchor")
@@ -96,43 +94,44 @@ def hif_to_pres(n: Any) -> tuple[symmetric.Box, Any]:
 
 # --- Event Tree Builder ---
 
-@singledispatch
-def build_ser(box: Any, children: Any) -> closed.Diagram:
+def _seq_builder(b, c):
+    items = [_build_node(i) for i in (c or [])]
+    res = items[0] if items else frobenius.Id(Node)
+    for it in items[1:]: res >>= it
+    res = Sequence(res, tag=getattr(b, 'tag', ""))
+    return Anchor(b.anchor, res) if getattr(b, 'anchor', None) else res
+
+def _map_builder(b, c):
+    pairs = [(_build_node(k) @ _build_node(v)) for k, v in batched(list(c or []), 2)]
+    res = pairs[0] if pairs else frobenius.Id(Node)
+    for p in pairs[1:]: res @= p
+    res = Mapping(res, tag=getattr(b, 'tag', ""))
+    return Anchor(b.anchor, res) if getattr(b, 'anchor', None) else res
+
+def build_ser(box: Any, children: Any) -> frobenius.Diagram:
     """Build serialization atom from presentation box and its children."""
+    if isinstance(box, pres.Scalar):
+        return Scalar(box.tag, box.value) if not box.anchor else Anchor(box.anchor, Scalar(box.tag, box.value))
+    if isinstance(box, pres.Alias):
+        return Alias(box.anchor)
+    if isinstance(box, pres.Sequence):
+        return _seq_builder(box, children)
+    if isinstance(box, pres.Mapping):
+        return _map_builder(box, children)
+    if isinstance(box, pres.Document):
+        return Document(_build_node(children)) if children else Document(frobenius.Id(Node))
+    if isinstance(box, pres.Stream):
+        return Stream(_seq_builder(box, children))
+        
     raise NotImplementedError(f"No serialization for {type(box)}")
 
 def _build_node(n):
     return build_ser(*hif_to_pres(n))
 
-build_ser.register(pres.Scalar, lambda b, c: \
-    (Scalar(b.tag, b.value) if not b.anchor else Anchor(b.anchor, Scalar(b.tag, b.value))))
-
-build_ser.register(pres.Alias, lambda b, c: Alias(b.anchor))
-
-def _seq_builder(b, c):
-    items = [_build_node(i) for i in (c or [])]
-    res = items[0] if items else closed.Id(Node)
-    for it in items[1:]: res >>= it
-    res = Sequence(res, tag=getattr(b, 'tag', ""))
-    return Anchor(b.anchor, res) if getattr(b, 'anchor', None) else res
-
-build_ser.register(pres.Sequence, _seq_builder)
-build_ser.register(pres.Stream, lambda b, c: Stream(_seq_builder(b, c)))
-
-def _map_builder(b, c):
-    pairs = [(_build_node(k) @ _build_node(v)) for k, v in batched(list(c or []), 2)]
-    res = pairs[0] if pairs else closed.Id(Node)
-    for p in pairs[1:]: res @= p
-    res = Mapping(res, tag=getattr(b, 'tag', ""))
-    return Anchor(b.anchor, res) if getattr(b, 'anchor', None) else res
-
-build_ser.register(pres.Mapping, _map_builder)
-build_ser.register(pres.Document, lambda b, c: Document(_build_node(c)) if c else Document(closed.Id(Node)))
-
 # --- Functor entry: Traceable Parser ---
 
 def parse_box(source_wire):
-    return closed.Box("parse", closed.Ty("CharacterStream"), Node)(source_wire)
+    return frobenius.Box("parse", frobenius.Ty("CharacterStream"), Node)(source_wire)
 
 def impl_parse(source):
     """Native implementation of the YAML parser."""
@@ -144,7 +143,7 @@ def impl_parse(source):
     incidences = nx_compose_all(source)
     return _build_node((0, incidences))
 
-@closed.Diagram.from_callable(closed.Ty("CharacterStream"), Node)
+@frobenius.Diagram.from_callable(frobenius.Ty("CharacterStream"), Node)
 def parse(source):
     """Traceable parse diagram."""
     if not hasattr(source, 'read') and not isinstance(source, (str, bytes)):

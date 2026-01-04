@@ -1,12 +1,12 @@
 from __future__ import annotations
 from typing import Any
-from discopy import closed
+from discopy import frobenius
 
 # --- The Node Graph Category (Semantic) ---
-# Use closed.Ty for consistency with the computer's category
-Node = closed.Ty("Node")
+# Use frobenius.Ty for the representation category
+Node = frobenius.Ty("Node")
 
-class YamlBox(closed.Box):
+class YamlBox(frobenius.Box):
     def __init__(self, name: str, dom=Node, cod=Node, **kwargs):
         # Normalize args
         self.kind = kwargs.pop("kind", name)
