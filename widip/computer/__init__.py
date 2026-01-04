@@ -1,5 +1,6 @@
 from __future__ import annotations
 from discopy import closed
+import functools, operator, ast
 
 # Symbols are represented by ℙ
 Language = closed.Ty("ℙ")
@@ -54,4 +55,10 @@ compiler_generator = lambda: Partial(specializer_box, 1)
 
 ackermann = closed.Box("ackermann", Language2, Language)
 
+# --- Bootstrap Functors ---
 
+eval_diagram = lambda tuples: functools.reduce(operator.add, tuples, ())
+eval_diagram.__doc__ = """Monoid homomorphism: flatten tuple of tuples via reduce(add, tuples, ())."""
+
+eval_python = lambda code: eval(compile(ast.parse(code, mode='eval'), '<string>', 'eval'))
+eval_python.__doc__ = """Functor str → AST → object: parse and evaluate Python expressions via AST."""

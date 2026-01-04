@@ -1,7 +1,7 @@
 import pytest
 import functools
 import operator
-from widip.py import eval_diagram, eval_python
+from widip.computer import eval_diagram, eval_python
 
 
 # --- Structure Tests ---
