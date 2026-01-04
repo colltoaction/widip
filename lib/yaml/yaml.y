@@ -218,7 +218,7 @@ char *join_scalar_values(char *s1, char *s2) {
 
 %type <node> stream document node opt_node flow_node block_node
 %type <node> flow_seq_items flow_map_entries flow_entry flow_seq_item
-%type <node> block_sequence block_mapping map_entry propertied_node
+%type <node> block_sequence block_mapping map_entry
 %type <node> entry_key entry_value opt_entry_value
 %type <str> merged_plain_scalar
 
@@ -292,18 +292,10 @@ opt_node
 node
     : flow_node
     | block_node
-    | propertied_node
-    ;
-
-propertied_node
-    : ANCHOR opt_newlines TAG opt_newlines node { $$ = make_anchor($1, make_tag($3, $5)); }
-    | TAG opt_newlines ANCHOR opt_newlines node { $$ = make_tag($1, make_anchor($3, $5)); }
-    | ANCHOR opt_newlines TAG opt_newlines { $$ = make_anchor($1, make_tag($3, make_null())); } %prec LOW_PREC
-    | TAG opt_newlines ANCHOR opt_newlines { $$ = make_tag($1, make_anchor($3, make_null())); } %prec LOW_PREC
     | ANCHOR opt_newlines node { $$ = make_anchor($1, $3); }
-    | ANCHOR opt_newlines { $$ = make_anchor($1, make_null()); } %prec LOW_PREC
-    | TAG opt_newlines node { $$ = make_tag($1, $3); }
-    | TAG opt_newlines { $$ = make_tag($1, make_null()); } %prec LOW_PREC
+    | TAG opt_newlines node    { $$ = make_tag($1, $3); }
+    | ANCHOR opt_newlines %prec LOW_PREC { $$ = make_anchor($1, make_null()); }
+    | TAG opt_newlines %prec LOW_PREC    { $$ = make_tag($1, make_null()); }
     ;
 flow_node
     : merged_plain_scalar   { $$ = make_scalar($1); }
@@ -340,11 +332,9 @@ flow_seq_items
     ;
 
 flow_seq_item
-    : flow_node entry_value         { $$ = make_map(append_node($1, $2)); }
-    | propertied_node entry_value   { $$ = make_map(append_node($1, $2)); }
+    : node entry_value         { $$ = make_map(append_node($1, $2)); }
     | entry_key opt_entry_value     { $$ = make_map(append_node($1, $2)); }
-    | flow_node                     { $$ = $1; }
-    | propertied_node               { $$ = $1; }
+    | node                          { $$ = $1; }
     ;
 
 flow_map_entries
@@ -355,7 +345,7 @@ flow_map_entries
 
 flow_entry
     : map_entry
-    | flow_node { $$ = append_node($1, make_null()); }
+    | node { $$ = append_node($1, make_null()); }
     ;
 
 block_sequence
@@ -384,8 +374,7 @@ block_mapping
 /* A single mapping entry: key: value */
 /* A single mapping entry: key: value */
 map_entry
-    : flow_node entry_value opt_newlines        { $$ = append_node($1, $2); }
-    | propertied_node entry_value opt_newlines  { $$ = append_node($1, $2); }
+    : node entry_value opt_newlines        { $$ = append_node($1, $2); }
     | entry_key opt_entry_value opt_newlines    { $$ = append_node($1, $2); }
     ;
 
