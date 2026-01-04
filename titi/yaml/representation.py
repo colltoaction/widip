@@ -26,22 +26,34 @@ def Scalar(tag, value):
     return YamlBox("Scalar", tag=tag, value=value)
 
 def Sequence(inside, tag="", **kwargs):
-    return YamlBox("Sequence", nested=inside, tag=tag, **kwargs)
+    dom = getattr(inside, 'dom', Node)
+    cod = getattr(inside, 'cod', Node)
+    return YamlBox("Sequence", dom=dom, cod=cod, nested=inside, tag=tag, **kwargs)
 
 def Mapping(inside, tag=""):
-    return YamlBox("Mapping", nested=inside, tag=tag)
+    dom = getattr(inside, 'dom', Node)
+    cod = getattr(inside, 'cod', Node)
+    return YamlBox("Mapping", dom=dom, cod=cod, nested=inside, tag=tag)
 
 def Titi(inside, **kwargs):
-    return YamlBox("Titi", nested=inside, **kwargs)
+    dom = getattr(inside, 'dom', Node)
+    cod = getattr(inside, 'cod', Node)
+    return YamlBox("Titi", dom=dom, cod=cod, nested=inside, **kwargs)
 
 def Anchor(name, inside):
-    return YamlBox(f"Anchor({name})", kind="Anchor", anchor_name=name, nested=inside)
+    dom = getattr(inside, 'dom', Node)
+    cod = getattr(inside, 'cod', Node)
+    return YamlBox(f"Anchor({name})", dom=dom, cod=cod, kind="Anchor", anchor_name=name, nested=inside)
 
 def Alias(name):
     return YamlBox(name, kind="Alias", anchor_name=name)
 
 def Document(inside):
-    return YamlBox("Document", nested=inside)
+    dom = getattr(inside, 'dom', Node)
+    cod = getattr(inside, 'cod', Node)
+    return YamlBox("Document", dom=dom, cod=cod, nested=inside)
 
 def Stream(inside):
-    return YamlBox("Stream", nested=inside)
+    dom = getattr(inside, 'dom', Node)
+    cod = getattr(inside, 'cod', Node)
+    return YamlBox("Stream", dom=dom, cod=cod, nested=inside)

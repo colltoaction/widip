@@ -85,40 +85,19 @@ def construct_box(box) -> closed.Diagram:
         return Program("alias", (anchor_name,))
 
     # 4. Handle Scalar (Leaf)
-    if kind == "Scalar" or (nested is None and value is not None):
+    if kind == "Scalar":
         if tag:
             args = (value,) if value is not None else ()
             if tag == "id": return closed.Id(Language)
-            if tag == "xargs":
-                 return Program("xargs", (value,))
+            if tag == "xargs": return Program("xargs", (value,))
             return Program(tag, args)
         if value is None or value == "":
             return closed.Id(Language)
         return Data(value)
 
-    # 5. Handle Container (Sequence / Mapping / Document / Stream)
-    if tag:
-        try:
-            args = extract_args(box)
-            if args:
-                return Program(tag, args)
-        except Exception: 
-            pass
-
+    # 5. Handle Containers (Sequence / Mapping / Document / Stream)
     if nested is None:
         return closed.Id(Language)
-
-    # Special: Treat untagged sequences as accumulative pipelines (print taps)
-    if kind == "Sequence" and not tag and hasattr(nested, 'inside'):
-          res = None
-          for layer in nested.inside:
-               layer_diag = titi.yaml.construct_functor(layer)
-               if res is None:
-                    res = layer_diag
-               else:
-                    # Accumulative Tap: res >> copy >> (printer @ next_layer)
-                    res = res >> make_copy(2) >> (Titi.printer @ layer_diag)
-          return res or closed.Id(Language)
 
     inside = titi.yaml.construct_functor(nested)
     
@@ -128,7 +107,7 @@ def construct_box(box) -> closed.Diagram:
             target_dom = Language ** n
             if inside.dom != target_dom:
                 inside = closed.Diagram(inside.inside, target_dom, inside.cod)
-            # fan out input
+            # fan out input if it's a mapping
             inside = make_copy(n) >> inside 
             
             n_out = len(inside.cod)
@@ -137,12 +116,12 @@ def construct_box(box) -> closed.Diagram:
             elif n_out == 0:
                 inside = inside >> Data("")
 
-    # Trace back algebraic ops if they appeared in representation
-    if name == "Δ": return copy
-    if name == "μ": return merge
-    if name == "ε": return discard
+    # Trace back algebraic ops
+    if kind == "Δ": return copy
+    if kind == "μ": return merge
+    if kind == "ε": return discard
 
-    if tag:
+    if tag and kind not in ["Titi"]:
         return Program(tag, (inside,))
 
     return inside

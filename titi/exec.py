@@ -37,6 +37,7 @@ def exec_box(box: closed.Box) -> Process:
     # Program box logic
     async def prog_fn(*args):
         ctx = _EXEC_CTX.get()
+        print(f"DEBUG: Executing box {box.name} with args {getattr(box, 'args', [])}")
         unwrapped_args = []
         for stage in args:
             unwrapped_args.append(await unwrap(ctx.loop, stage))
@@ -53,13 +54,19 @@ def exec_box(box: closed.Box) -> Process:
         if box.name == "anchor":
             name, inside = args_data
             ctx.anchors[name] = inside
-            return await execute(inside, ctx.hooks, ctx.executable, ctx.loop, stdin_val)
+            res = await execute(inside, ctx.hooks, ctx.executable, ctx.loop, stdin_val)
+            from .asyncio import printer
+            await printer(None, res, ctx.hooks)
+            return res
             
         if box.name == "alias":
             name = args_data[0]
             if name not in ctx.anchors:
                 raise ValueError(f"Unknown anchor: {name}")
-            return await execute(ctx.anchors[name], ctx.hooks, ctx.executable, ctx.loop, stdin_val)
+            res = await execute(ctx.anchors[name], ctx.hooks, ctx.executable, ctx.loop, stdin_val)
+            from .asyncio import printer
+            await printer(None, res, ctx.hooks)
+            return res
 
         if box.name == "print":
              from .asyncio import printer
@@ -85,6 +92,7 @@ def exec_swap(box: symmetric.Swap) -> Process:
 # --- Dispatcher ---
 
 def exec_dispatch(box: Any) -> Process:
+    print(f"DEBUG: Dispatching {type(box)} - {getattr(box, 'name', 'no name')}")
     if isinstance(box, (closed.Box, symmetric.Box)):
         if isinstance(box, symmetric.Swap): return exec_swap(box)
         if hasattr(box, 'name'):
@@ -92,7 +100,7 @@ def exec_dispatch(box: Any) -> Process:
             if box.name == "μ": return exec_merge(box)
             if box.name == "ε": return exec_discard(box)
         return exec_box(box)
-    return Process.id(any_ty(getattr(box, 'dom', closed.Ty())))
+    return Process.id(any_ty(len(getattr(box, 'dom', closed.Ty()))))
 
 # --- Core Combinators Execution ---
 

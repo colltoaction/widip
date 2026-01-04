@@ -30,8 +30,11 @@ def test_anchor_alias_execution(yaml_src, expected_output):
     
     asyncio.run(run_test())
     # Note: anchor execution + alias execution = 2 prints for echo
+    combined_output = "".join(output)
+    if not any(expected in combined_output for expected in expected_output):
+        print(f"DEBUG: captured output: {combined_output!r}")
     for expected in expected_output:
-        assert expected in "".join(output)
+        assert expected in combined_output
 
 @pytest.mark.asyncio
 async def test_manual_anchor_exec():
