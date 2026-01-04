@@ -1,4 +1,15 @@
 from typing import Any
+"""
+DEPRECATED: YAML Presentation Boxes
+
+This module is deprecated in favor of the C-based lex/yacc parser.
+Use `lib.computer.parser_bridge.YAMLParserBridge` instead.
+
+These boxes are kept for backward compatibility with existing code
+that uses nx_yaml, but new code should use the compiled parser.
+"""
+
+import warnings
 from discopy import symmetric
 from nx_hif.hif import hif_node_incidences, hif_edge_incidences, hif_node
 
