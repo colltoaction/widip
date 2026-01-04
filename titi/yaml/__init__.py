@@ -54,12 +54,12 @@ def construct_dispatch(box: Any) -> closed.Diagram:
     # Ensure we use closed.Ty for powers
     return closed.Id(Language**len(box.dom))
 
-construct_dispatch.register(ren.ScalarBox, con.construct_scalar)
-construct_dispatch.register(ren.SequenceBox, con.construct_sequence)
-construct_dispatch.register(ren.MappingBox, con.construct_mapping)
+construct_dispatch.register(ren.ScalarBox, con.construct_box)
+construct_dispatch.register(ren.SequenceBox, con.construct_box)
+construct_dispatch.register(ren.MappingBox, con.construct_box)
 construct_dispatch.register(ren.DocumentBox, lambda b: construct_dispatch(b.nested))
 construct_dispatch.register(ren.StreamBox, lambda b: construct_dispatch(b.nested))
-construct_dispatch.register(ren.TitiBox, con.construct_titi)
+construct_dispatch.register(ren.TitiBox, con.construct_box)
 
 construct_functor = closed.Functor(
     ob={
