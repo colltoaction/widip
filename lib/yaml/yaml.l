@@ -1,5 +1,5 @@
 %{
-/* YAML 1.2 Lexer - Indentation Aware using Start Conditions */
+/* YAML 1.2 Lexer - Final Polish */
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -7,18 +7,16 @@
 
 extern YYSTYPE yylval;
 
-/* Indentation stack */
 int indent_stack[100] = {0};
 int indent_level = 0;
-int pending_indent = 0;  /* Spaces counted at BOL */
-int flow_level = 0;      /* Nesting level of flow style [] and {} */
+int pending_indent = 0;
+int flow_level = 0;
 
-/* Token queue for INDENT/DEDENT */
-int token_queue[100];
+int token_queue[2048];
 int q_head = 0, q_tail = 0;
 
 void enqueue(int t) { 
-    if (q_tail < 100) token_queue[q_tail++] = t; 
+    if (q_tail < 2048) token_queue[q_tail++] = t; 
 }
 int dequeue() { 
     if (q_head < q_tail) return token_queue[q_head++]; 
@@ -30,40 +28,19 @@ int q_peek() {
     return 0;
 }
 
-/* Process indentation and enqueue tokens */
 int process_indent(int indent) {
     if (flow_level > 0) return 0;
     if (indent > indent_stack[indent_level]) {
         indent_stack[++indent_level] = indent;
         return INDENT;
     } else if (indent < indent_stack[indent_level]) {
-        while (indent < indent_stack[indent_level]) {
+        while (indent < indent_stack[indent_level] && indent_level > 0) {
             indent_level--;
-            if (indent <= indent_stack[indent_level]) {
-                if (indent_level > 0 || indent < indent_stack[indent_level]) {
-                    enqueue(DEDENT);
-                }
-            }
+            enqueue(DEDENT);
         }
-        return DEDENT;
+        return dequeue();
     }
-    return 0; /* Same level, no token */
-}
-
-int block_start_indent = -1;
-char *block_buffer = NULL;
-int block_buf_size = 0;
-int block_buf_len = 0;
-
-void append_block(const char *s) {
-    int len = strlen(s);
-    if (block_buf_len + len + 2 > block_buf_size) {
-        block_buf_size = (block_buf_len + len + 2) * 2;
-        if (block_buf_size < 1024) block_buf_size = 1024;
-        block_buffer = realloc(block_buffer, block_buf_size);
-    }
-    strcpy(block_buffer + block_buf_len, s);
-    block_buf_len += len;
+    return 0;
 }
 
 int real_yylex();
@@ -93,6 +70,8 @@ const char* tok_name(int tok) {
         case LITERAL: return "LITERAL";
         case FOLDED: return "FOLDED";
         case LITERAL_CONTENT: return "LITERAL_CONTENT";
+        case TAG_DIRECTIVE: return "TAG_DIRECTIVE";
+        case YAML_DIRECTIVE: return "YAML_DIRECTIVE";
         default: return "OTHER";
     }
 }
@@ -100,28 +79,21 @@ const char* tok_name(int tok) {
 int yylex() {
     int tok;
     while (1) {
-        if (!q_empty()) {
-            tok = dequeue();
-        } else {
-            tok = real_yylex();
-        }
+        if (!q_empty()) tok = dequeue();
+        else tok = real_yylex();
         
         if (tok == 0 && q_empty()) return 0;
         
-        // Lookahead synthesis: if NEWLINE is followed by DEDENT, emit combined token
         if (tok == NEWLINE && !q_empty() && q_peek() == DEDENT) {
-            dequeue(); // Consume the DEDENT from queue
-            fprintf(stderr, "TOKEN: NEWLINE_DEDENT (\\n+DEDENT) at line %d\n", yylineno);
+            dequeue();
             return NEWLINE_DEDENT;
         }
         
         if (tok != 0) {
-            // If real_yylex enqueued things (like DEDENTs), we must return them first
             if (!q_empty()) {
-                enqueue(tok); // Save the current token for later
-                return dequeue(); // Return the first enqueued token (DEDENT)
+                enqueue(tok);
+                return dequeue();
             }
-            if (tok > 0) fprintf(stderr, "TOKEN: %s (%s) at line %d\n", tok_name(tok), yytext, yylineno);
             return tok;
         }
     }
@@ -134,34 +106,21 @@ int yylex() {
 %option yylineno
 %option stack
 
-/* Start conditions */
 %x BOL
 %x FLOW
 
-WS          [ \t]
 NEWLINE     \n|\r\n|\r
-DIGIT       [0-9]
-ALPHA       [a-zA-Z_]
-ALNUM       [a-zA-Z0-9_]
-
-/* Simplified SAFE classes - Escape brackets properly */
-SAFE_C_BLK  [a-zA-Z0-9_\-./!@#$%&()=+~,\[\]{}]
-SAFE_S_BLK  [a-zA-Z0-9_\-./@$+=~]
-SAFE_C_FLW  [a-zA-Z0-9_\-./!@#$%&()=+~]
-SAFE_S_FLW  [a-zA-Z0-9_\-./@$+=~]
+SAFE_S_BLK  [^ \t\n\-\?:,\[\]\{\}!#&*|>\x22\x27]
+SAFE_C_BLK  [^ \t\n\-\?:,\[\]\{\}!#&*|>\x22\x27]
 
 %%
 
- /* Start in BOL state */
 %{
-    static int first_call = 1;
-    if (first_call) {
-        first_call = 0;
-        yy_push_state(BOL);
-    }
+    static int first_init = 1;
+    if (first_init) { first_init = 0; BEGIN(BOL); }
 %}
 
-<BOL>[ \t]+             { 
+<BOL>[ \t]*             { 
                           int indent = 0;
                           for (int i = 0; i < yyleng; i++) {
                               if (yytext[i] == ' ') indent++;
@@ -170,19 +129,7 @@ SAFE_S_FLW  [a-zA-Z0-9_\-./@$+=~]
                           pending_indent = indent;
                         }
 
-<BOL>{NEWLINE}          { 
-                          pending_indent = 0;
-                          return NEWLINE; 
-                        }
-
-<BOL><<EOF>>            {
-                          while (indent_level > 0) {
-                              indent_level--;
-                              enqueue(DEDENT);
-                          }
-                          if (!q_empty()) return dequeue();
-                          return 0;
-                        }
+<BOL>{NEWLINE}          { pending_indent = 0; return NEWLINE; }
 
 <BOL>.                  { 
                           yyless(0); 
@@ -192,142 +139,41 @@ SAFE_S_FLW  [a-zA-Z0-9_\-./@$+=~]
                           if (tok) return tok;
                         }
 
-<INITIAL,FLOW>^"%TAG"       { return TAG_DIRECTIVE; }
-<INITIAL,FLOW>^"%YAML"      { return YAML_DIRECTIVE; }
-<INITIAL,FLOW>^%[^ \t\n]+    { 
-                            /* Unknown directive - consume line */
-                            int c;
-                            while((c = input()) != '\n' && c != EOF);
-                            if(c == '\n') return NEWLINE;
-                            return 0;
-                          }
-<INITIAL,FLOW>"---"          { return DOC_START; }
-<INITIAL,FLOW>"..."          { return DOC_END; }
-
-<INITIAL,FLOW>("|"|">")([+-]|[0-9]|[+-][0-9]|[0-9][+-])?([ ]*|([ ]*"#"[^\n\r]*)){NEWLINE} { 
-                          int base_indent = indent_stack[indent_level];
-                          int explicit_indent = 0;
-                          int chomp = 0; 
-                          // Parse indicators
-                          char *p = yytext + 1;
-                          while (*p && *p != ' ' && *p != '\n' && *p != '\r' && *p != '#') {
-                              if (*p >= '0' && *p <= '9') explicit_indent = *p - '0';
-                              else if (*p == '+') chomp = 1;
-                              else if (*p == '-') chomp = 2;
-                              p++;
-                          }
-
-                          int folded = (yytext[0] == '>');
-                          int tok = folded ? FOLDED : LITERAL;
-                          
-                          block_buf_len = 0;
-                          if (block_buffer) block_buffer[0] = '\0';
-                          
-                          int c;
-                          int first_line = 1;
-                          int detected_indent = -1;
-                          
-                          while (1) {
-                              int indent = 0;
-                              int pos = 0;
-                              char line_buf[1024];
-                              while ((c = input()) == ' ' || c == '\t') {
-                                  if (c == ' ') indent++;
-                                  else indent = (indent + 8) & ~7;
-                                  if (pos < 1023) line_buf[pos++] = c;
-                              }
-                              if (c == EOF) break;
-                              
-                              if (c == '\n' || c == '\r') {
-                                  if (c == '\r') { int c2 = input(); if (c2 != '\n' && c2 != EOF) unput(c2); }
-                                  append_block("\n");
-                                  continue;
-                              }
-                              
-                              if (first_line && explicit_indent == 0) {
-                                  if (indent <= base_indent) { /* End */ } else { detected_indent = indent; }
-                              } else if (first_line && explicit_indent > 0) {
-                                  detected_indent = base_indent + explicit_indent;
-                              }
-                              if (detected_indent == -1) detected_indent = base_indent + 1;
-                              
-                              if (indent < detected_indent) {
-                                  unput(c);
-                                  for (int i = pos - 1; i >= 0; i--) unput(line_buf[i]);
-                                  break;
-                              }
-                              first_line = 0;
-                              
-                              line_buf[pos++] = c;
-                              while ((c = input()) != '\n' && c != '\r' && c != EOF) {
-                                  if (pos < 1023) line_buf[pos++] = c;
-                              }
-                              line_buf[pos] = '\0';
-                              
-                              int skip = (indent > detected_indent) ? detected_indent : indent;
-                              append_block(line_buf + skip);
-                              append_block("\n");
-                              
-                              if (c == EOF) break;
-                              if (c == '\r') { int c2 = input(); if (c2 != '\n' && c2 != EOF) unput(c2); }
-                          }
-                          
-                          if (chomp == 2) { while (block_buf_len > 0 && block_buffer[block_buf_len-1] == '\n') block_buffer[--block_buf_len] = '\0'; }
-                          else if (chomp == 0) { while (block_buf_len > 1 && block_buffer[block_buf_len-1] == '\n' && block_buffer[block_buf_len-2] == '\n') block_buffer[--block_buf_len] = '\0'; }
-                          
-                          yylval.str = strdup(block_buffer ? block_buffer : "");
-                          enqueue(LITERAL_CONTENT);
-                          enqueue(NEWLINE);
-                          return tok;
+<BOL><<EOF>>            {
+                          while (indent_level > 0) { indent_level--; enqueue(DEDENT); }
+                          enqueue(DEDENT); 
+                          if (!q_empty()) return dequeue();
+                          return 0;
                         }
+
+<INITIAL,FLOW>"---"/([ \t\n\r]|$)   { return DOC_START; }
+<INITIAL,FLOW>"..."/([ \t\n\r]|$)   { return DOC_END; }
+
+<INITIAL>"-"/([ \t\n\r]|$)           { return SEQ_ENTRY; }
+<INITIAL>":"/([ \t\n\r]|$)           { return COLON; }
+<INITIAL>"?"/([ \t\n\r]|$)           { return MAP_KEY; }
+
+<INITIAL,FLOW>","       { return COMMA; }
+<INITIAL,FLOW>"["       { flow_level++; yy_push_state(FLOW); return LBRACKET; }
+<FLOW>"]"               { if (flow_level > 0) flow_level--; yy_pop_state(); return RBRACKET; }
+<INITIAL,FLOW>"{"       { flow_level++; yy_push_state(FLOW); return LBRACE; }
+<FLOW>"}"               { if (flow_level > 0) flow_level--; yy_pop_state(); return RBRACE; }
+
+<FLOW>"-"               { yylval.str = strdup("-"); return PLAIN_SCALAR; }
+<FLOW>":"               { return COLON; }
+<FLOW>"?"               { return MAP_KEY; }
 
 <INITIAL,FLOW>"&"[a-zA-Z0-9_\-]+    { yylval.str = strdup(yytext+1); return ANCHOR; }
 <INITIAL,FLOW>"*"[a-zA-Z0-9_\-]+    { yylval.str = strdup(yytext+1); return ALIAS; }
-<INITIAL,FLOW>"!"[a-zA-Z0-9_\-./!@#$%&()=+~\\<>]* { yylval.str = strdup(yytext+1); return TAG; }
 
-<INITIAL,FLOW>"#"[^\n\r]*    { /* Comment */ }
-
-<INITIAL>"["            { yy_push_state(FLOW); return LBRACKET; }
-<FLOW>"["               { yy_push_state(FLOW); return LBRACKET; }
-
-<INITIAL>"]"            { /* Incorrect in block? but return anyway */ return RBRACKET; }
-<FLOW>"]"               { yy_pop_state(); return RBRACKET; }
-
-<INITIAL>"{"            { yy_push_state(FLOW); return LBRACE; }
-<FLOW>"{"               { yy_push_state(FLOW); return LBRACE; }
-
-<INITIAL>"}"            { return RBRACE; }
-<FLOW>"}"               { yy_pop_state(); return RBRACE; }
-
-<INITIAL,FLOW>","       { return COMMA; }
-
-<INITIAL>"-"/[ \t\n]    { return SEQ_ENTRY; }
-<INITIAL>"?"/[ \t\n]    { return MAP_KEY; }
-<INITIAL>":"/[ \t\n]    { return COLON; }
-
-<INITIAL>"-"            { REJECT; }
-
-<FLOW>"-"               { yylval.str = strdup("-"); return PLAIN_SCALAR; }
-<FLOW>"?"               { return MAP_KEY; }
-
-<INITIAL>{SAFE_S_BLK}{SAFE_C_BLK}* {
-    yylval.str = strdup(yytext);
-    return PLAIN_SCALAR;
+<INITIAL,FLOW>"!"[a-zA-Z0-9_\-./!@#$%&()=+~\\<>]+ { 
+    yylval.str = strdup(yytext+1); 
+    return TAG; 
 }
-
-<FLOW>{SAFE_S_FLW}{SAFE_C_FLW}* {
-    yylval.str = strdup(yytext);
-    return PLAIN_SCALAR;
+<INITIAL,FLOW>"!"                   { 
+    yylval.str = strdup(""); 
+    return TAG; 
 }
-
-<FLOW>":"               { 
-                            yylval.str = strdup(":");
-                            return PLAIN_SCALAR;
-                        }
-<FLOW>":"/[ \t\r\n\[\]\{\}\,] {
-                            yyless(1); /* Push back the follower */
-                            return COLON; 
-                        }
 
 <INITIAL,FLOW>\"([^\"\\]|\\.)*\" { 
                           yylval.str = strndup(yytext+1, yyleng-2);
@@ -339,54 +185,48 @@ SAFE_S_FLW  [a-zA-Z0-9_\-./@$+=~]
                           return SQUOTE_STRING;
                         }
 
+<INITIAL,FLOW>{SAFE_S_BLK}{SAFE_C_BLK}* {
+    yylval.str = strdup(yytext);
+    return PLAIN_SCALAR;
+}
 
+<INITIAL,FLOW>"#"[^\n\r]*    { /* ignore */ }
 
 <INITIAL>{NEWLINE}      { 
-                          pending_indent = 0;
-                          
-                          // Peek ahead to detect next line's indentation for early DEDENT generation
                           if (flow_level == 0) {
                               int c;
                               int next_indent = 0;
-                              int peeked_chars[128];
-                              int peeked_count = 0;
-                              
-                              // Peek at whitespace on next line
-                              while (peeked_count < 127 && ((c = input()) == ' ' || c == '\t')) {
-                                  peeked_chars[peeked_count++] = c;
+                              int pc[128];
+                              int pcc = 0;
+                              while (pcc < 127 && ((c = input()) == ' ' || c == '\t')) {
+                                  pc[pcc++] = c;
                                   if (c == ' ') next_indent++;
                                   else if (c == '\t') next_indent = (next_indent + 8) & ~7;
                               }
-                              
-                              // ONLY trigger early dedent if we're NOT on a blank line (next char isn't newline)
-                              // or at EOF, and indent decreased.
-                              if ((c == EOF || c == 0 || (c != '\n' && c != '\r')) && next_indent < indent_stack[indent_level]) {
-                                  while (next_indent < indent_stack[indent_level] && indent_level > 0) {
-                                      indent_level--;
-                                      enqueue(DEDENT);
-                                      fprintf(stderr, "DEBUG: Enqueued DEDENT in lookahead, new level %d (indent %d)\n", indent_level, indent_stack[indent_level]);
+                              if ((c == EOF || c == 0) || (c != '\n' && c != '\r' && next_indent < indent_stack[indent_level])) {
+                                  if (c == EOF || c == 0) {
+                                      while(indent_level >= 0) { indent_level--; enqueue(DEDENT); }
+                                  } else {
+                                      while (next_indent < indent_stack[indent_level] && indent_level > 0) {
+                                          indent_level--; enqueue(DEDENT);
+                                      }
                                   }
                               }
-                              
-                              // Restore peeked state in REVERSE order
                               if (c != EOF && c != 0) unput(c);
-                              for (int i = peeked_count - 1; i >= 0; i--) {
-                                  unput(peeked_chars[i]);
-                              }
+                              for (int i = pcc - 1; i >= 0; i--) unput(pc[i]);
                           }
-                          
                           BEGIN(BOL); 
                           return NEWLINE; 
                         }
 
-<FLOW>{NEWLINE}         { /* Ignore newlines in flow context */ }
+<FLOW>{NEWLINE}         { /* ignore */ }
 
-<INITIAL,FLOW>[ \t]+         { /* Whitespace */ }
+[ \t]+                  { /* ignore */ }
 
-<INITIAL,FLOW>.              { return yytext[0]; }
+.                       { return yytext[0]; }
 
-<INITIAL,FLOW><<EOF>>        {
-                          while (indent_level > 0) {
+<<EOF>>                 {
+                          while (indent_level >= 0) {
                               indent_level--;
                               enqueue(DEDENT);
                           }

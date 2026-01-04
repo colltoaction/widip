@@ -1,13 +1,13 @@
 %{
-/* YAML 1.2 Parser - Flexible */
+/* YAML 1.2 Parser - Streamlined */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+const char* tok_name(int tok);
 void yyerror(const char *s);
 int yylex(void);
 
-/* AST Node Types */
 typedef enum {
     NODE_SCALAR,
     NODE_SEQ,
@@ -32,55 +32,51 @@ Node *root = NULL;
 Node *make_scalar(char *val) {
     Node *n = malloc(sizeof(Node));
     n->type = NODE_SCALAR;
-    n->tag = NULL;
-    n->anchor = NULL;
-    n->value = val;
-    n->children = NULL;
-    n->next = NULL;
+    n->tag = NULL; n->anchor = NULL; n->value = val;
+    n->children = NULL; n->next = NULL;
     return n;
 }
 
 Node *make_seq(Node *items) {
     Node *n = malloc(sizeof(Node));
     n->type = NODE_SEQ;
-    n->tag = NULL;
-    n->anchor = NULL;
-    n->value = NULL;
-    n->children = items;
-    n->next = NULL;
+    n->tag = NULL; n->anchor = NULL; n->value = NULL;
+    n->children = items; n->next = NULL;
     return n;
 }
 
 Node *make_map(Node *pairs) {
     Node *n = malloc(sizeof(Node));
     n->type = NODE_MAP;
-    n->tag = NULL;
-    n->anchor = NULL;
-    n->value = NULL;
-    n->children = pairs;
-    n->next = NULL;
+    n->tag = NULL; n->anchor = NULL; n->value = NULL;
+    n->children = pairs; n->next = NULL;
     return n;
 }
 
 Node *make_alias(char *name) {
     Node *n = malloc(sizeof(Node));
     n->type = NODE_ALIAS;
-    n->tag = NULL;
-    n->anchor = NULL;
-    n->value = name;
-    n->children = NULL;
-    n->next = NULL;
+    n->tag = NULL; n->anchor = NULL; n->value = name;
+    n->children = NULL; n->next = NULL;
+    return n;
+}
+
+Node *make_null() {
+    Node *n = malloc(sizeof(Node));
+    n->type = NODE_NULL;
+    n->tag = NULL; n->anchor = NULL; n->value = strdup("null");
+    n->children = NULL; n->next = NULL;
     return n;
 }
 
 Node *make_tag(char *tag, Node *child) {
-    if (!child) return NULL;
+    if (!child) child = make_null();
     child->tag = tag;
     return child;
 }
 
 Node *make_anchor(char *anchor, Node *child) {
-    if (!child) return NULL;
+    if (!child) child = make_null();
     child->anchor = anchor;
     return child;
 }
@@ -88,33 +84,16 @@ Node *make_anchor(char *anchor, Node *child) {
 Node *make_stream(Node *docs) {
     Node *n = malloc(sizeof(Node));
     n->type = NODE_STREAM;
-    n->tag = NULL;
-    n->anchor = NULL;
-    n->value = NULL;
-    n->children = docs;
-    n->next = NULL;
+    n->tag = NULL; n->anchor = NULL; n->value = NULL;
+    n->children = docs; n->next = NULL;
     return n;
 }
 
 Node *make_block_scalar(char *val, int folded) {
     Node *n = malloc(sizeof(Node));
     n->type = NODE_BLOCK_SCALAR;
-    n->tag = NULL;
-    n->anchor = NULL;
-    n->value = val;
-    n->children = NULL;
-    n->next = NULL;
-    return n;
-}
-
-Node *make_null() {
-    Node *n = malloc(sizeof(Node));
-    n->type = NODE_SCALAR;
-    n->tag = NULL;
-    n->anchor = NULL;
-    n->value = strdup("null");
-    n->children = NULL;
-    n->next = NULL;
+    n->tag = NULL; n->anchor = NULL; n->value = val;
+    n->children = NULL; n->next = NULL;
     return n;
 }
 
@@ -130,53 +109,35 @@ void print_indent(int depth) {
     for (int i = 0; i < depth * 2; i++) putchar(' ');
 }
 
-/* Recursive print that handles logic of anchor/tag wrapping simulation */
 void print_node_recursive(Node *n, int depth, int print_anchor, int print_tag) {
     if (!n) return;
-    
     if (print_anchor && n->anchor) {
         print_indent(depth);
         printf("ANCHOR: &%s\n", n->anchor);
         print_node_recursive(n, depth + 1, 0, 1);
         return;
     }
-    
     if (print_tag && n->tag) {
         print_indent(depth);
         printf("TAG: %s\n", n->tag);
         print_node_recursive(n, depth + 1, 0, 0);
         return;
     }
-
     print_indent(depth);
     switch (n->type) {
-        case NODE_SCALAR:
-            printf("SCALAR: %s\n", n->value ? n->value : "(null)");
+        case NODE_SCALAR: printf("SCALAR: %s\n", n->value); break;
+        case NODE_SEQ: printf("SEQUENCE:\n"); 
+            for (Node *c = n->children; c; c = c->next) print_node_recursive(c, depth + 1, 1, 1);
             break;
-        case NODE_SEQ:
-            printf("SEQUENCE:\n");
-            for (Node *c = n->children; c; c = c->next)
-                print_node_recursive(c, depth + 1, 1, 1);
+        case NODE_MAP: printf("MAPPING:\n");
+            for (Node *c = n->children; c; c = c->next) print_node_recursive(c, depth + 1, 1, 1);
             break;
-        case NODE_MAP:
-            printf("MAPPING:\n");
-            for (Node *c = n->children; c; c = c->next)
-                print_node_recursive(c, depth + 1, 1, 1);
+        case NODE_ALIAS: printf("ALIAS: *%s\n", n->value); break;
+        case NODE_STREAM: printf("STREAM:\n");
+            for (Node *c = n->children; c; c = c->next) print_node_recursive(c, depth + 1, 1, 1);
             break;
-        case NODE_ALIAS:
-            printf("ALIAS: *%s\n", n->value);
-            break;
-        case NODE_STREAM:
-            printf("STREAM:\n");
-            for (Node *c = n->children; c; c = c->next)
-                print_node_recursive(c, depth + 1, 1, 1);
-            break;
-        case NODE_BLOCK_SCALAR:
-            printf("BLOCK: %s\n", n->value);
-            break;
-        case NODE_NULL:
-            printf("SCALAR: null\n");
-            break;
+        case NODE_BLOCK_SCALAR: printf("BLOCK: %s\n", n->value); break;
+        case NODE_NULL: printf("SCALAR: null\n"); break;
     }
 }
 
@@ -185,13 +146,11 @@ void print_node(Node *n, int depth) {
 }
 
 char *join_scalar_values(char *s1, char *s2) {
-    if (!s1) return s2;
-    if (!s2) return s1;
+    if (!s1) return s2; if (!s2) return s1;
     int len = strlen(s1) + strlen(s2) + 2;
     char *new_s = malloc(len);
     sprintf(new_s, "%s %s", s1, s2);
-    free(s1);
-    free(s2);
+    free(s1); free(s2);
     return new_s;
 }
 
@@ -202,15 +161,10 @@ char *join_scalar_values(char *s1, char *s2) {
     struct Node *node;
 }
 
-%token DOC_START DOC_END
-%token LBRACKET RBRACKET LBRACE RBRACE COMMA
-%token SEQ_ENTRY MAP_KEY COLON
-%token NEWLINE INDENT DEDENT NEWLINE_DEDENT
-
-%token <str> ANCHOR ALIAS TAG
-%token <str> PLAIN_SCALAR DQUOTE_STRING SQUOTE_STRING LITERAL_CONTENT
-%token LITERAL FOLDED
-%token TAG_DIRECTIVE YAML_DIRECTIVE
+%token DOC_START DOC_END LBRACKET RBRACKET LBRACE RBRACE COMMA
+%token SEQ_ENTRY MAP_KEY COLON NEWLINE INDENT DEDENT NEWLINE_DEDENT
+%token <str> ANCHOR ALIAS TAG PLAIN_SCALAR DQUOTE_STRING SQUOTE_STRING LITERAL_CONTENT
+%token LITERAL FOLDED TAG_DIRECTIVE YAML_DIRECTIVE
 
 %nonassoc LOW_PREC
 %nonassoc TAG
@@ -224,53 +178,42 @@ char *join_scalar_values(char *s1, char *s2) {
 %type <str> merged_plain_scalar
 
 %start stream
-
-/* High precedence for COLON to favor mapping entry reduction over document list repetition */
 %right COLON
 
 %%
 
+newlines
+    : NEWLINE
+    | newlines NEWLINE
+    | NEWLINE_DEDENT
+    | newlines NEWLINE_DEDENT
+    ;
+
+inter_newlines
+    : NEWLINE
+    | inter_newlines NEWLINE
+    ;
+
 stream
-    : /* empty */                   { root = make_stream(NULL); $$ = root; }
-    | stream document               { 
-                                      if ($1->children) append_node($1->children, $2); 
-                                      else $1->children = $2; 
-                                      $$ = $1; 
-                                      root = $$; 
-                                    }
-    | stream NEWLINE                { $$ = $1; }
-    | stream NEWLINE_DEDENT         { $$ = $1; }
+    : /* empty */                       { root = make_stream(NULL); $$ = root; }
+    | stream document                   { 
+                                          if ($2) {
+                                              if ($1->children) append_node($1->children, $2);
+                                              else $1->children = $2;
+                                          }
+                                          $$ = $1;
+                                        }
+    | stream NEWLINE                    { $$ = $1; }
+    | stream DEDENT                     { $$ = $1; }
+    | stream NEWLINE_DEDENT             { $$ = $1; }
+    | stream error NEWLINE              { yyerrok; }
     ;
 
 document
-    : node { $$ = $1; }
-    | DOC_START opt_newlines opt_node { $$ = $3; }
-    | directives DOC_START opt_newlines opt_node { $$ = $4; }
-    | DOC_END { $$ = make_null(); }
-    | DOC_START DOC_END { $$ = make_null(); }
-    ;
-
-directives
-    : directive
-    | directives directive
-    ;
-
-directive
-    : TAG_DIRECTIVE_LINE
-    | YAML_DIRECTIVE_LINE
-    ;
-
-directive_args
-    : PLAIN_SCALAR
-    | directive_args PLAIN_SCALAR
-    ;
-
-TAG_DIRECTIVE_LINE
-    : TAG_DIRECTIVE TAG directive_args NEWLINE { /* Handle TAG directive */ }
-    ;
-
-YAML_DIRECTIVE_LINE
-    : YAML_DIRECTIVE directive_args NEWLINE { /* Handle YAML directive */ }
+    : node                              { $$ = $1; }
+    | DOC_START opt_newlines opt_node   { $$ = $3; }
+    | DOC_START DOC_END                 { $$ = make_null(); }
+    | DOC_END                           { $$ = make_null(); }
     ;
 
 opt_newlines
@@ -278,22 +221,14 @@ opt_newlines
     | newlines
     ;
 
-newlines
-    : NEWLINE
-    | NEWLINE_DEDENT
-    | newlines NEWLINE
-    | newlines NEWLINE_DEDENT
-    ;
-
 opt_node
-    : node { $$ = $1; }
-    | /* empty */ { $$ = make_null(); }
+    : node                              { $$ = $1; }
+    | /* empty */                       { $$ = make_null(); }
     ;
 
 node
     : content                           { $$ = $1; }
     | properties content                {
-          // Apply properties to content
           $$ = $2;
           if ($1->anchor) $$ = make_anchor($1->anchor, $$);
           if ($1->tag)    $$ = make_tag($1->tag, $$);
@@ -307,68 +242,65 @@ content
     ;
 
 properties
-    : ANCHOR opt_newlines               { $$ = make_anchor($1, make_null()); }
-    | TAG opt_newlines                  { $$ = make_tag($1, make_null()); }
-    | ANCHOR opt_newlines TAG opt_newlines  { $$ = make_anchor($1, make_tag($3, make_null())); }
-    | TAG opt_newlines ANCHOR opt_newlines  { $$ = make_tag($1, make_anchor($3, make_null())); }
+    : ANCHOR opt_newlines               { $$ = make_anchor($1, NULL); }
+    | TAG opt_newlines                  { $$ = make_tag($1, NULL); }
+    | ANCHOR opt_newlines TAG opt_newlines { $$ = make_anchor($1, make_tag($3, NULL)); }
+    | TAG opt_newlines ANCHOR opt_newlines { $$ = make_tag($1, make_anchor($3, NULL)); }
     ;
 
 flow_node
-    : merged_plain_scalar   { $$ = make_scalar($1); }
-    | DQUOTE_STRING         { $$ = make_scalar($1); }
-    | SQUOTE_STRING         { $$ = make_scalar($1); }
-    | ALIAS                 { $$ = make_alias($1); }
-    | LBRACE flow_map_entries RBRACE   { $$ = make_map($2); }
-    | LBRACE RBRACE { $$ = make_map(NULL); }
-    | LBRACKET flow_seq_items RBRACKET { $$ = make_seq($2); }
-    | LBRACKET RBRACKET { $$ = make_seq(NULL); }
+    : merged_plain_scalar               { $$ = make_scalar($1); }
+    | DQUOTE_STRING                     { $$ = make_scalar($1); }
+    | SQUOTE_STRING                     { $$ = make_scalar($1); }
+    | ALIAS                             { $$ = make_alias($1); }
+    | LBRACE flow_map_entries RBRACE    { $$ = make_map($2); }
+    | LBRACE RBRACE                     { $$ = make_map(NULL); }
+    | LBRACKET flow_seq_items RBRACKET   { $$ = make_seq($2); }
+    | LBRACKET RBRACKET                 { $$ = make_seq(NULL); }
     ;
 
 block_node
-    : block_sequence { $$ = $1; }
-    | block_mapping  { $$ = $1; }
-    | LITERAL LITERAL_CONTENT { $$ = make_block_scalar($2, 0); }
-    | FOLDED LITERAL_CONTENT  { $$ = make_block_scalar($2, 1); }
+    : block_sequence
+    | block_mapping
+    | LITERAL LITERAL_CONTENT           { $$ = make_block_scalar($2, 0); }
+    | FOLDED LITERAL_CONTENT            { $$ = make_block_scalar($2, 1); }
     ;
 
 merged_plain_scalar
-    : PLAIN_SCALAR { $$ = $1; }
-    | merged_plain_scalar PLAIN_SCALAR { $$ = join_scalar_values($1, $2); }
+    : PLAIN_SCALAR                      { $$ = $1; }
+    | merged_plain_scalar PLAIN_SCALAR  { $$ = join_scalar_values($1, $2); }
     ;
 
 flow_seq_items
     : flow_seq_item                         { $$ = $1; }
     | flow_seq_items COMMA flow_seq_item    { $$ = append_node($1, $3); }
     | flow_seq_items COMMA                  { $$ = append_node($1, make_null()); }
-    | COMMA flow_seq_item                   { $$ = append_node(make_seq(make_null())->children, $2); }
-    | COMMA                                 { $$ = append_node(make_seq(make_null())->children, make_null()); }
     ;
 
 flow_seq_item
-    : node %prec LOW_PREC          { $$ = $1; }
-    | node entry_value             { $$ = make_map(append_node($1, $2)); }
-    | entry_key opt_entry_value    { $$ = make_map(append_node($1, $2)); }
+    : node %prec LOW_PREC                   { $$ = $1; }
+    | node entry_value                      { $$ = make_map(append_node($1, $2)); }
     ;
 
 flow_map_entries
     : flow_entry
-    | flow_map_entries COMMA flow_entry { $$ = append_node($1, $3); }
-    | flow_map_entries COMMA            { $$ = $1; }
+    | flow_map_entries COMMA flow_entry     { $$ = append_node($1, $3); }
+    | flow_map_entries COMMA                { $$ = $1; }
     ;
 
 flow_entry
     : map_entry
-    | node { $$ = append_node($1, make_null()); }
+    | node                                  { $$ = append_node($1, make_null()); }
     ;
 
 block_sequence
     : SEQ_ENTRY opt_node { $$ = make_seq($2); }
-    | block_sequence NEWLINE SEQ_ENTRY opt_node { append_node($1->children, $4); $$ = $1; }
+    | block_sequence inter_newlines SEQ_ENTRY opt_node { append_node($1->children, $4); $$ = $1; }
     ;
 
 block_mapping
     : map_entry { $$ = make_map($1); }
-    | block_mapping NEWLINE map_entry { append_node($1->children, $3); $$ = $1; }
+    | block_mapping inter_newlines map_entry { append_node($1->children, $3); $$ = $1; }
     ;
 
 map_entry
@@ -379,10 +311,12 @@ map_entry
 entry_key
     : MAP_KEY opt_node opt_newlines { $$ = $2; }
     | MAP_KEY newlines INDENT opt_node opt_newlines DEDENT opt_newlines { $$ = $4; }
+    | MAP_KEY newlines INDENT opt_node opt_newlines NEWLINE_DEDENT opt_newlines { $$ = $4; }
     ;
 
 entry_value
     : COLON opt_newlines flow_node { $$ = $3; }
+    | COLON block_node { $$ = $2; }
     | COLON opt_newlines INDENT block_node DEDENT { $$ = $4; }
     | COLON opt_newlines INDENT block_node NEWLINE_DEDENT { $$ = $4; }
     ;
@@ -395,14 +329,14 @@ opt_entry_value
 %%
 
 void yyerror(const char *s) {
-    extern int yylineno;
-    fprintf(stderr, "Parse error at line %d: %s\n", yylineno, s);
+    extern int yylineno; extern char *yytext; extern int yychar;
+    fprintf(stderr, "Parse error at line %d: %s (token: %s, text: '%s')\n", 
+            yylineno, s, (yychar > 0 ? tok_name(yychar) : "EOF"), yytext);
 }
 
-int main(int argc, char **argv) {
+int main(void) {
     if (yyparse() == 0 && root) {
-        print_node(root, 0);
-        return 0;
+        print_node(root, 0); return 0;
     }
     return 1;
 }
