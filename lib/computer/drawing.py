@@ -33,29 +33,23 @@ class ComplexityProfile:
         # 1. Determine Target Font Size (points)
         # Using a slightly faster decay for font size to keep large diagrams manageable
         # Adjusted for small diagrams (few boxes with short names) to use larger fonts
-        base_fsize = 120 / (math.pow(max(1, self.rn), 0.18))
-        # Boost for very simple diagrams with short labels
-        if self.max_cpw < 8 and self.rn < 10:
-            base_fsize = base_fsize * 1.2
-        fsize = max(24, min(60, base_fsize))
+        base_fsize = 80 / (math.pow(max(1, self.rn), 0.15))
+        fsize = max(10, min(24, base_fsize))
         
         # 2. Derive Multipliers (Inches per DisCoPy Grid Unit)
-        # pts per char (monospace): 0.6*fsize typical, increased for readability
-        pts_per_char = fsize * 0.7
-        # Reduced vertical spacing for compact diagrams
-        pts_per_line = fsize * 1.8  # Was 2.5 - more compact now
+        # pts per char (monospace): 1.0*fsize typical (very conservative to ensure fit)
+        pts_per_char = fsize * 1.0
+        # Vertical spacing
+        pts_per_line = fsize * 1.5
         
-        # Non-linear horizontal scaling: Wires shouldn't be pushed apart linearly 
-        # by long text. We use a diminishing returns model.
-        # Floor effective_cpw to ensure minimal box visibility
-        effective_cpw = min(14, self.max_cpw) + 0.1 * max(0, self.max_cpw - 14)
-        # Minimum effective width for very short command names
-        effective_cpw = max(6, effective_cpw)
+        # Linear horizontal scaling to accommodate long names
+        # We use the max chars per wire directly to ensure boxes fit the text
+        effective_cpw = max(3, self.max_cpw)
         
         # Grid unit size in inches
         # We add a constant to ensure minimal size for spiders/empty units
-        w_mult = (effective_cpw * pts_per_char) / 72.0 + 0.4  # Increased min width
-        h_mult = (self.max_lpl * pts_per_line) / 72.0 + 0.15  # Reduced height
+        w_mult = (effective_cpw * pts_per_char) / 72.0 + 0.6
+        h_mult = (self.max_lpl * pts_per_line) / 72.0 + 0.2
         
         # 3. Calculate Figsize (Inches)
         # We want zero margin. DisCoPy adds some internal axis padding.
@@ -143,8 +137,12 @@ def diagram_draw(path: Path, fd):
     profile = ComplexityProfile(m_cpw, m_lpl, rn, grid_w, grid_h)
     params = profile.get_layout_params()
     
-    output_svg = str(path.with_suffix(".svg"))
-    output_png = str(path.with_suffix(".png"))
+    if path.suffix.lower() in ['.png', '.jpg', '.jpeg']:
+        primary_output = str(path)
+        secondary_output = None
+    else:
+        primary_output = str(path.with_suffix(".svg"))
+        secondary_output = str(path.with_suffix(".png"))
     
     # Common draw params
     draw_params = {
@@ -258,6 +256,9 @@ def diagram_draw(path: Path, fd):
          else:
               # Anchors/Aliases were inside bubbles, but we render them as spiders.
               res = monoidal.Box(padded, dom, cod, drawing_name=padded)
+              # Ensure standard boxes fill the grid width/height
+              if not draw_as_spider and not draw_as_swap:
+                   res.nodesize = (1, 1)
 
          res.color = color
          res.draw_as_spider = draw_as_spider
@@ -293,11 +294,12 @@ def diagram_draw(path: Path, fd):
 
     fd_draw = standardize_recursive(fd)
     
-    # Save SVG
-    fd_draw.draw(path=output_svg, **draw_params)
+    # Save Primary Output
+    fd_draw.draw(path=primary_output, **draw_params)
     
-    # Save PNG for analysis
-    try:
-        fd_draw.draw(path=output_png, **draw_params)
-    except Exception as e:
-        print(f"Failed to save PNG: {e}", file=sys.stderr)
+    # Save Secondary Output (if any)
+    if secondary_output:
+        try:
+            fd_draw.draw(path=secondary_output, **draw_params)
+        except Exception as e:
+            print(f"Failed to save secondary output: {e}", file=sys.stderr)
