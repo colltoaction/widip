@@ -18,7 +18,7 @@ class YamlBox(symmetric.Box):
         # Let's use kwargs as the data dict for simplicity, but strictly we should pass it to super.
         
         # Normalize args
-        self.kind = name
+        self.kind = kwargs.pop("kind", name)
         self.tag = kwargs.get("tag", "")
         self.value = kwargs.get("value", None)
         self.nested = kwargs.get("nested", None)
@@ -45,10 +45,10 @@ def Titi(inside, **kwargs):
     return YamlBox("Titi", nested=inside, **kwargs)
 
 def Anchor(name, inside):
-    return YamlBox("Anchor", anchor_name=name, nested=inside, name=f"Anchor({name})")
+    return YamlBox(f"Anchor({name})", kind="Anchor", anchor_name=name, nested=inside)
 
 def Alias(name):
-    return YamlBox("Alias", anchor_name=name, name=name)
+    return YamlBox(name, kind="Alias", anchor_name=name)
 
 def Document(inside):
     return YamlBox("Document", nested=inside)

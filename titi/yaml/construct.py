@@ -86,6 +86,10 @@ def construct_box(box) -> closed.Diagram:
         except Exception: 
             pass # Fallback to generic wrapping
 
+    if nested is None:
+        # Fallback for unexpected empty nested boxes that aren't Scalar/Alias
+        return closed.Id(Language)
+
     inside = titi.yaml.construct_functor(nested)
     
     # Implicit Input Copying for Mappings
