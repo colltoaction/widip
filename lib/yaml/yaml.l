@@ -111,7 +111,7 @@ int yylex() {
         return NEWLINE_DEDENT;
     }
     
-    // if (tok > 0) fprintf(stderr, "TOKEN: %s (%s) at line %d\n", tok_name(tok), yytext, yylineno);
+    if (tok > 0) fprintf(stderr, "TOKEN: %s (%s) at line %d\n", tok_name(tok), yytext, yylineno);
     return tok;
 }
 
@@ -331,6 +331,32 @@ SAFE_S_FLW  [a-zA-Z0-9_\-./@$+=~]
 
 <INITIAL>{NEWLINE}      { 
                           pending_indent = 0;
+                          
+                          // Peek ahead to detect next line's indentation for early DEDENT generation
+                          if (flow_level == 0) {
+                              int c;
+                              int next_indent = 0;
+                              
+                              // Peek at whitespace on next line
+                              while ((c = input()) == ' ' || c == '\t') {
+                                  if (c == ' ') next_indent++;
+                                  else if (c == '\t') next_indent = (next_indent + 8) & ~7;
+                              }
+                              
+                              // Put back the non-whitespace character
+                              if (c != EOF) unput(c);
+                              // Put back the whitespace
+                              for (int i = 0; i < next_indent; i++) unput(' ');
+                              
+                              // Generate DEDENT tokens if indentation decreased
+                              if (next_indent < indent_stack[indent_level]) {
+                                  while (next_indent < indent_stack[indent_level] && indent_level > 0) {
+                                      indent_level--;
+                                      enqueue(DEDENT);
+                                  }
+                              }
+                          }
+                          
                           BEGIN(BOL); 
                           return NEWLINE; 
                         }
