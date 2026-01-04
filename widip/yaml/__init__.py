@@ -57,10 +57,5 @@ construct_dispatch.register(ren.MappingBox, con.construct_mapping)
 
 construct_functor = closed.Functor(ob={ren.Node: Language}, ar=construct_dispatch)
 
-@closed.Diagram.from_callable(closed.Ty(*Language), closed.Ty(*Language))
-def construct(lang_wire):
-    """Traceable construct diagram."""
-    return closed.Box("construct", lang_wire.obj, lang_wire.obj)(lang_wire)
-
 # --- Load Pipeline ---
 load = lambda source: construct_functor(compose_functor(parse(source)))

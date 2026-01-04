@@ -1,0 +1,5 @@
+# Monoidal Computer - YAML Bootstrapping
+- !printf { "\033[1;34m[System]\033[0m Booting Monoidal Computer (YAML)...\n" }
+- !tee { /dev/stderr }
+- !printf { "\033[1;34m[System]\033[0m Ready.\n" }
+- !tee { /dev/stderr }

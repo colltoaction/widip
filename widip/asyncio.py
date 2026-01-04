@@ -19,6 +19,10 @@ type AbstractEventLoop = asyncio.AbstractEventLoop
 
 loop_var: contextvars.ContextVar[EventLoop | None] = contextvars.ContextVar("loop", default=None)
 
+def run(coro):
+    """Run a coroutine to completion."""
+    return asyncio.run(coro)
+
 @contextmanager
 def loop_scope(hooks: dict, loop: EventLoop | None = None):
     """Context manager for setting the event loop in the current context."""

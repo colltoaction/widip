@@ -1,0 +1,3 @@
+# Recreates the make.yaml script.
+- !cat { widip/computer/make.yaml }
+- !stdout {}

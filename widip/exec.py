@@ -1,39 +1,71 @@
 from __future__ import annotations
 from typing import Any, TypeVar, Dict, Callable
 from discopy import closed, python, symmetric
-from .asyncio import run_command
+from .asyncio import run_command, unwrap
 
 T = TypeVar("T")
+Process = python.Function
 
 # --- Execution Context ---
+_EXEC_CTX = __import__('contextvars').ContextVar("exec_ctx")
 
 class ExecContext:
     def __init__(self, hooks: Dict[str, Callable], executable: str, loop: Any):
         self.hooks, self.executable, self.loop = hooks, executable, loop
 
-_EXEC_CTX = __import__('contextvars').ContextVar("exec_ctx")
-
-# --- Dispatch Item Implementations ---
+# --- Leaf Execution ---
 
 def exec_box(box: closed.Box) -> Process:
     """Executes a leaf box (Data or Program)."""
+    # Use generic types for python category
+    dom = any_ty(len(box.dom))
+    cod = any_ty(len(box.cod))
+    
     if hasattr(box, 'data') and not isinstance(box.data, tuple): # Data box
         async def data_fn(*args): return box.data
-        return Process(data_fn, box.dom, box.cod)
+        return Process(data_fn, dom, cod)
     
     # Program box or structural box
-    import widip
-    ctx = widip._EXEC_CTX.get()
     async def prog_fn(*args):
+        ctx = _EXEC_CTX.get()
         args_data = box.data if hasattr(box, 'data') and isinstance(box.data, tuple) else ()
         stdin_val = args[0] if args else None
         if len(args) > 1: stdin_val = args
         return await run_command(lambda x: x, ctx.loop, box.name, args_data, stdin_val, ctx.hooks)
-    return Process(prog_fn, box.dom, box.cod)
+    return Process(prog_fn, dom, cod)
+
+def any_ty(n: int):
+    """Returns a tensor of n Any types."""
+    res = python.Ty()
+    for _ in range(n): res @= python.Ty(Any)
+    return res
 
 def exec_swap(box: symmetric.Swap) -> Process:
-    async def swap_fn(a, b): return (b, a)
-    return Process(swap_fn, box.dom, box.cod)
+    return Process(lambda a, b: (b, a), any_ty(2), any_ty(2))
 
-# Compatibility
-compile_exec = lambda diag, **kwargs: __import__('widip').exec_dispatch(diag)
+# --- Dispatcher ---
+
+def exec_dispatch(box: Any) -> Process:
+    if isinstance(box, (closed.Box, symmetric.Box)):
+        if isinstance(box, symmetric.Swap): return exec_swap(box)
+        return exec_box(box)
+    return Process.id(any_ty(getattr(box, 'dom', closed.Ty())))
+
+def exec_functor(diag: closed.Diagram) -> Process:
+    """Manual functor implementation to avoid DisCoPy version issues."""
+    from discopy.closed import Functor
+    # Map Language to Any in the python category
+    f = Functor(ob={closed.Ty("P"): Any}, ar=exec_dispatch, cod=python.Category())
+    return f(diag)
+
+async def execute(diag: closed.Diagram, hooks: dict, executable: str, loop: Any):
+    ctx = ExecContext(hooks, executable, loop)
+    token = _EXEC_CTX.set(ctx)
+    try:
+        proc = exec_functor(diag)
+        res = await unwrap(loop, proc())
+        return res
+    finally:
+        _EXEC_CTX.reset(token)
+
+__all__ = ['execute', 'ExecContext', 'exec_dispatch', 'Process']

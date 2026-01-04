@@ -9,9 +9,7 @@ from discopy import closed
 
 from .yaml import load as load_diagram
 from .yaml.presentation import CharacterStream
-from .yaml.construct import construct
 from .drawing import diagram_draw
-from .computer import Data, Program, Language
 from .io import (
     read_diagram_file,
     read_stdin, 
