@@ -239,6 +239,7 @@ stream
                                       root = $$; 
                                     }
     | stream NEWLINE                { $$ = $1; }
+    | stream NEWLINE_DEDENT         { $$ = $1; }
     ;
 
 document
@@ -279,7 +280,9 @@ opt_newlines
 
 newlines
     : NEWLINE
+    | NEWLINE_DEDENT
     | newlines NEWLINE
+    | newlines NEWLINE_DEDENT
     ;
 
 opt_node

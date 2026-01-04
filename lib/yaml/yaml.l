@@ -99,20 +99,32 @@ const char* tok_name(int tok) {
 
 int yylex() {
     int tok;
-    if (!q_empty()) {
-        tok = dequeue();
-    } else {
-        tok = real_yylex();
+    while (1) {
+        if (!q_empty()) {
+            tok = dequeue();
+        } else {
+            tok = real_yylex();
+        }
+        
+        if (tok == 0 && q_empty()) return 0;
+        
+        // Lookahead synthesis: if NEWLINE is followed by DEDENT, emit combined token
+        if (tok == NEWLINE && !q_empty() && q_peek() == DEDENT) {
+            dequeue(); // Consume the DEDENT from queue
+            fprintf(stderr, "TOKEN: NEWLINE_DEDENT (\\n+DEDENT) at line %d\n", yylineno);
+            return NEWLINE_DEDENT;
+        }
+        
+        if (tok != 0) {
+            // If real_yylex enqueued things (like DEDENTs), we must return them first
+            if (!q_empty()) {
+                enqueue(tok); // Save the current token for later
+                return dequeue(); // Return the first enqueued token (DEDENT)
+            }
+            if (tok > 0) fprintf(stderr, "TOKEN: %s (%s) at line %d\n", tok_name(tok), yytext, yylineno);
+            return tok;
+        }
     }
-    
-    // Lookahead: if NEWLINE is followed by DEDENT, emit combined token
-    if (tok == NEWLINE && !q_empty() && q_peek() == DEDENT) {
-        dequeue(); // Consume the DEDENT from queue
-        return NEWLINE_DEDENT;
-    }
-    
-    if (tok > 0) fprintf(stderr, "TOKEN: %s (%s) at line %d\n", tok_name(tok), yytext, yylineno);
-    return tok;
 }
 
 #define yylex real_yylex
@@ -336,24 +348,30 @@ SAFE_S_FLW  [a-zA-Z0-9_\-./@$+=~]
                           if (flow_level == 0) {
                               int c;
                               int next_indent = 0;
+                              int peeked_chars[128];
+                              int peeked_count = 0;
                               
                               // Peek at whitespace on next line
-                              while ((c = input()) == ' ' || c == '\t') {
+                              while (peeked_count < 127 && ((c = input()) == ' ' || c == '\t')) {
+                                  peeked_chars[peeked_count++] = c;
                                   if (c == ' ') next_indent++;
                                   else if (c == '\t') next_indent = (next_indent + 8) & ~7;
                               }
                               
-                              // Put back the non-whitespace character
-                              if (c != EOF) unput(c);
-                              // Put back the whitespace
-                              for (int i = 0; i < next_indent; i++) unput(' ');
-                              
-                              // Generate DEDENT tokens if indentation decreased
-                              if (next_indent < indent_stack[indent_level]) {
+                              // ONLY trigger early dedent if we're NOT on a blank line (next char isn't newline)
+                              // or at EOF, and indent decreased.
+                              if ((c == EOF || c == 0 || (c != '\n' && c != '\r')) && next_indent < indent_stack[indent_level]) {
                                   while (next_indent < indent_stack[indent_level] && indent_level > 0) {
                                       indent_level--;
                                       enqueue(DEDENT);
+                                      fprintf(stderr, "DEBUG: Enqueued DEDENT in lookahead, new level %d (indent %d)\n", indent_level, indent_stack[indent_level]);
                                   }
+                              }
+                              
+                              // Restore peeked state in REVERSE order
+                              if (c != EOF && c != 0) unput(c);
+                              for (int i = peeked_count - 1; i >= 0; i--) {
+                                  unput(peeked_chars[i]);
                               }
                           }
                           
