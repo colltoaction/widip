@@ -9,4 +9,4 @@ if lib_path not in sys.path:
 
 from computer.core import Language, Language2
 from computer import service_map, Data, Program
-from .exec import Process
+from computer.exec import Process

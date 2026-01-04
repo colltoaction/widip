@@ -6,10 +6,10 @@ from functools import partial
 from yaml import YAMLError
 from discopy import closed
 
-from .yaml import load as load_diagram
-from .yaml.presentation import CharacterStream
-from .drawing import diagram_draw
-from .io import (
+from computer.yaml import load as load_diagram
+from computer.yaml.presentation import CharacterStream
+from computer.drawing import diagram_draw
+from computer.io import (
     read_diagram_file as read_diagram_file_diag,
     impl_read_diagram_file as read_diagram_file_fn,
     read_stdin as read_stdin_diag,
@@ -24,8 +24,8 @@ from .io import (
     BytesIO,
     Path
 )
-from .asyncio import async_read, run_repl, run, loop_scope
-from .exec import execute, titi_runner
+from computer.asyncio import async_read, run_repl, run, loop_scope
+from computer.exec import execute, titi_runner
 
 
 

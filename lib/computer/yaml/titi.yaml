@@ -1,0 +1,3 @@
+!titi
+  !cat home/examples/hello-world.yaml:
+    ? !wc -c

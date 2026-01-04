@@ -1,7 +1,7 @@
 
 import pytest
 import asyncio
-from titi.asyncio import unwrap, pipe_async, tensor_async
+from computer.asyncio import unwrap, pipe_async, tensor_async
 
 # --- Fixtures ---
 
@@ -66,4 +66,3 @@ async def test_tensor_async(loop):
     # f1 takes 1 arg, f2 takes 1 arg. args=(3, 5) -> f1(3)=4, f2(5)=10 -> (4, 10)
     res = await tensor_async(f1, [object], f2, loop, 3, 5)
     assert res == (4, 10)
-

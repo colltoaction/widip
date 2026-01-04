@@ -3,7 +3,7 @@ from typing import Any, TypeVar, Dict, Callable
 from discopy import closed, symmetric, frobenius
 from .asyncio import run_command, unwrap
 import discopy
-from computer import python
+from . import python
 
 T = TypeVar("T")
 Process = python.Function
@@ -99,7 +99,7 @@ def exec_box(box: closed.Box) -> Process:
         elif type(box).__name__ == "Data":
              result = box.name
         elif type(box).__name__ == "Partial":
-             from computer import Partial
+             from .core import Partial
              # Returning the box itself as a 'partial' application (callable/process)
              result = box 
         else:
@@ -116,7 +116,7 @@ def exec_box(box: closed.Box) -> Process:
     return Process(prog_fn, dom, cod)
 
 def any_ty(n: int):
-    return tuple([object] * n)
+    return python.Ty(*([object] * n))
 
 def exec_swap(box: symmetric.Swap) -> Process:
     async def swap_fn(a, b):

@@ -23,7 +23,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/ removed to allow tracking the new library location.
 lib64/
 parts/
 sdist/

@@ -5,10 +5,10 @@ from io import BytesIO
 from pathlib import Path
 from discopy import closed
 from unittest.mock import patch, AsyncMock
-from . import Process, Language
-from .exec import compile_exec
-from .asyncio import loop_scope
-from .io import value_to_bytes, get_executable
+from computer import Language
+from computer.exec import Process, compile_exec
+from computer.asyncio import loop_scope
+from computer.io import value_to_bytes, get_executable
 
 @pytest.fixture
 def hooks():

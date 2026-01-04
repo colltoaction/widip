@@ -7,15 +7,15 @@ import os
 
 from discopy import closed
 from titi.repl import read, env_fn, get_source, read_diagram
-from titi.asyncio import eval_diagram
+from computer.asyncio import eval_diagram
 from computer.super import interpreter
-from titi.yaml import construct_functor as compiler
-from titi.exec import titi_runner
-from titi.io import value_to_bytes, get_executable
+from computer.yaml import construct_functor as compiler
+from computer.exec import titi_runner
+from computer.io import value_to_bytes, get_executable
 
 @pytest.fixture
 def hooks():
-    from titi.io import impl_value_to_bytes, impl_get_executable
+    from computer.io import impl_value_to_bytes, impl_get_executable
     return {
         'set_recursion_limit': lambda n: None,
         'value_to_bytes': impl_value_to_bytes,
@@ -71,7 +71,7 @@ async def test_eval_logic(loop, hooks):
         output_captured.append(val)
 
     with titi_runner(hooks=hooks, executable="python3", loop=loop) as (runner, _):
-        pipeline = lambda fd: runner(compiler(fd, compiler, None))
+        pipeline = lambda fd: runner(compiler(fd), None)
         async def source_gen():
             yield program, Path("test"), BytesIO(b"")
         await interpreter(pipeline, source_gen(), loop, capture_output)
@@ -98,7 +98,7 @@ async def test_print_logic(loop, hooks):
         output_captured.append(val)
 
     with titi_runner(hooks=hooks, loop=loop) as (runner, _):
-        pipeline = lambda fd: runner(compiler(fd, compiler, None))
+        pipeline = lambda fd: runner(compiler(fd), None)
         async def source_gen():
             yield data_box, Path("test"), BytesIO(b"")
         await interpreter(pipeline, source_gen(), loop, capture_output)
@@ -117,7 +117,7 @@ async def test_data_logic(loop, hooks):
         output_captured.append(val)
 
     with titi_runner(hooks=hooks, loop=loop) as (runner, _):
-        pipeline = lambda fd: runner(compiler(fd, compiler, None))
+        pipeline = lambda fd: runner(compiler(fd), None)
         async def source_gen():
             yield data_box, Path("test"), BytesIO(b"")
         await interpreter(pipeline, source_gen(), loop, capture_output)

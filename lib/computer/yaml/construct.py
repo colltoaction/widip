@@ -3,7 +3,7 @@ from typing import Any
 from discopy import closed
 from . import representation as ren
 from computer import Program, Data, Titi, Discard
-from computer.core import Language, copy, merge, discard, Copy, Merge
+from ..core import Language, copy, merge, discard, Copy, Merge
 
 # Ensure Language is the base closed.Ty
 L = Language
@@ -40,7 +40,7 @@ def extract_args(box):
     return ()
 
 def construct_box(box) -> closed.Diagram:
-    import titi.yaml
+    import computer.yaml
     
     tag = getattr(box, 'tag', None)
     value = getattr(box, 'value', None)
@@ -51,7 +51,7 @@ def construct_box(box) -> closed.Diagram:
 
     # 1. Handle Titi Special Case
     if kind == "Titi" or tag == "titi":
-        inside = titi.yaml.construct_functor(nested)
+        inside = computer.yaml.construct_functor(nested)
         start = Titi.read_stdin
         # Match inside domain
         n_in = len(inside.dom)
@@ -74,7 +74,7 @@ def construct_box(box) -> closed.Diagram:
     # 2. Handle Anchor
     if kind == "Anchor" or (kind and kind.startswith("Anchor(")):
         anchor_name = anchor_name or name.split("(")[1].split(")")[0]
-        inside = titi.yaml.construct_functor(nested)
+        inside = computer.yaml.construct_functor(nested)
         return Program("anchor", (anchor_name, inside))
 
     # 3. Handle Alias
@@ -101,7 +101,7 @@ def construct_box(box) -> closed.Diagram:
     if kind == "Sequence" and not tag and hasattr(nested, 'inside'):
           res = None
           for layer in nested.inside:
-               layer_diag = titi.yaml.construct_functor(layer)
+               layer_diag = computer.yaml.construct_functor(layer)
                if res is None:
                     res = layer_diag
                else:
@@ -119,7 +119,7 @@ def construct_box(box) -> closed.Diagram:
                     res = res >> layer_diag
           return res or closed.Id(Language)
 
-    inside = titi.yaml.construct_functor(nested)
+    inside = computer.yaml.construct_functor(nested)
     
     if kind == "Mapping":
         n = len(inside.dom)

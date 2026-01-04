@@ -1,0 +1,43 @@
+# Monoidal Computer Production Syntax
+# Logic and structural productions in YAML format.
+
+productions:
+  - id: Copy
+    syntax: Δ
+    type: P -> P ⊗ P
+    description: Natural diagonal for data duplication.
+
+  - id: Discard
+    syntax: ε
+    type: P -> I
+    description: Natural terminal for data disposal.
+
+  - id: Swap
+    syntax: σ
+    type: P ⊗ Q -> Q ⊗ P
+    description: Braiding for data reordering.
+
+  - id: Eval
+    syntax: εₚ
+    type: (P ⇒ Q) ⊗ P -> Q
+    description: Functional application (evaluation).
+
+  - id: PartialEval
+    syntax: ηₚ
+    type: (P ⊗ Q ⇒ R) -> (P ⇒ (Q ⇒ R))
+    description: Currying/Partial evaluation (un-evaluation).
+
+  - id: Data
+    syntax: ⌜d⌝
+    type: I -> P
+    description: Embedding of ground data.
+
+  - id: Program
+    syntax: ⌜f⌝
+    type: I -> (P ⇒ Q)
+    description: Embedding of computable functions.
+
+  - id: KleeneFixpoint
+    syntax: fix
+    type: (P ⇒ P) -> P
+    description: Computable fixpoint operator.

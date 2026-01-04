@@ -8,7 +8,7 @@ from . import representation as ren
 from .representation import Scalar, Sequence, Mapping, Alias, Document, Stream, Titi
 from . import construct as con
 from . import presentation as pres
-from computer.core import Language
+from ..core import Language
 
 # --- Composable Helper ---
 

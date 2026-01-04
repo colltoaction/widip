@@ -1,0 +1,7 @@
+# titi/computer/hyper.yaml
+# Hypercomputation - Functions beyond primitive recursion
+
+ackermann: &ackermann
+  !desc: "Ackermann function"
+  !type: [Language2, Language]
+  !id: ackermann
