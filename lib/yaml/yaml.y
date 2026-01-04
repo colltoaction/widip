@@ -218,8 +218,7 @@ char *join_scalar_values(char *s1, char *s2) {
 
 %type <node> stream document node opt_node flow_node block_node
 %type <node> flow_seq_items flow_map_entries flow_entry flow_seq_item
-%type <node> block_sequence block_mapping map_entry
-%type <node> propertied_node
+%type <node> block_sequence block_mapping map_entry propertied_node
 %type <node> entry_key entry_value opt_entry_value
 %type <str> merged_plain_scalar
 
@@ -296,6 +295,20 @@ node
     | propertied_node
     ;
 
+propertied_node
+    : ANCHOR opt_newlines TAG opt_newlines node { $$ = make_anchor($1, make_tag($3, $5)); }
+    | TAG opt_newlines ANCHOR opt_newlines node { $$ = make_tag($1, make_anchor($3, $5)); }
+    | ANCHOR opt_newlines TAG opt_newlines { $$ = make_anchor($1, make_tag($3, make_null())); } %prec LOW_PREC
+    | TAG opt_newlines ANCHOR opt_newlines { $$ = make_tag($1, make_anchor($3, make_null())); } %prec LOW_PREC
+    | ANCHOR opt_newlines node { $$ = make_anchor($1, $3); }
+    | ANCHOR newlines INDENT node DEDENT { $$ = make_anchor($1, $4); }
+    | ANCHOR newlines DEDENT node { $$ = make_anchor($1, $4); }
+    | ANCHOR opt_newlines { $$ = make_anchor($1, make_null()); } %prec LOW_PREC
+    | TAG opt_newlines node { $$ = make_tag($1, $3); }
+    | TAG newlines INDENT node DEDENT { $$ = make_tag($1, $4); }
+    | TAG newlines DEDENT node { $$ = make_tag($1, $4); }
+    | TAG opt_newlines { $$ = make_tag($1, make_null()); } %prec LOW_PREC
+    ;
 flow_node
     : merged_plain_scalar   { $$ = make_scalar($1); }
     | DQUOTE_STRING         { $$ = make_scalar($1); }
@@ -315,20 +328,7 @@ block_node
     | INDENT node DEDENT    { $$ = $2; }
     ;
 
-propertied_node
-    : ANCHOR opt_newlines TAG opt_newlines node { $$ = make_anchor($1, make_tag($3, $5)); }
-    | TAG opt_newlines ANCHOR opt_newlines node { $$ = make_tag($1, make_anchor($3, $5)); }
-    | ANCHOR opt_newlines TAG opt_newlines { $$ = make_anchor($1, make_tag($3, make_null())); } %prec LOW_PREC
-    | TAG opt_newlines ANCHOR opt_newlines { $$ = make_tag($1, make_anchor($3, make_null())); } %prec LOW_PREC
-    | ANCHOR opt_newlines node { $$ = make_anchor($1, $3); }
-    | ANCHOR newlines INDENT node DEDENT { $$ = make_anchor($1, $4); }
-    | ANCHOR newlines DEDENT node { $$ = make_anchor($1, $4); }
-    | ANCHOR opt_newlines { $$ = make_anchor($1, make_null()); } %prec LOW_PREC
-    | TAG opt_newlines node { $$ = make_tag($1, $3); }
-    | TAG newlines INDENT node DEDENT { $$ = make_tag($1, $4); }
-    | TAG newlines DEDENT node { $$ = make_tag($1, $4); }
-    | TAG opt_newlines { $$ = make_tag($1, make_null()); } %prec LOW_PREC
-    ;
+/* propertied_node logic now inline in node */
 
 merged_plain_scalar
     : PLAIN_SCALAR { $$ = $1; }
@@ -374,12 +374,11 @@ block_sequence
 
 block_mapping
     : map_entry                                 { $$ = make_map($1); }
-    | block_mapping newlines map_entry          { 
-          if ($1->children) append_node($1->children, $3);
-          else $1->children = $3;
+    | block_mapping map_entry                   { 
+          if ($1->children) append_node($1->children, $2);
+          else $1->children = $2;
           $$ = $1; 
       }
-    | block_mapping newlines                    { $$ = $1; }
     ;
 
 /* block_map_entries removed */
@@ -387,14 +386,14 @@ block_mapping
 /* A single mapping entry: key: value */
 /* A single mapping entry: key: value */
 map_entry
-    : flow_node entry_value         { $$ = append_node($1, $2); }
-    | propertied_node entry_value   { $$ = append_node($1, $2); }
-    | entry_key opt_entry_value     { $$ = append_node($1, $2); }
+    : flow_node entry_value opt_newlines        { $$ = append_node($1, $2); }
+    | propertied_node entry_value opt_newlines  { $$ = append_node($1, $2); }
+    | entry_key opt_entry_value opt_newlines    { $$ = append_node($1, $2); }
     ;
 
 entry_key
-    : MAP_KEY opt_node { $$ = $2; }
-    | MAP_KEY newlines INDENT opt_node DEDENT { $$ = $4; }
+    : MAP_KEY opt_node opt_newlines { $$ = $2; }
+    | MAP_KEY newlines INDENT opt_node DEDENT opt_newlines { $$ = $4; }
     ;
 
 entry_value

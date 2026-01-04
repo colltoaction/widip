@@ -230,7 +230,7 @@ SAFE_S_FLW  [a-zA-Z0-9_\-./@$+=~]
 
 <INITIAL,FLOW>"&"[a-zA-Z0-9_\-]+    { yylval.str = strdup(yytext+1); return ANCHOR; }
 <INITIAL,FLOW>"*"[a-zA-Z0-9_\-]+    { yylval.str = strdup(yytext+1); return ALIAS; }
-<INITIAL,FLOW>"!"[a-zA-Z0-9_\-./!@#$%&()=+~\\]* { yylval.str = strdup(yytext+1); return TAG; }
+<INITIAL,FLOW>"!"[a-zA-Z0-9_\-./!@#$%&()=+~\\<>,:\[\]]* { yylval.str = strdup(yytext+1); return TAG; }
 
 <INITIAL,FLOW>"#"[^\n\r]*    { /* Comment */ }
 
