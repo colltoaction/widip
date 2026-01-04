@@ -1,7 +1,7 @@
 import pytest
 from discopy import closed
 from .yaml import Sequence, Mapping, Scalar
-from .yaml.representation import SequenceBox, MappingBox
+from .yaml.representation import YamlBox
 from titi.yaml import construct_functor as SHELL_COMPILER
 from computer import Data, Program, Language
 
@@ -13,15 +13,15 @@ def mk_scalar(name):
 @pytest.mark.parametrize("input_bubble, expected_class", [
     (
         Sequence(mk_scalar("A") @ mk_scalar("B") @ mk_scalar("C")),
-        SequenceBox
+        YamlBox
     ),
     (
         Sequence(mk_scalar("A") @ mk_scalar("B"), n=2),
-        SequenceBox
+        YamlBox
     ),
     (
         Mapping(mk_scalar("K") >> mk_scalar("V")),
-        MappingBox
+        YamlBox
     ),
 ])
 def test_compile_structure(input_bubble, expected_class):
