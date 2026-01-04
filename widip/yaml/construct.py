@@ -5,25 +5,27 @@ from . import representation as ren
 from ..computer import Program, Data
 from ..core import Language
 
-# Language is now a Ty instance, so we can use it directly
+# Language is now a Ty instance
 L = Language
 
 def construct_scalar(box: ren.ScalarBox) -> closed.Diagram:
-    args = (box.value,) if box.value is not None else ()
     if box.tag:
-         return Program(box.tag, L ** len(box.dom), L ** len(box.cod), args)
-    return Data(box.value, L ** len(box.dom), L ** len(box.cod))
+        # Program expects name and args
+        args = (box.value,) if box.value is not None else ()
+        return Program(box.tag, args)
+    # Data expects value
+    return Data(box.value)
 
 def construct_sequence(box: ren.SequenceBox) -> closed.Diagram:
-    from . import construct
-    inside_computer = construct(box.inside)
+    import widip.yaml
+    inside_computer = widip.yaml.construct_functor(box.inside)
     if box.tag:
-        return Program(box.tag, L ** len(box.dom), L ** len(box.cod), (inside_computer,))
+        return Program(box.tag, (inside_computer,))
     return inside_computer
 
 def construct_mapping(box: ren.MappingBox) -> closed.Diagram:
-    from . import construct
-    inside_computer = construct(box.inside)
+    import widip.yaml
+    inside_computer = widip.yaml.construct_functor(box.inside)
     if box.tag:
-        return Program(box.tag, L ** len(box.dom), L ** len(box.cod), (inside_computer,))
+        return Program(box.tag, (inside_computer,))
     return inside_computer

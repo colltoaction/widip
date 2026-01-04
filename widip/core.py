@@ -1,16 +1,19 @@
 from __future__ import annotations
 from discopy import closed
 
-class ComputerType(closed.Ty):
-    """
-    Metaprogramming-enabled type system for the Monoidal Computer.
-    """
-    def __getattr__(self, name: str):
+# Use ASCII for compatibility and ensure it's a closed.Ty
+Language = closed.Ty("P")
+Language2 = Language @ Language
+
+class ComputerMetaclass(type):
+    def __getattr__(cls, name: str):
         from .computer import service_map
         if name in service_map:
             return service_map[name]()
-        raise AttributeError(f"Type '{self}' has no computer service '{name}'")
+        raise AttributeError(f"Computer has no service '{name}'")
 
-# The program type ℙ (Language)
-Language = ComputerType("ℙ")
-Language2 = Language @ Language
+class Computer(metaclass=ComputerMetaclass):
+    """
+    User-facing interface for the Monoidal Computer.
+    """
+    pass
