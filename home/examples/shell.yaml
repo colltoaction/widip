@@ -1,5 +1,5 @@
 #!/home/colltoaction/GitHub/widip/bin/widish
-!cat examples/shell.yaml:
+!cat home/examples/shell.yaml:
   ? !wc -c
   ? !grep grep: !wc -c
   ? !tail -2

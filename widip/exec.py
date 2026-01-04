@@ -3,6 +3,7 @@ from typing import Any, TypeVar, Dict, Callable
 from discopy import closed, python, symmetric
 from .asyncio import run_command, unwrap
 from contextlib import contextmanager
+import discopy
 
 T = TypeVar("T")
 Process = python.Function
@@ -37,9 +38,7 @@ def exec_box(box: closed.Box) -> Process:
 
 def any_ty(n: int):
     """Returns a tensor of n object types."""
-    res = python.Ty()
-    for _ in range(n): res @= python.Ty(object)
-    return res
+    return python.Ty(*(n * ["object"]))
 
 def exec_swap(box: symmetric.Swap) -> Process:
     return Process(lambda a, b: (b, a), any_ty(2), any_ty(2))
@@ -56,7 +55,8 @@ def exec_functor(diag: closed.Diagram) -> Process:
     """Manual functor implementation to avoid DisCoPy version issues."""
     from discopy.closed import Functor
     # Map Language to Any in the python category
-    f = Functor(ob={closed.Ty("P"): object}, ar=exec_dispatch, cod=python.Category())
+    f = Functor(ob={closed.Ty("P")[0]: object, discopy.cat.Ob("object"): object}, 
+                ar=exec_dispatch, cod=python.Category())
     return f(diag)
 
 async def execute(diag: closed.Diagram, hooks: dict, executable: str, loop: Any, stdin: Any = None):

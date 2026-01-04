@@ -321,10 +321,14 @@ async def printer(rec: Any, val: Any, hooks: dict):
     """Print output handler."""
     if hasattr(val, 'read'):
         await drain_to_stdout(val, hooks)
+    elif isinstance(val, bytes):
+        hooks['stdout_write'](val)
     elif isinstance(val, (list, tuple)):
         for item in val:
             if hasattr(item, 'read'):
                 await drain_to_stdout(item, hooks)
+            elif isinstance(item, bytes):
+                hooks['stdout_write'](item)
             else:
                 print(item)
     else:

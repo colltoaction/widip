@@ -44,8 +44,8 @@ def test_exec_compilation():
     assert isinstance(c, closed.Diagram)
     assert len(c.boxes) == 1
     box = c.boxes[0]
-    # Tagged scalars compile to Program boxes
-    assert isinstance(box, Program)
+    # Tagged scalars compile to Program boxes (boxes named with the tag)
+    assert box.name == "exec"
     
     # Language is closed.Ty("ℙ")
     assert box.dom == Language

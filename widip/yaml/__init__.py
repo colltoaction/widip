@@ -59,7 +59,13 @@ construct_dispatch.register(ren.SequenceBox, con.construct_sequence)
 construct_dispatch.register(ren.MappingBox, con.construct_mapping)
 
 construct_functor = closed.Functor(
-    ob={ren.Node: Language, symmetric.Ty("Node"): Language}, 
+    ob={
+        "Node": Language, 
+        "P": Language,
+        ren.Node: Language,
+        closed.Ty("Node"): Language,
+        closed.Ty("P"): Language
+    }, 
     ar=construct_dispatch, 
     cod=closed.Category()
 )
