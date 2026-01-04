@@ -88,7 +88,7 @@ def any_ty(n: int):
 def exec_swap(box: symmetric.Swap) -> Process:
     async def swap_fn(a, b):
         ctx = _EXEC_CTX.get()
-        return (await unwrap(ctx.loop, b), await unwrap(ctx.loop, a))
+        return (await unwrap(b, ctx.loop), await unwrap(a, ctx.loop))
     return Process(swap_fn, any_ty(len(box.dom)), any_ty(len(box.cod)))
 
 # --- Dispatcher ---

@@ -128,18 +128,18 @@ async def unwrap(x: Any, loop: EventLoop, memo: dict | None = None) -> Any:
 
 async def pipe_async(left_fn, right_fn, loop, *args):
     """Compose two async functions sequentially (>>)."""
-    res = await unwrap(loop, left_fn(*args))
+    res = await unwrap(left_fn(*args), loop)
     if res is None: 
         return res
-    return await unwrap(loop, right_fn(*utils.tuplify(res)))
+    return await unwrap(right_fn(*utils.tuplify(res)), loop)
 
 
 async def tensor_async(left_fn, left_dom, right_fn, loop, *args):
     """Compose two async functions in parallel (@)."""
     n = len(left_dom)
     args1, args2 = args[:n], args[n:]
-    res1 = await unwrap(loop, left_fn(*args1))
-    res2 = await unwrap(loop, right_fn(*args2))
+    res1 = await unwrap(left_fn(*args1), loop)
+    res2 = await unwrap(right_fn(*args2), loop)
     return utils.tuplify(res1) + utils.tuplify(res2)
 
 
@@ -196,7 +196,7 @@ async def drain_stream(stream: Any):
 async def feed_stdin(loop: EventLoop, stdin: Any, process: asyncio.subprocess.Process, hooks: dict):
     """Feed data to subprocess stdin asynchronously."""
     try:
-         in_stream = await unwrap(loop, stdin)
+         in_stream = await unwrap(stdin, loop)
          if in_stream is None: return
          items = in_stream if isinstance(in_stream, (list, tuple)) else (in_stream,)
          
@@ -209,7 +209,7 @@ async def feed_stdin(loop: EventLoop, stdin: Any, process: asyncio.subprocess.Pr
                       process.stdin.write(chunk if isinstance(chunk, bytes) else chunk.encode())
                       await process.stdin.drain()
             elif src is not None:
-                 v = await unwrap(loop, src)
+                 v = await unwrap(src, loop)
                  if v is None: continue
                  if isinstance(v, bytes): 
                      d = v
@@ -246,7 +246,7 @@ async def run_command(runner: Callable, loop: EventLoop,
          if not callable(item):
               item = runner(item)
               set_anchor(name_str, item)
-         return await unwrap(loop, item(stdin))
+         return await unwrap(item(stdin), loop)
 
     # 2. Execute subprocess
     args_str = [await unwrap_to_str(a, loop, hooks) for a in args]
