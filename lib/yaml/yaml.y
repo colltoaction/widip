@@ -72,7 +72,7 @@ void print_node_recursive(Node *n, int depth, int print_anchor, int print_tag) {
     }
     if (n->type == NODE_STREAM) {
         printf("STREAM:\n");
-        for (Node *c = n->children; c; c = c->next) print_node_recursive(c, depth + 1, 1, 1);
+        for (Node *c = n->children; c; c = c->next) print_node_recursive(c, depth, 1, 1);
         return;
     }
     print_indent(depth);
@@ -101,8 +101,9 @@ char *join_scalar(char *s1, char *s2) {
 %nonassoc TAG ANCHOR
 %nonassoc DEDENT NEWLINE_DEDENT
 %nonassoc NEWLINE
+%nonassoc DOC_START DOC_END
 
-%type <node> stream document node opt_node flow_node block_node content flow_seq_items flow_map_entries flow_entry flow_seq_item block_sequence block_mapping map_entry entry_key entry_value opt_entry_value properties property
+%type <node> stream document node flow_node block_node content flow_seq_items flow_map_entries flow_entry flow_seq_item block_sequence block_mapping map_entry entry_key entry_value properties property indented_node
 %type <str> merged_plain_scalar
 
 %start stream
@@ -122,19 +123,22 @@ stream
 
 document
     : node                              { $$ = $1; }
-    | DOC_START opt_newlines opt_node   { $$ = $3; }
+    | DOC_START opt_newlines node       { $$ = $3; }
+    | DOC_START opt_newlines            { $$ = make_null(); }
     | DOC_START DOC_END                 { $$ = make_null(); }
     | DOC_END                           { $$ = make_null(); }
     ;
 
-opt_node : node { $$=$1; } | /* empty */ { $$=make_null(); } ;
-
 node
     : content                           { $$ = $1; }
-    | properties opt_newlines content    { $$ = apply_properties($3, $1); }
-    | properties opt_newlines INDENT node DEDENT { $$ = apply_properties($4, $1); }
-    | properties opt_newlines INDENT node NEWLINE_DEDENT { $$ = apply_properties($4, $1); }
+    | properties content                { $$ = apply_properties($2, $1); }
+    | properties opt_newlines indented_node { $$ = apply_properties($3, $1); }
     | properties %prec LOW_PREC         { $$ = apply_properties(NULL, $1); }
+    ;
+
+indented_node
+    : INDENT node DEDENT                { $$ = $2; }
+    | INDENT node NEWLINE_DEDENT         { $$ = $2; }
     ;
 
 content : flow_node | block_node ;
@@ -173,19 +177,24 @@ flow_map_entries : flow_entry | flow_map_entries COMMA flow_entry { $$=append_no
 flow_entry : map_entry | node { $$=append_node($1,make_null()); } ;
 
 block_sequence
-    : SEQ_ENTRY opt_node { $$ = make_seq($2); }
-    | block_sequence newlines SEQ_ENTRY opt_node { append_node($1->children, $4); $$ = $1; }
+    : SEQ_ENTRY node                    { $$ = make_seq($2); }
+    | SEQ_ENTRY                         { $$ = make_seq(make_null()); }
+    | block_sequence NEWLINE SEQ_ENTRY node { append_node($1->children, $4); $$ = $1; }
+    | block_sequence NEWLINE SEQ_ENTRY      { append_node($1->children, make_null()); $$ = $1; }
+    | block_sequence NEWLINE_DEDENT SEQ_ENTRY node { append_node($1->children, $4); $$ = $1; }
+    | block_sequence NEWLINE_DEDENT SEQ_ENTRY      { append_node($1->children, make_null()); $$ = $1; }
     ;
 
 block_mapping
     : map_entry { $$ = make_map($1); }
-    | block_mapping newlines map_entry { append_node($1->children, $3); $$ = $1; }
+    | block_mapping NEWLINE map_entry { append_node($1->children, $3); $$ = $1; }
+    | block_mapping NEWLINE_DEDENT map_entry { append_node($1->children, $3); $$ = $1; }
     ;
 
-map_entry : node entry_value { $$=append_node($1,$2); } | entry_key opt_entry_value { $$=append_node($1,$2); } ;
-entry_key : MAP_KEY opt_node opt_newlines { $$=$2; } | MAP_KEY newlines INDENT opt_node opt_newlines DEDENT opt_newlines { $$=$4; } ;
-entry_value : COLON opt_node { $$=$2; } | COLON newlines INDENT block_node DEDENT { $$=$4; } | COLON newlines INDENT block_node NEWLINE_DEDENT { $$=$4; } ;
-opt_entry_value : entry_value | /* empty */ { $$=make_null(); } ;
+map_entry : node entry_value { $$=append_node($1,$2); } | entry_key opt_newlines { $$=append_node($1,make_null()); } | entry_key entry_value { $$=append_node($1,$2); } ;
+entry_key : MAP_KEY node { $$=$2; } | MAP_KEY { $$=make_null(); } | MAP_KEY newlines indented_node { $$=$3; } ;
+
+entry_value : COLON node { $$=$2; } | COLON { $$=make_null(); } | COLON newlines indented_node { $$=$3; } ;
 
 %%
 void yyerror(const char *s) { extern int yylineno; extern char *yytext; extern int yychar; fprintf(stderr, "Parse error at line %d: %s (token: %s, text: '%s')\n", yylineno, s, (yychar > 0 ? tok_name(yychar) : "EOF"), yytext); }

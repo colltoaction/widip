@@ -1,5 +1,5 @@
 %{
-/* YAML Lexer - Native LALR Version */
+/* YAML Lexer - LALR-friendly with debug */
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -39,7 +39,8 @@ int real_yylex();
 
 const char* tok_name(int tok) {
     if (tok < 256) {
-        static char buf[2] = {0};
+        static char buf[3] = {0};
+        if (tok == '\n') return "NEWLINE_CHAR";
         buf[0] = (char)tok; buf[1] = 0;
         return buf;
     }
@@ -88,6 +89,7 @@ int yylex() {
                 enqueue(tok);
                 return dequeue();
             }
+            // fprintf(stderr, "LEX: %s [%s]\n", tok_name(tok), yytext);
             return tok;
         }
     }
@@ -104,10 +106,11 @@ int yylex() {
 %x FLOW
 
 NEWLINE     \n|\r\n|\r
+SEP         [ \t\n\r,\[\]\{\}]
 /* SAFE_S_BLK: cannot start with indicator */
 SAFE_S_BLK  [^ \t\n\r\-\?:,\[\]\{\}!#&*|>\x22\x27%@\x60]
-/* SAFE_C_BLK: inner characters, excluding structural ones and colon */
-SAFE_C_BLK  [^ \t\n\r,\[\]\{\}:]
+/* SAFE_C_BLK: inner characters except structural ones and colon */
+SAFE_C_BLK  [^ \t\n\r,\[\]\{\}:!]
 
 %%
 
@@ -138,17 +141,17 @@ SAFE_C_BLK  [^ \t\n\r,\[\]\{\}:]
                           return 0;
                         }
 
-<INITIAL,FLOW>"---"/([ \t\n\r]|$) { return DOC_START; }
-<INITIAL,FLOW>"..."/([ \t\n\r]|$) { return DOC_END; }
+<INITIAL,FLOW>"---"/({SEP}|$) { return DOC_START; }
+<INITIAL,FLOW>"..."/({SEP}|$) { return DOC_END; }
 
-<INITIAL>"-"/([ \t\n\r]|$)        { return SEQ_ENTRY; }
-<INITIAL>":"/([ \t\n\r]|$)        { return COLON; }
-<INITIAL>"?"/([ \t\n\r]|$)        { return MAP_KEY; }
+<INITIAL>"-"/({SEP}|$)        { return SEQ_ENTRY; }
+<INITIAL>":"/({SEP}|$)        { return COLON; }
+<INITIAL>"?"/({SEP}|$)        { return MAP_KEY; }
 
-<INITIAL,FLOW>","                 { return COMMA; }
-<INITIAL,FLOW>"["                 { flow_level++; yy_push_state(FLOW); return LBRACKET; }
-<FLOW>"]"                         { if (flow_level > 0) flow_level--; yy_pop_state(); return RBRACKET; }
-<INITIAL,FLOW>"{"                     { flow_level++; yy_push_state(FLOW); return LBRACE; }
+<INITIAL,FLOW>","             { return COMMA; }
+<INITIAL,FLOW>"["             { flow_level++; yy_push_state(FLOW); return LBRACKET; }
+<FLOW>"]"                     { if (flow_level > 0) flow_level--; yy_pop_state(); return RBRACKET; }
+<INITIAL,FLOW>"{"                 { flow_level++; yy_push_state(FLOW); return LBRACE; }
 <FLOW>"}"                         { if (flow_level > 0) flow_level--; yy_pop_state(); return RBRACE; }
 
 <FLOW>":"                         { return COLON; }
@@ -173,7 +176,7 @@ SAFE_C_BLK  [^ \t\n\r,\[\]\{\}:]
                         }
 
 <INITIAL,FLOW>{SAFE_S_BLK}({SAFE_C_BLK}|":"[^ \t\n\r,\[\]\{\}]|[!#&*|%>])* {
-    /* Standard trailing context logic for internal indicators */
+    /* YAML 1.2 Plain Scalar - carefully exclude structural colon/space */
     yylval.str = strdup(yytext);
     return PLAIN_SCALAR;
 }
