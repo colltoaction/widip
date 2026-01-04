@@ -223,7 +223,7 @@ Or manually:
 cd lib/computer
 lex yaml.l
 yacc -d yaml.y
-cc lex.yy.c y.tab.c -lfl -o yaml_parser
+cc lex.yy.c y.tab.c -lfl -o _yaml_parser
 ```
 
 ### Using the Parser Bridge
@@ -260,7 +260,7 @@ diagram = parser.parse(yaml_source)
 !yacc ["-d", "lib/computer/yaml.y"]
 
 # Compile C code
-!cc ["lex.yy.c", "y.tab.c", "-lfl", "-o", "yaml_parser"]
+!cc ["lex.yy.c", "y.tab.c", "-lfl", "-o", "_yaml_parser"]
 ```
 
 ## Examples
@@ -325,7 +325,7 @@ optimized: &opt
 - !print "Building parser..."
 - !lex lib/computer/yaml.l
 - !yacc ["-d", "lib/computer/yaml.y"]
-- !cc ["lex.yy.c", "y.tab.c", "-lfl", "-o", "yaml_parser"]
+- !cc ["lex.yy.c", "y.tab.c", "-lfl", "-o", "_yaml_parser"]
 - !print "Parser built!"
 
 - !print "Parsing YAML..."

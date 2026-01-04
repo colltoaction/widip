@@ -73,7 +73,11 @@ def construct_box(box) -> closed.Diagram:
                 inside = inside >> make_merge(n_out)
             core = start >> inside >> Titi.printer
         
-        return Discard() >> core >> Data("")
+        # Ensure core codomain is Ty() before passing to final Data box
+        if len(core.cod) > 0:
+            core = core >> Discard(core.cod)
+        
+        return core >> Data("")
 
     # 2. Handle Anchor
     if kind == "Anchor" or (kind and kind.startswith("Anchor(")):
@@ -88,18 +92,19 @@ def construct_box(box) -> closed.Diagram:
     # 4. Handle Scalar (Leaf)
     if kind == "Scalar":
         if tag:
-            args = (value,) if value else ()
             if tag == "id": return closed.Id(Language)
             if tag == "xargs": return Program("xargs", (value,))
-            if tag == "Data": return Data(value)
+            if tag.lower() == "data": return Data(value)
+            if tag.lower() == "program": return Program(value)
             # Handle Partial specially
             if tag == "Partial":
                  from computer import Partial
                  return Partial(value)
-            return Program(tag, args)
-        if value is None or value == "":
-            return closed.Id(Language)
-        return Data(value)
+            # Fall through for other tags
+        else:
+            if value is None or value == "":
+                return closed.Id(Language)
+            return Data(value)
 
     # Special: Treat untagged sequences as accumulative pipelines (print taps)
     is_seq = kind == "Sequence" and not tag
@@ -118,36 +123,41 @@ def construct_box(box) -> closed.Diagram:
                if res is None:
                     res = layer_diag
                else:
-                    # Accumulative Tap: res >> copy >> (printer @ next_layer)
+                    # Robust Sequential composition: res >> layer_diag
                     n_res = len(res.cod)
-                    from computer import Copy, Merge
-                    tap = closed.Id(Language ** n_res)
-                    if n_res > 1:
-                        tap = Merge(Language, n_res) >> closed.Id(Language)
+                    n_layer = len(layer_diag.dom)
                     
-                    if n_res > 0:
-                        cp = Copy(res.cod, 2) >> closed.Id(res.cod ** 2)
-                        res = res >> cp >> ( (tap >> Program("print", cod=closed.Ty())) @ closed.Id(res.cod) )
-                    
-                    res = res >> layer_diag
+                    if n_res == n_layer:
+                        res = res >> layer_diag
+                    elif n_layer == 0:
+                        # Next box takes nothing - discard previous output
+                        if n_res > 0:
+                            res = res >> Discard(res.cod)
+                        res = res >> layer_diag
+                    elif n_res == 0:
+                        # Previous box produced nothing - next box starts fresh
+                        res = res >> layer_diag
+                    elif n_res < n_layer:
+                        # Next box needs more than we have - fan out the last output?
+                        if n_res == 1:
+                            res = res >> make_copy(n_layer) >> layer_diag
+                        else:
+                            res = res >> layer_diag
+                    elif n_res > n_layer:
+                        # Too many outputs - merge or discard some
+                        if n_layer == 1:
+                            res = res >> make_merge(n_res) >> layer_diag
+                        else:
+                            # Discard extra
+                            extra = n_res - n_layer
+                            res = res >> (closed.Id(Language ** n_layer) @ Discard(Language ** extra)) >> layer_diag
           return res or closed.Id(Language)
 
     inside = computer.yaml.construct_functor(nested)
     
-    if kind == "Mapping":
-        n = len(inside.dom)
-        if n > 0:
-            target_dom = Language ** n
-            if inside.dom != target_dom:
-                inside = closed.Diagram(inside.inside, target_dom, inside.cod)
-            # fan out input if it's a mapping
-            inside = make_copy(n) >> inside 
-            
-            n_out = len(inside.cod)
-            if n_out > 1:
-                inside = inside >> make_merge(n_out)
-            elif n_out == 0:
-                inside = inside >> Data("")
+    if kind == "Mapping" and not tag:
+        # Raw tensor representation for untagged mappings
+        return inside
 
     # Trace back algebraic ops
     if kind == "Δ": return copy
@@ -194,19 +204,31 @@ def construct_box(box) -> closed.Diagram:
         # --- Hypercomputation Tags ---
         if tag == "ackermann":
             from ..hyper_extended import ackermann_box
-            return ackermann_box >> closed.Id(Language)
+            res = ackermann_box >> closed.Id(Language)
+            if inside is not None:
+                return inside >> res
+            return res
         
         if tag == "fast_growing":
             from ..hyper_extended import fast_growing_box
-            return fast_growing_box >> closed.Id(Language)
+            res = fast_growing_box >> closed.Id(Language)
+            if inside is not None:
+                return inside >> res
+            return res
         
         if tag == "busy_beaver":
             from ..hyper_extended import busy_beaver_box
-            return busy_beaver_box >> closed.Id(Language)
+            res = busy_beaver_box >> closed.Id(Language)
+            if inside is not None:
+                return inside >> res
+            return res
         
         if tag == "goodstein":
             from ..hyper_extended import goodstein_box
-            return goodstein_box >> closed.Id(Language)
+            res = goodstein_box >> closed.Id(Language)
+            if inside is not None:
+                return inside >> res
+            return res
         
         if tag == "omega_iterate":
             from ..hyper_extended import iterate_omega
@@ -218,7 +240,10 @@ def construct_box(box) -> closed.Diagram:
         
         if tag == "transfinite":
             from ..hyper_extended import transfinite_box
-            return transfinite_box >> closed.Id(Language)
+            res = transfinite_box >> closed.Id(Language)
+            if inside is not None:
+                return inside >> res
+            return res
         
         if tag == "omega":
             from ..hyper_extended import OrdinalNotation
@@ -229,6 +254,14 @@ def construct_box(box) -> closed.Diagram:
             from ..hyper_extended import OrdinalNotation
             eps0 = OrdinalNotation.epsilon_0()
             return Data(str(eps0)) >> closed.Id(Language)
+        
+        if tag == "choice":
+            # Conditional choice between branches
+            if hasattr(nested, 'inside') and len(nested.inside) >= 2:
+                 branch1 = computer.yaml.construct_functor(nested.inside[0])
+                 branch2 = computer.yaml.construct_functor(nested.inside[1])
+                 return Program("choice", (branch1, branch2))
+            return inside
         
         # --- Parser Integration Tags ---
         if tag == "parse_yaml":
@@ -256,11 +289,15 @@ def construct_box(box) -> closed.Diagram:
             args = extract_args(box)
             return Program("cc", args)
 
-        if tag == "Data":
+        if tag.lower() == "data":
             # Extract scalar value from inside
             # inside is typically Data(val) already if derived from Scalar
             # If kind="Tagged", nested=Scalar("val") -> inside=Data("val")
             # So just return inside.
+            return inside
+        
+        if tag.lower() == "program":
+            # If nested is already a Program box (unwrap)
             return inside
 
         # Default: create Program with tag and args

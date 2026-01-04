@@ -2,34 +2,24 @@
 # Bootstrap Example - Self-Hosting Monoidal Computer
 # Demonstrates rebuilding the YAML parser and applying supercompilation
 
-
 - "╔════════════════════════════════════════╗"
 - "║  MONOIDAL COMPUTER BOOTSTRAP SEQUENCE  ║"
 - "╚════════════════════════════════════════╝"
 
 - "\n=== Step 1: Rebuild YAML Parser ==="
-
-- !lex lib/computer/yaml.l
+- !lex "lib/computer/yaml.l"
 - !yacc ["-d", "lib/computer/yaml.y"]
-- !cc ["lex.yy.c", "y.tab.c", "-lfl", "-o", "yaml_parser"]
+- !cc ["lex.yy.c", "y.tab.c", "-lfl", "-o", "_yaml_parser"]
 - "✓ Parser rebuilt successfully"
 
 - "\n=== Step 2: Demonstrate Supercompilation ==="
 - "Applying supercompilation to optimize code..."
-- !supercompile
-  !data "example_program"
+- !supercompile "example_program"
 
-- "\n=== Step 3: Demonstrate Futamura Projection ==="
-- "Compiling interpreter with fixed program..."
-- !futamura1
-  - !program eval
-  - !data "test_input"
-
-- "\n=== Step 4: Demonstrate Hypercomputation ==="
+- "\n=== Step 3: Demonstrate Hypercomputation ==="
 - "Computing Ackermann(2, 2)..."
-- !ackermann
+- !ackermann {m: 2, n: 2}
 
 - "\n╔════════════════════════════════════════╗"
 - "║     BOOTSTRAP COMPLETE - SELF-HOSTED   ║"
 - "╚════════════════════════════════════════╝"
-

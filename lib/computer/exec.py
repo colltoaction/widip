@@ -102,6 +102,54 @@ def exec_box(box: closed.Box) -> Process:
              from .core import Partial
              # Returning the box itself as a 'partial' application (callable/process)
              result = box 
+        elif box.name == "ackermann":
+             from .hyper_extended import ackermann_impl
+             m, n = map(int, stdin_val) if isinstance(stdin_val, tuple) else (0, 0)
+             result = ackermann_impl(m, n)
+        elif box.name == "busy_beaver":
+             from .hyper_extended import busy_beaver_impl
+             n = int(stdin_val) if stdin_val is not None else 0
+             result = busy_beaver_impl(n)
+        elif box.name == "fast_growing":
+             from .hyper_extended import fast_growing
+             alpha, n = map(int, stdin_val) if isinstance(stdin_val, tuple) else (0, 0)
+             result = fast_growing(alpha, n)
+        elif box.name == "supercompile":
+             from .super_extended import Supercompiler
+             # For supercompile, stdin_val might be a diagram or its name
+             sc = Supercompiler()
+             result = sc.supercompile(stdin_val)
+        elif box.name == "specializer":
+             from .super_extended import specialize
+             if isinstance(stdin_val, tuple) and len(stdin_val) >= 2:
+                  prog, data = stdin_val[0], stdin_val[1]
+                  # data needs to be wrapped in a Diagram if it's just a Box or Scalar
+                  if not hasattr(data, 'boxes'):
+                       from .core import Data
+                       data = Data(data)
+                  result = specialize(prog, data)
+             else:
+                  result = stdin_val
+        elif box.name == "choice":
+             if len(args_data) >= 2:
+                  branch1, branch2 = args_data
+                  # Determine truthiness of stdin_val
+                  # If result is bytes/string, non-empty is generally true
+                  # If it's a number (bool), use it.
+                  cond = False
+                  if stdin_val:
+                       if isinstance(stdin_val, (int, bool)): cond = bool(stdin_val)
+                       elif isinstance(stdin_val, (str, bytes)):
+                            # Check if it looks like "0", "false", etc.
+                            s = str(stdin_val).lower().strip()
+                            cond = s not in ["0", "false", "null", "none", ""]
+                       else:
+                            cond = True
+                  
+                  target = branch1 if cond else branch2
+                  result = await execute(target, ctx.hooks, ctx.executable, ctx.loop, stdin_val)
+             else:
+                  result = stdin_val
         else:
              result = await run_command(lambda x: x, ctx.loop, box.name, args_data, stdin_val, ctx.hooks)
         
@@ -221,15 +269,25 @@ def exec_discard(box: closed.Box) -> Process:
                       if asyncio.iscoroutine(res): await res
         return ()
     return Process(discard_fn, any_ty(len(box.dom)), any_ty(0))
-
 class UniversalObMap:
     def __getitem__(self, _): return object
     def get(self, key, default=None): return object
 
+_FUNCTOR_CACHE = {}
+
 def _exec_functor_impl(diag: closed.Diagram) -> Process:
+    import sys
+    sys.setrecursionlimit(100000) # Ensure high limit for deep recursion
+    
+    id_diag = id(diag)
+    if id_diag in _FUNCTOR_CACHE:
+        return _FUNCTOR_CACHE[id_diag]
+        
     from discopy.closed import Functor
     f = Functor(ob=UniversalObMap(), ar=exec_dispatch, cod=python.Category())
-    return f(diag)
+    res = f(diag)
+    _FUNCTOR_CACHE[id_diag] = res
+    return res
 
 from .yaml import Composable
 exec_functor = Composable(_exec_functor_impl)

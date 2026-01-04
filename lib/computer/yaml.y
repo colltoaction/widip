@@ -239,8 +239,8 @@ block_sequence
 
 block_seq_items
     : SEQ_ENTRY node                        { $$ = $2; }
-    | block_seq_items NEWLINE SEQ_ENTRY node{ $$ = append_node($1, $4); }
-    | block_seq_items NEWLINE               { $$ = $1; }
+    | block_seq_items newlines SEQ_ENTRY node{ $$ = append_node($1, $4); }
+    | block_seq_items newlines               { $$ = $1; }
     ;
 
 /* Block Mapping: key: value */
@@ -250,9 +250,9 @@ block_mapping
 
 block_map_entries
     : node COLON optional_newlines node     { $$ = append_node($1, $4); }
-    | block_map_entries NEWLINE node COLON optional_newlines node
+    | block_map_entries newlines node COLON optional_newlines node
                                             { $$ = append_node($1, append_node($3, $6)); }
-    | block_map_entries NEWLINE             { $$ = $1; }
+    | block_map_entries newlines             { $$ = $1; }
     ;
 
 %%

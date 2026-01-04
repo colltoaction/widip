@@ -1,141 +1,57 @@
 #!/usr/bin/env titi
-# Supercompilation Examples for Monoidal Computer
-# Demonstrates Futamura projections and partial evaluation
+# Supercompilation Example
+# Demonstrates Futamura projections and program specialization
 
-# --- Example 1: Simple Partial Evaluation ---
-# Specialize a power function with a fixed exponent
+- "╔════════════════════════════════════════╗"
+- "║   SUPERCOMPILATION & SPECIALIZATION    ║"
+- "╚════════════════════════════════════════╝"
 
-power_specialized: &power_spec
-  - !data 2              # Static exponent = 2
-  - !program square      # Specialized to squaring
-  - !specializer         # Apply partial evaluation
+- "\n=== Step 1: Program Specialization ==="
+- "Specializing a power function..."
 
-# --- Example 2: First Futamura Projection ---
-# Compile a simple interpreter with a fixed program
+# Complex recursive definitions are better defined as named anchors in a mapping
+- definitions:
+    power: &power
+      - !program "check_exponent"
+      - !choice
+        - 1
+        - !seq [ !program "decrement", *power, !program "multiply" ]
 
-simple_interpreter: &interp
-  !program eval_simple
+# Then we can use them
+- &power2 !specializer [ *power, 2 ]
 
-test_program: &prog
-  - !data "x + 1"
-  - !data "* 2"
+- "Executing specialized power_2(3)..."
+- !seq [ 3, *power2, !print "" ]
 
-compiled_program: &compiled
-  !futamura1
-  - *interp
-  - *prog
+- "\n=== Step 2: Futamura Projections ==="
 
-# --- Example 3: Second Futamura Projection ---
-# Generate a compiler from interpreter and specializer
+- &compiled !futamura1 [ !program "python_interpreter", "x = x * x" ]
 
-compiler: &comp
-  !futamura2
-  - *interp
-  - !program specializer
+- "Running compiled program on 4..."
+- !seq [ 4, *compiled, !print "" ]
 
-# --- Example 4: Third Futamura Projection ---
-# Generate a compiler generator
+- &compiler !futamura2 [ !program "python_interpreter", !program "specializer" ]
 
-compiler_generator: &compgen
-  !futamura3
-  - !program specializer
+- "Compiler generated."
 
-# --- Example 5: Supercompilation with Driving ---
-# Optimize a recursive function through symbolic execution
+- &cogen !futamura3 [ !program "specializer" ]
 
-factorial: &fact
-  !anchor factorial
+- "COGEN generated."
 
-  - !program "test_zero"
-  - !choice
-    - !data 1                    # Base case: 0! = 1
-    -                       # Recursive case
-      - !copy 2
-      - 
-        - !program "dec"
-        - !alias factorial       # Recursive call
-        - !program "mul"
+- "\n=== Step 3: Recursive Factorial Supercompilation ==="
 
-optimized_factorial: &opt_fact
-  !supercompile *fact
+- recursive_definitions:
+    factorial: &fact
+      - !program "test_zero"
+      - !choice
+        - 1
+        - !seq [ !copy 2, !seq [ !program "dec", *fact, !program "mul" ] ]
 
-# --- Example 6: Deforestation ---
-# Eliminate intermediate data structures
+- &opt_fact !supercompile *fact
 
-pipeline: &pipe
-  - !program map_inc           # map (+1)
-  - !program map_double        # map (*2)
-  - !program filter_even       # filter even
+- "Executing optimized factorial(5)..."
+- !seq [ 5, *opt_fact, !print "" ]
 
-deforested: &defor
-  !supercompile *pipe          # Fuses into single pass
-
-# --- Example 7: Loop Fusion ---
-# Combine multiple loops into one
-
-sum_of_squares: &sos
-  - !program map_square
-  - !program sum
-
-fused: &fused_sos
-  !supercompile *sos
-
-# --- Example 8: Constant Folding ---
-# Evaluate constant expressions at compile time
-
-constant_expr: &const
-  - !data 3
-  - !data 4
-  - !program add
-  - !data 5
-  - !program mul
-
-folded: &folded_const
-  !supercompile *const         # Should reduce to !data 35
-
-# --- Example 9: Inlining ---
-# Inline function calls
-
-helper: &helper
-  - !program double
-  - !program inc
-
-main_with_call: &main
-  - !data 10
-  - *helper
-
-inlined: &inlined_main
-  !supercompile *main
-
-# --- Example 10: Specialization Chain ---
-# Multiple levels of specialization
-
-generic_algo: &generic
-  !program generic_sort
-
-specialized_int: &spec_int
-  !specializer
-  - *generic
-  - !data "int"
-
-specialized_int_ascending: &spec_int_asc
-  !specializer
-  - *spec_int
-  - !data "ascending"
-
-# --- Main Demo: Run All Examples ---
-
-- "=== Supercompilation Demo ==="
-- "1. Partial Evaluation:"
-- *power_spec
-- "\n2. Futamura Projection 1:"
-- *compiled
-- "\n3. Futamura Projection 2:"
-- *comp
-- "\n4. Optimized Factorial:"
-- *opt_fact
-- "\n5. Deforestation:"
-- *defor
-- "\n6. Constant Folding:"
-- *folded_const
-- "\n=== Demo Complete ==="
+- "\n╔════════════════════════════════════════╗"
+- "║       SUPERCOMPILATION COMPLETE        ║"
+- "╚════════════════════════════════════════╝"

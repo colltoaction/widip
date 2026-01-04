@@ -1,14 +1,6 @@
 from __future__ import annotations
 from typing import Any
-try:
-    from itertools import batched
-except ImportError:
-    def batched(iterable, n):
-        import itertools
-        if n < 1: raise ValueError('n must be at least one')
-        it = iter(iterable)
-        while batch := tuple(itertools.islice(it, n)):
-            yield batch
+from itertools import batched
 from discopy import frobenius, monoidal, closed
 
 # Import the C-based parser bridge
@@ -36,7 +28,7 @@ def get_parser() -> YAMLParserBridge:
         try:
             _parser_instance = YAMLParserBridge()
         except FileNotFoundError:
-            # Parser not built yet - fall back to nx_yaml
+            # Parser not built yet
             return None
     return _parser_instance
 

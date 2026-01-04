@@ -39,7 +39,7 @@ A linear pipeline demonstrating sequential composition without complexity:
 
 This composition demonstrates sequential processing and parallel execution (forking to two transformers).
 
-> Dependencies include [discopy](https://pypi.org/project/discopy/), [watchfiles](https://pypi.org/project/watchfiles/), and [nx-yaml](https://pypi.org/project/nx-yaml/).
+> Dependencies include [discopy](https://pypi.org/project/discopy/) and [watchfiles](https://pypi.org/project/watchfiles/).
 
 
 ## The Titi Shell
@@ -76,8 +76,9 @@ UNIX     |File
 Lisp     |List
 Smalltalk|Object
 
-This shift elevates the shell from a text processor to a visual orchestration engine, making complex state and concurrency as intuitive to manipulate as files.
+This shift elevates the shell from a text processor to a visual orchestration engine, making complex state and concurrency as intuitive to manipulate as files. For a deeper dive into the underlying categorical structures, see the [monoidal computer] internal documentation.
 
+[monoidal computer]: lib/computer
 [UNIX shell]: https://en.wikipedia.org/wiki/Unix_shell
 [agentic programming]: https://en.wikipedia.org/wiki/Autonomous_agent
 [chatbot]: https://en.wikipedia.org/wiki/chatbot

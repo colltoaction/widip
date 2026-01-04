@@ -202,6 +202,11 @@ class Supercompiler:
         return str(d1).startswith(str(d2)[:20]) if len(str(d2)) > 20 else False
 
 
+# --- Box Definitions ---
+
+specializer_box = Program("specializer", dom=Language2, cod=Language)
+
+
 __all__ = [
     'partial_eval',
     'specialize',
@@ -210,4 +215,5 @@ __all__ = [
     'futamura_2', 
     'futamura_3',
     'Supercompiler',
+    'specializer_box',
 ]

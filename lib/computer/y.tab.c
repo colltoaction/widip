@@ -790,13 +790,13 @@ yysymbol_name (yysymbol_kind_t yysymbol)
    STATE-NUM.  */
 static const yytype_int8 yypact[] =
 {
-      13,   -10,    54,    69,   114,   -11,   -10,   -11,   -10,   -11,
-     -11,   -11,     5,    13,   -11,    84,    23,   -11,   -11,   -11,
-     -11,   -11,   -11,    -1,   -11,     4,   114,     9,   -11,    32,
-       1,   -11,    35,    29,    32,   114,   114,   -11,   -11,   -11,
-      23,   -10,   -11,    15,   114,     2,   -11,   114,    99,   -11,
-     114,    32,    32,   -11,   114,   114,    37,   -11,    32,    32,
-      38,    32,    32,   -10,    99,   114,    32,    27
+      22,   -10,    54,    69,   114,   -11,   -10,   -11,   -10,   -11,
+     -11,   -11,     8,    22,   -11,    84,     9,   -11,   -11,   -11,
+     -11,   -11,   -11,   -10,   -11,   -10,   114,    -1,   -11,     4,
+       1,   -11,    11,    41,     4,   114,   114,   -11,   -11,   -11,
+       9,   -10,   -11,     7,    84,     2,   -11,   114,    99,   -11,
+     114,     4,     4,   -11,   114,   114,    14,   -11,     4,     4,
+      19,     4,     4,   -10,    99,   114,     4,    42
 };
 
 /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -816,7 +816,7 @@ static const yytype_int8 yydefact[] =
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-     -11,   -11,   -11,    28,     3,     8,    -2,   -11,   -11,   -11,
+     -11,   -11,   -11,    31,     3,     5,    -2,   -11,   -11,   -11,
      -11,   -11,   -11,   -11,   -11,   -11,   -11,   -11
 };
 
@@ -832,12 +832,12 @@ static const yytype_int8 yydefgoto[] =
    number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int8 yytable[] =
 {
-      29,    32,    34,     5,    26,    37,    57,    46,    15,    35,
-      47,    36,    43,    40,    41,     0,     1,    44,     2,    42,
-       3,    15,    39,     4,    45,    55,     5,     6,     7,     8,
-       9,    10,    11,    51,    52,    41,     5,    49,    50,    41,
-     -41,    38,    56,    53,    41,    58,    59,    48,    60,    63,
-      64,     0,    61,    62,     0,     0,     0,     0,     0,     2,
+      29,    32,    34,     5,    26,    15,    57,    46,    37,    35,
+      47,    36,    39,    40,    41,     0,    41,    55,    15,    42,
+      39,    41,     5,    48,    45,     1,    63,     2,    43,     3,
+      44,    64,     4,    51,    52,     5,     6,     7,     8,     9,
+      10,    11,    56,    53,    38,    58,    59,     0,    60,    49,
+      50,     0,    61,    62,    41,   -41,     0,     0,     0,     2,
       28,     3,    66,    67,     4,     0,    65,     0,     6,     7,
        8,     9,    10,    11,     2,     0,     3,    31,     0,     4,
        0,     0,     0,     6,     7,     8,     9,    10,    11,     2,
@@ -851,11 +851,11 @@ static const yytype_int8 yytable[] =
 static const yytype_int8 yycheck[] =
 {
        2,     3,     4,    13,     1,     0,     4,     6,     0,     6,
-       9,     8,    13,    15,    12,    -1,     3,    13,     5,    16,
-       7,    13,    13,    10,    26,    10,    13,    14,    15,    16,
-      17,    18,    19,    35,    36,    12,    13,     8,     9,    12,
-      13,    13,    44,    40,    12,    47,    48,    12,    50,    12,
-      12,    -1,    54,    55,    -1,    -1,    -1,    -1,    -1,     5,
+       9,     8,    13,    15,    12,    -1,    12,    10,    13,    16,
+      13,    12,    13,    12,    26,     3,    12,     5,    23,     7,
+      25,    12,    10,    35,    36,    13,    14,    15,    16,    17,
+      18,    19,    44,    40,    13,    47,    48,    -1,    50,     8,
+       9,    -1,    54,    55,    12,    13,    -1,    -1,    -1,     5,
        6,     7,    64,    65,    10,    -1,    63,    -1,    14,    15,
       16,    17,    18,    19,     5,    -1,     7,     8,    -1,    10,
       -1,    -1,    -1,    14,    15,    16,    17,    18,    19,     5,
@@ -874,7 +874,7 @@ static const yytype_int8 yystos[] =
       18,    19,    21,    22,    23,    25,    26,    27,    28,    29,
       30,    32,    34,    35,    36,    37,    24,    25,     6,    26,
       31,     8,    26,    33,    26,    24,    24,     0,    23,    13,
-      26,    12,    24,    13,    13,    26,     6,     9,    12,     8,
+      26,    12,    24,    25,    25,    26,     6,     9,    12,     8,
        9,    26,    26,    24,    24,    10,    26,     4,    26,    26,
       26,    26,    26,    12,    12,    24,    26,    26
 };
@@ -1557,15 +1557,15 @@ yyreduce:
 #line 1558 "y.tab.c"
     break;
 
-  case 38: /* block_seq_items: block_seq_items NEWLINE SEQ_ENTRY node  */
+  case 38: /* block_seq_items: block_seq_items newlines SEQ_ENTRY node  */
 #line 242 "yaml.y"
-                                            { (yyval.node) = append_node((yyvsp[-3].node), (yyvsp[0].node)); }
+                                             { (yyval.node) = append_node((yyvsp[-3].node), (yyvsp[0].node)); }
 #line 1564 "y.tab.c"
     break;
 
-  case 39: /* block_seq_items: block_seq_items NEWLINE  */
+  case 39: /* block_seq_items: block_seq_items newlines  */
 #line 243 "yaml.y"
-                                            { (yyval.node) = (yyvsp[-1].node); }
+                                             { (yyval.node) = (yyvsp[-1].node); }
 #line 1570 "y.tab.c"
     break;
 
@@ -1581,15 +1581,15 @@ yyreduce:
 #line 1582 "y.tab.c"
     break;
 
-  case 42: /* block_map_entries: block_map_entries NEWLINE node COLON optional_newlines node  */
+  case 42: /* block_map_entries: block_map_entries newlines node COLON optional_newlines node  */
 #line 254 "yaml.y"
                                             { (yyval.node) = append_node((yyvsp[-5].node), append_node((yyvsp[-3].node), (yyvsp[0].node))); }
 #line 1588 "y.tab.c"
     break;
 
-  case 43: /* block_map_entries: block_map_entries NEWLINE  */
+  case 43: /* block_map_entries: block_map_entries newlines  */
 #line 255 "yaml.y"
-                                            { (yyval.node) = (yyvsp[-1].node); }
+                                             { (yyval.node) = (yyvsp[-1].node); }
 #line 1594 "y.tab.c"
     break;
 

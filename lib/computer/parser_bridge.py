@@ -179,13 +179,12 @@ class YAMLParserBridge:
             if not children:
                 return Mapping(frobenius.Id(Node), tag="")
             
-            # Children come in pairs (key, value)
+            # Children come in pairs (key, value). We only tensor the values.
             diagrams = []
             for i in range(0, len(children), 2):
                 if i + 1 < len(children):
-                    key_diag = self._convert_node(children[i])
                     val_diag = self._convert_node(children[i + 1])
-                    diagrams.append(key_diag @ val_diag)
+                    diagrams.append(val_diag)
             
             if not diagrams:
                 return Mapping(frobenius.Id(Node), tag="")

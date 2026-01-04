@@ -11,7 +11,7 @@ that uses nx_yaml, but new code should use the compiled parser.
 
 import warnings
 from discopy import symmetric
-from nx_hif.hif import hif_node_incidences, hif_edge_incidences, hif_node
+# from nx_hif.hif import hif_node_incidences, hif_edge_incidences, hif_node
 
 class CharacterStream(symmetric.Box):
     """Represents a source stream (string or file-like) of characters (HIF source)."""

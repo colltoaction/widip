@@ -81,7 +81,7 @@ test: ## Run core tests
 
 test-suite: ## Run YAML Test Suite
 	@echo "→ Running pytest on YAML Test Suite..."
-	$(PYTHON) -m pytest $(TESTS_DIR)/test_yaml_suite.py -v
+	PYTHONPATH=$$PYTHONPATH:$(LIB_DIR)/../ $(PYTHON) -m pytest $(TESTS_DIR)/test_yaml_suite.py -v
 
 test-quick: ## Run tests without verbose output
 	@$(PYTHON) -m pytest $(TESTS_DIR) --ignore=$(TESTS_DIR)/test_yaml_suite.py

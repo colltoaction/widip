@@ -69,10 +69,7 @@ def construct_dispatch(box: Any) -> closed.Diagram:
     else:
         # Default for unidentified wires/atoms
         return closed.Id(target_dom)
-    
-    # Ensure types match Language powers exactly
-    if res.dom != target_dom or res.cod != target_cod:
-        return closed.Diagram(res.inside, target_dom, target_cod)
+            
     return res
 
 # Extract base Ob from Language ensuring it's not a nested Ty

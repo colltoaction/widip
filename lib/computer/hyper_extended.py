@@ -224,6 +224,15 @@ def iterate_omega(f: closed.Diagram) -> closed.Diagram:
     return f >> omega_iter
 
 
+# --- Box Definitions for YAML Tags ---
+
+ackermann_box = Program("ackermann", dom=Language ** 2, cod=Language)
+fast_growing_box = Program("fast_growing", dom=Language ** 2, cod=Language)
+busy_beaver_box = Program("busy_beaver")
+goodstein_box = Program("goodstein")
+transfinite_box = Program("transfinite")
+
+
 def diagonal(f: closed.Diagram) -> closed.Diagram:
     """
     Diagonalization: apply a function to its own encoding.
@@ -248,4 +257,9 @@ __all__ = [
     'goodstein_sequence',
     'iterate_omega',
     'diagonal',
+    'ackermann_box',
+    'fast_growing_box',
+    'busy_beaver_box',
+    'goodstein_box',
+    'transfinite_box',
 ]
