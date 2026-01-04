@@ -137,9 +137,15 @@ PLAIN_CONT_FLOW  [a-zA-Z0-9_\-./!@#$%&()=+~\\]
                           if (tok) return tok;
                         }
 
-<INITIAL,FLOW>^%.*           { /* Ignore directives (fallback) */ }
-<INITIAL,FLOW>"%TAG"         { return TAG_DIRECTIVE; }
-<INITIAL,FLOW>"%YAML"        { return YAML_DIRECTIVE; }
+<INITIAL,FLOW>^"%TAG"       { return TAG_DIRECTIVE; }
+<INITIAL,FLOW>^"%YAML"      { return YAML_DIRECTIVE; }
+<INITIAL,FLOW>^%[^ \t\n]+    { 
+                            /* Unknown directive - consume line */
+                            int c;
+                            while((c = input()) != '\n' && c != EOF);
+                            if(c == '\n') return NEWLINE;
+                            return 0;
+                          }
 <INITIAL,FLOW>"---"          { return DOC_START; }
 <INITIAL,FLOW>"..."          { return DOC_END; }
 
@@ -147,6 +153,7 @@ PLAIN_CONT_FLOW  [a-zA-Z0-9_\-./!@#$%&()=+~\\]
                           int base_indent = indent_stack[indent_level];
                           int explicit_indent = 0;
                           int chomp = 0; 
+                          // Parse indicators
                           char *p = yytext + 1;
                           while (*p && *p != ' ' && *p != '\n' && *p != '\r' && *p != '#') {
                               if (*p >= '0' && *p <= '9') explicit_indent = *p - '0';
@@ -154,7 +161,7 @@ PLAIN_CONT_FLOW  [a-zA-Z0-9_\-./!@#$%&()=+~\\]
                               else if (*p == '-') chomp = 2;
                               p++;
                           }
-                          
+
                           int folded = (yytext[0] == '>');
                           int tok = folded ? FOLDED : LITERAL;
                           
@@ -215,6 +222,7 @@ PLAIN_CONT_FLOW  [a-zA-Z0-9_\-./!@#$%&()=+~\\]
                           
                           yylval.str = strdup(block_buffer ? block_buffer : "");
                           enqueue(LITERAL_CONTENT);
+                          enqueue(NEWLINE);
                           return tok;
                         }
 
@@ -288,7 +296,7 @@ PLAIN_CONT_FLOW  [a-zA-Z0-9_\-./!@#$%&()=+~\\]
                           return NEWLINE; 
                         }
 
-<FLOW>{NEWLINE}         { /* Check if we need to track line for errors? otherwise ignore */ }
+<FLOW>{NEWLINE}         { /* Ignore newlines in flow context */ }
 
 <INITIAL,FLOW>[ \t]+         { /* Whitespace */ }
 

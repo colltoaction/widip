@@ -202,6 +202,10 @@ char *join_scalar_values(char *s1, char *s2) {
 %token LITERAL FOLDED
 %token TAG_DIRECTIVE YAML_DIRECTIVE
 
+%nonassoc LOW_PREC
+%nonassoc TAG
+%nonassoc DEDENT
+
 %type <node> stream document document_list node optional_node flow_node block_node optional_flow_node
 %type <node> flow_seq_items flow_map_entries flow_map_entry
 %type <node> block_sequence block_mapping block_seq_items block_map_entries map_entry
@@ -229,6 +233,8 @@ document
     : node opt_newlines { $$ = $1; }
     | DOC_START opt_newlines optional_node opt_newlines { $$ = $3; }
     | directives DOC_START opt_newlines optional_node opt_newlines { $$ = $4; }
+    | DOC_END opt_newlines { $$ = make_null(); }
+    | DOC_START DOC_END opt_newlines { $$ = make_null(); }
     ;
 
 directives
@@ -287,7 +293,7 @@ flow_node
     | LBRACKET flow_seq_items RBRACKET { $$ = make_seq($2); }
     | LBRACE flow_map_entries RBRACE   { $$ = make_map($2); }
     | TAG opt_newlines flow_node { $$ = make_tag($1, $3); }
-    | TAG opt_newlines { $$ = make_tag($1, make_null()); }
+    | TAG opt_newlines { $$ = make_tag($1, make_null()); } %prec LOW_PREC
     | ANCHOR opt_newlines flow_node { 
                               $$ = malloc(sizeof(Node));
                               $$->type = NODE_ANCHOR;
@@ -301,6 +307,15 @@ flow_node
                               $$->anchor = $1;
                               $$->children = make_null();
                               $$->next = NULL;
+                            } %prec LOW_PREC
+    ;
+    | INDENT TAG opt_newlines DEDENT flow_node { $$ = make_tag($2, $5); }
+    | INDENT ANCHOR opt_newlines DEDENT flow_node {
+                              $$ = malloc(sizeof(Node));
+                              $$->type = NODE_ANCHOR;
+                              $$->anchor = $2;
+                              $$->children = $5;
+                              $$->next = NULL;
                             }
     ;
 
@@ -310,7 +325,6 @@ block_node
     | LITERAL LITERAL_CONTENT { $$ = make_block_scalar($2, 0); }
     | FOLDED LITERAL_CONTENT  { $$ = make_block_scalar($2, 1); }
     | TAG opt_newlines block_node { $$ = make_tag($1, $3); }
-    | TAG opt_newlines { $$ = make_tag($1, make_null()); }
     | ANCHOR opt_newlines block_node { 
                               $$ = malloc(sizeof(Node));
                               $$->type = NODE_ANCHOR;
@@ -318,14 +332,15 @@ block_node
                               $$->children = $3;
                               $$->next = NULL;
                             }
-    | ANCHOR opt_newlines { 
+    | INDENT node DEDENT    { $$ = $2; }
+    | INDENT TAG opt_newlines DEDENT node { $$ = make_tag($2, $5); }
+    | INDENT ANCHOR opt_newlines DEDENT node {
                               $$ = malloc(sizeof(Node));
                               $$->type = NODE_ANCHOR;
-                              $$->anchor = $1;
-                              $$->children = make_null();
+                              $$->anchor = $2;
+                              $$->children = $5;
                               $$->next = NULL;
                             }
-    | INDENT node DEDENT    { $$ = $2; }
     ;
 
 anchored_node
@@ -354,7 +369,7 @@ anchored_node
 
 merged_plain_scalar
     : PLAIN_SCALAR { $$ = $1; }
-    | merged_plain_scalar NEWLINE INDENT PLAIN_SCALAR DEDENT { $$ = join_scalar_values($1, $4); }
+    | merged_plain_scalar NEWLINE INDENT PLAIN_SCALAR opt_newlines DEDENT { $$ = join_scalar_values($1, $4); }
     | merged_plain_scalar PLAIN_SCALAR { $$ = join_scalar_values($1, $2); }
     ;
 
@@ -410,6 +425,8 @@ map_entry
     | node COLON newlines tagged_node { $$ = append_node($1, $4); }
     | MAP_KEY optional_node COLON opt_newlines optional_node { $$ = append_node($2, $5); }
     | MAP_KEY optional_node                 { $$ = append_node($2, make_null()); }
+    | MAP_KEY newlines INDENT optional_node DEDENT COLON opt_newlines optional_node { $$ = append_node($4, $8); }
+    | MAP_KEY newlines INDENT optional_node DEDENT { $$ = append_node($4, make_null()); }
     ;
 
 %%
