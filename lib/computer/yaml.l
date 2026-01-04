@@ -58,7 +58,7 @@ PLAIN_CHAR  [a-zA-Z0-9_\-./]
                           return SQUOTE_STRING;
                         }
 
-{PLAIN_CHAR}+           { yylval.str = strdup(yytext); return PLAIN_SCALAR; }
+{PLAIN_CHAR}+({WS}+{PLAIN_CHAR}+)*  { yylval.str = strdup(yytext); return PLAIN_SCALAR; }
 
 ^{SPACE}+               { 
                           pending_indent = yyleng;

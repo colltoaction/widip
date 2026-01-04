@@ -198,11 +198,13 @@ class YAMLParserBridge:
         elif node_type == 'ALIAS':
             # Aliases become Alias boxes
             alias_name = node.get('value', '')
+            if alias_name.startswith("*"): alias_name = alias_name[1:]
             return Alias(alias_name)
         
         elif node_type == 'ANCHOR':
             # Anchors wrap their children
             anchor_name = node.get('value', '')
+            if anchor_name.startswith("&"): anchor_name = anchor_name[1:]
             children = node.get('children', [])
             
             if children:
