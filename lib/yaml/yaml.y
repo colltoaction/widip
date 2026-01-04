@@ -220,7 +220,7 @@ char *join_scalar_values(char *s1, char *s2) {
 %type <node> flow_seq_items flow_map_entries flow_entry flow_seq_item
 %type <node> block_sequence block_mapping map_entry
 %type <node> entry_key entry_value opt_entry_value
-%type <node> properties node_content
+%type <node> properties content seq_entry mapping_entry
 %type <str> merged_plain_scalar
 
 %start stream
@@ -287,29 +287,22 @@ opt_node
     | /* empty */ { $$ = make_null(); }
     ;
 
-
-
 node
-    : node_content                          { $$ = $1; }
-    | properties node_content               { 
-          $$ = $2;
-          if ($1->anchor) $$ = make_anchor($1->anchor, $$);
-          if ($1->tag)    $$ = make_tag($1->tag, $$);
-          // Note: If properties were nested, we'd need a loop or recursion here
-      }
-    | properties %prec LOW_PREC             { $$ = $1; }
+    : content
+    | properties content
+    | properties %prec LOW_PREC
+    ;
+
+content
+    : flow_node
+    | block_node
     ;
 
 properties
-    : ANCHOR opt_newlines                   { $$ = make_anchor($1, make_null()); }
-    | TAG opt_newlines                      { $$ = make_tag($1, make_null()); }
-    | ANCHOR opt_newlines TAG opt_newlines  { $$ = make_anchor($1, make_tag($3, make_null())); }
-    | TAG opt_newlines ANCHOR opt_newlines  { $$ = make_tag($1, make_anchor($3, make_null())); }
-    ;
-
-node_content
-    : flow_node
-    | block_node
+    : ANCHOR opt_newlines { $$ = make_anchor($1, make_null()); }
+    | TAG opt_newlines    { $$ = make_tag($1, make_null()); }
+    | ANCHOR opt_newlines TAG opt_newlines { $$ = make_anchor($1, make_tag($3, make_null())); }
+    | TAG opt_newlines ANCHOR opt_newlines { $$ = make_tag($1, make_anchor($3, make_null())); }
     ;
 
 flow_node
@@ -317,10 +310,10 @@ flow_node
     | DQUOTE_STRING         { $$ = make_scalar($1); }
     | SQUOTE_STRING         { $$ = make_scalar($1); }
     | ALIAS                 { $$ = make_alias($1); }
-    | LBRACKET flow_seq_items RBRACKET { $$ = make_seq($2); }
-    | LBRACKET RBRACKET { $$ = make_seq(NULL); }
     | LBRACE flow_map_entries RBRACE   { $$ = make_map($2); }
     | LBRACE RBRACE { $$ = make_map(NULL); }
+    | LBRACKET flow_seq_items RBRACKET { $$ = make_seq($2); }
+    | LBRACKET RBRACKET { $$ = make_seq(NULL); }
     ;
 
 block_node
@@ -362,18 +355,26 @@ flow_entry
     ;
 
 block_sequence
-    : SEQ_ENTRY opt_node { $$ = make_seq($2); }
-    | block_sequence opt_newlines SEQ_ENTRY opt_node { append_node($1->children, $4); $$ = $1; }
+    : seq_entry { $$ = make_seq($1); }
+    | block_sequence seq_entry { append_node($1->children, $2); $$ = $1; }
+    ;
+
+seq_entry
+    : SEQ_ENTRY opt_node opt_newlines { $$ = $2; }
     ;
 
 block_mapping
-    : map_entry { $$ = make_map($1); }
-    | block_mapping opt_newlines map_entry { append_node($1->children, $3); $$ = $1; }
+    : mapping_entry { $$ = make_map($1); }
+    | block_mapping mapping_entry { append_node($1->children, $2); $$ = $1; }
+    ;
+
+mapping_entry
+    : map_entry opt_newlines { $$ = $1; }
     ;
 
 map_entry
-    : node entry_value   { $$ = append_node($1, $2); }
-    | entry_key opt_entry_value { $$ = append_node($1, $2); }
+    : node entry_value            { $$ = append_node($1, $2); }
+    | entry_key opt_entry_value   { $$ = append_node($1, $2); }
     ;
 
 entry_key
