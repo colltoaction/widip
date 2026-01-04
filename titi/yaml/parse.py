@@ -56,8 +56,7 @@ def from_hif(data: dict) -> symmetric.Hypergraph:
 
 # --- Serialization Primitives (Native DisCoPy Factories) ---
 from .representation import (
-    Scalar, Alias, Sequence, Mapping, Anchor, Document, Stream,
-    ScalarBox, SequenceBox, MappingBox, AnchorBox, AliasBox, DocumentBox, StreamBox,
+    Scalar, Alias, Sequence, Mapping, Anchor, Document, Stream, YamlBox,
     Node
 )
 

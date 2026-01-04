@@ -1,64 +1,60 @@
 from __future__ import annotations
 from typing import Any
-from discopy import symmetric, monoidal
+from discopy import symmetric
 
 # --- The Node Graph Category (Semantic) ---
 Node = symmetric.Ty("Node")
-
 NodeGraph = symmetric.Category(Node, symmetric.Diagram)
 
-# --- Semantic Boxes (Constructs) ---
+# --- Generic Semantic Box ---
 
-class ScalarBox(symmetric.Box):
-    def __init__(self, tag: str, value: Any, dom=Node, cod=Node):
-        super().__init__("Scalar", dom, cod, data=(tag, value))
-        self.tag, self.value = tag, value
+class YamlBox(symmetric.Box):
+    def __init__(self, name: str, dom=Node, cod=Node, **kwargs):
+        # We store all metadata in data, including tag and nested content
+        # This unifies the interface. 
+        # structure of data: {"kind": name, "tag": tag, "value": value, "nested": nested}
+        # But symmetric.Box.data is often expected to be hashable or simple.
+        # DisCoPy preserves whatever we pass.
+        # Let's use kwargs as the data dict for simplicity, but strictly we should pass it to super.
+        
+        # Normalize args
+        self.kind = name
+        self.tag = kwargs.get("tag", "")
+        self.value = kwargs.get("value", None)
+        self.nested = kwargs.get("nested", None)
+        self.anchor_name = kwargs.get("anchor_name", None) # For Anchor/Alias
+        
+        # We can pass `self` attributes as data, or a frozen dict/tuple
+        super().__init__(name, dom, cod, data=kwargs)
 
-class SequenceBox(symmetric.Box):
-    def __init__(self, inside: symmetric.Diagram, tag="", dom=Node, cod=Node, **kwargs):
-        super().__init__("Sequence", dom, cod, data=inside)
-        self.tag, self.nested = tag, inside
-
-class MappingBox(symmetric.Box):
-    def __init__(self, inside: symmetric.Diagram, tag="", dom=Node, cod=Node, **kwargs):
-        super().__init__("Mapping", dom, cod, data=inside)
-        self.tag, self.nested = tag, inside
-
-class TitiBox(symmetric.Box):
-    def __init__(self, inside: symmetric.Diagram, **kwargs):
-        super().__init__("Titi", Node, Node, data=inside)
-        self.nested = inside
-
-class AnchorBox(symmetric.Box):
-    def __init__(self, name: str, inside: symmetric.Diagram, dom=Node, cod=Node):
-        super().__init__(f"Anchor({name})", dom, cod, data=inside)
-        self.name, self.nested = name, inside
-
-class AliasBox(symmetric.Box):
-    def __init__(self, name: str, dom=Node, cod=Node):
-        super().__init__(name, dom, cod, data=name)
-        self.name = name
-
-class DocumentBox(symmetric.Box):
-    def __init__(self, inside: symmetric.Diagram, dom=Node, cod=Node):
-        super().__init__("Document", dom, cod, data=inside)
-        self.nested = inside
-
-class StreamBox(symmetric.Box):
-    def __init__(self, inside: symmetric.Diagram, dom=Node, cod=Node):
-        super().__init__("Stream", dom, cod, data=inside)
-        self.nested = inside
+    def __repr__(self):
+        return f"YamlBox(kind={self.kind}, tag={self.tag!r}, ...)"
 
 # --- Factories ---
 
-Scalar = lambda tag, val: ScalarBox(tag, val)
-Sequence = lambda inside, tag="", *args, **kwargs: SequenceBox(inside, tag, *args, **kwargs)
-Mapping = lambda inside, tag="": MappingBox(inside, tag)
-Titi = lambda inside, *args, **kwargs: TitiBox(inside, **kwargs)
-Anchor = lambda name, inside: AnchorBox(name, inside)
-Alias = lambda name: AliasBox(name)
-Document = lambda inside: DocumentBox(inside)
-Stream = lambda inside: StreamBox(inside)
+def Scalar(tag, value):
+    return YamlBox("Scalar", tag=tag, value=value)
+
+def Sequence(inside, tag="", **kwargs):
+    return YamlBox("Sequence", nested=inside, tag=tag, **kwargs)
+
+def Mapping(inside, tag=""):
+    return YamlBox("Mapping", nested=inside, tag=tag)
+
+def Titi(inside, **kwargs):
+    return YamlBox("Titi", nested=inside, **kwargs)
+
+def Anchor(name, inside):
+    return YamlBox("Anchor", anchor_name=name, nested=inside, name=f"Anchor({name})")
+
+def Alias(name):
+    return YamlBox("Alias", anchor_name=name, name=name)
+
+def Document(inside):
+    return YamlBox("Document", nested=inside)
+
+def Stream(inside):
+    return YamlBox("Stream", nested=inside)
 
 # --- Compose Implementation Functions ---
 
@@ -66,6 +62,7 @@ def comp_seq(box, compose): return Sequence(compose(box.nested), tag=box.tag)
 def comp_map(box, compose): return Mapping(compose(box.nested), tag=box.tag)
 def comp_doc(box, compose): return Document(compose(box.nested))
 def comp_str(box, compose): return Stream(compose(box.nested))
-def comp_anc(box, compose): return Anchor(box.name, compose(box.nested))
-def comp_sca(box): return Scalar(box.data[0], box.data[1])
-def comp_ali(box): return Alias(box.data)
+def comp_anc(box, compose): return Anchor(box.anchor_name, compose(box.nested))
+def comp_sca(box): return Scalar(box.tag, box.value)
+def comp_ali(box): return Alias(box.anchor_name)
+def comp_tit(box, compose): return Titi(compose(box.nested))
