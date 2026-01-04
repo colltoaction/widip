@@ -288,9 +288,14 @@ opt_node
     ;
 
 node
-    : content
-    | properties content
-    | properties %prec LOW_PREC
+    : content                           { $$ = $1; }
+    | properties content                {
+          // Apply properties to content
+          $$ = $2;
+          if ($1->anchor) $$ = make_anchor($1->anchor, $$);
+          if ($1->tag)    $$ = make_tag($1->tag, $$);
+      }
+    | properties %prec LOW_PREC         { $$ = $1; }
     ;
 
 content
@@ -299,10 +304,10 @@ content
     ;
 
 properties
-    : ANCHOR opt_newlines { $$ = make_anchor($1, make_null()); }
-    | TAG opt_newlines    { $$ = make_tag($1, make_null()); }
-    | ANCHOR opt_newlines TAG opt_newlines { $$ = make_anchor($1, make_tag($3, make_null())); }
-    | TAG opt_newlines ANCHOR opt_newlines { $$ = make_tag($1, make_anchor($3, make_null())); }
+    : ANCHOR opt_newlines               { $$ = make_anchor($1, make_null()); }
+    | TAG opt_newlines                  { $$ = make_tag($1, make_null()); }
+    | ANCHOR opt_newlines TAG opt_newlines  { $$ = make_anchor($1, make_tag($3, make_null())); }
+    | TAG opt_newlines ANCHOR opt_newlines  { $$ = make_tag($1, make_anchor($3, make_null())); }
     ;
 
 flow_node
@@ -321,7 +326,6 @@ block_node
     | block_mapping  { $$ = $1; }
     | LITERAL LITERAL_CONTENT { $$ = make_block_scalar($2, 0); }
     | FOLDED LITERAL_CONTENT  { $$ = make_block_scalar($2, 1); }
-    | INDENT node opt_newlines DEDENT { $$ = $2; }
     ;
 
 merged_plain_scalar
@@ -355,21 +359,21 @@ flow_entry
     ;
 
 block_sequence
-    : seq_entry { $$ = make_seq($1); }
-    | block_sequence seq_entry { append_node($1->children, $2); $$ = $1; }
+    : seq_entry opt_newlines { $$ = make_seq($1); }
+    | block_sequence NEWLINE SEQ_ENTRY opt_node opt_newlines { append_node($1->children, $4); $$ = $1; }
     ;
 
 seq_entry
-    : SEQ_ENTRY opt_node opt_newlines { $$ = $2; }
+    : SEQ_ENTRY opt_node { $$ = $2; }
     ;
 
 block_mapping
-    : mapping_entry { $$ = make_map($1); }
-    | block_mapping mapping_entry { append_node($1->children, $2); $$ = $1; }
+    : mapping_entry opt_newlines { $$ = make_map($1); }
+    | block_mapping NEWLINE map_entry opt_newlines { append_node($1->children, $3); $$ = $1; }
     ;
 
 mapping_entry
-    : map_entry opt_newlines { $$ = $1; }
+    : map_entry { $$ = $1; }
     ;
 
 map_entry
@@ -383,7 +387,8 @@ entry_key
     ;
 
 entry_value
-    : COLON opt_newlines opt_node { $$ = $3; }
+    : COLON opt_newlines flow_node { $$ = $3; }
+    | COLON opt_newlines INDENT block_node DEDENT { $$ = $4; }
     ;
 
 opt_entry_value

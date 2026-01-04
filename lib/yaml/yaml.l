@@ -99,7 +99,7 @@ int yylex() {
     } else {
         tok = real_yylex();
     }
-    if (tok > 0) fprintf(stderr, "TOKEN: %s (%s) at line %d\n", tok_name(tok), yytext, yylineno);
+    // if (tok > 0) fprintf(stderr, "TOKEN: %s (%s) at line %d\n", tok_name(tok), yytext, yylineno);
     return tok;
 }
 
