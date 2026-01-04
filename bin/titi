@@ -31,5 +31,5 @@ def boot():
     print(f"{PURPLE}---------------------------------------{NC}", flush=True)
 
 if __name__ == "__main__":
-    boot()
+    # boot()
     repl()

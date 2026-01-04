@@ -20,25 +20,22 @@ def make_merge(n):
 def extract_args(box):
     """Recursively extract static arguments from boxes, following representation kinds."""
     if hasattr(box, 'kind') and box.kind == "Scalar":
-        return (str(getattr(box, 'value', '')),)
+        val = getattr(box, 'value', None)
+        if not val: return ()
+        return (str(val),)
     
     nested = getattr(box, 'nested', None)
     if nested is not None: 
-        if hasattr(nested, 'boxes'):
-            args = []
-            for b in nested.boxes:
-                # If it's a Scalar box, we want its value
-                if hasattr(b, 'kind') and b.kind == "Scalar":
-                    args.append(str(getattr(b, 'value', '')))
-                elif hasattr(b, 'name') and b.name not in ["Δ", "μ", "ε"]:
-                    args.append(b.name)
-            return tuple(args)
-        
         args = []
-        try:
-            if hasattr(nested, 'kind'):
-                 args.extend(extract_args(nested))
-        except Exception: pass
+        # If nested is a diagram, iterate its boxes
+        if hasattr(nested, 'boxes'):
+            for b in nested.boxes:
+                if hasattr(b, 'kind'):
+                    args.extend(extract_args(b))
+        # If nested is a single box or object
+        elif hasattr(nested, 'kind'):
+             args.extend(extract_args(nested))
+             
         return tuple(args)
     return ()
 
@@ -87,7 +84,7 @@ def construct_box(box) -> closed.Diagram:
     # 4. Handle Scalar (Leaf)
     if kind == "Scalar":
         if tag:
-            args = (value,) if value is not None else ()
+            args = (value,) if value else ()
             if tag == "id": return closed.Id(Language)
             if tag == "xargs": return Program("xargs", (value,))
             if tag == "Data": return Data(value)
@@ -145,6 +142,8 @@ def construct_box(box) -> closed.Diagram:
     if kind == "ε": return discard
 
     if tag and kind not in ["Titi"]:
-        return Program(tag, (inside,))
+        if tag == "seq": return inside
+        args = extract_args(box)
+        return Program(tag, args)
 
     return inside

@@ -263,7 +263,7 @@ async def run_command(runner: Callable, loop: EventLoop,
 
     process = await asyncio.create_subprocess_exec(
         hooks['fspath'](name_str), *args_str,
-        stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=None
     )
     
     # Fire-and-forget stdin feeder
@@ -290,8 +290,6 @@ async def drain_to_stdout(stream: Any, hooks: dict):
 
 async def printer(rec: Any, val: Any, hooks: dict):
     """Print output handler."""
-    with open("debug_out.txt", "a") as f:
-         f.write(f"printer called with val={val}\n")
     if val is None: return
     if hasattr(val, 'read'):
         await drain_to_stdout(val, hooks)

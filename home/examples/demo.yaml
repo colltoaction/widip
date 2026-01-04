@@ -1,0 +1,6 @@
+!seq
+- !echo "Welcome to Titi Shell"
+- !tee /dev/stderr
+- !tr {"[:lower:]", "[:upper:]"}
+- !tr {"[:upper:]", "[:lower:]"}
+- !cat
