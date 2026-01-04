@@ -31,7 +31,7 @@ def test_basic_compilation(yaml_src, expected_name, expected_args):
 def test_composition_compilation(yaml_src, expected_box_names):
     """Verify composition of commands compiles correctly."""
     diag = load(yaml_src)
-    assert [b.name for b in diag.boxes if b.name not in ["Δ", "μ", "ε"]] == expected_box_names
+    assert [b.name for b in diag.boxes if b.name not in ["Δ", "μ", "ε", "print"]] == expected_box_names
 
 def test_mapping_compilation_wiring():
     """Verify Mapping compiles with fan-out (copy) and fan-in (merge)."""

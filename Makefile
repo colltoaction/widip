@@ -75,15 +75,19 @@ install-dev: install ## Install with development dependencies
 	$(PYTHON) -m pip install -e ".[test]"
 
 # --- Testing Targets ---
-test: ## Run all tests
-	@echo "→ Running pytest..."
-	$(PYTHON) -m pytest $(TESTS_DIR) -v
+test: ## Run core tests
+	@echo "→ Running pytest on core tests..."
+	PYTHONPATH=$$PYTHONPATH:$(LIB_DIR)/../ $(PYTHON) -m pytest $(TESTS_DIR) --ignore=$(TESTS_DIR)/test_yaml_suite.py -v
+
+test-suite: ## Run YAML Test Suite
+	@echo "→ Running pytest on YAML Test Suite..."
+	$(PYTHON) -m pytest $(TESTS_DIR)/test_yaml_suite.py -v
 
 test-quick: ## Run tests without verbose output
-	@$(PYTHON) -m pytest $(TESTS_DIR)
+	@$(PYTHON) -m pytest $(TESTS_DIR) --ignore=$(TESTS_DIR)/test_yaml_suite.py
 
 test-watch: ## Run tests in watch mode (requires pytest-watch)
-	@$(PYTHON) -m pytest-watch $(TESTS_DIR)
+	@$(PYTHON) -m pytest-watch $(TESTS_DIR) --ignore=$(TESTS_DIR)/test_yaml_suite.py
 
 # --- Development Targets ---
 dev: install-dev parser ## Setup development environment

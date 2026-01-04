@@ -1,6 +1,14 @@
 from __future__ import annotations
 from typing import Any
-from itertools import batched
+try:
+    from itertools import batched
+except ImportError:
+    def batched(iterable, n):
+        import itertools
+        if n < 1: raise ValueError('n must be at least one')
+        it = iter(iterable)
+        while batch := tuple(itertools.islice(it, n)):
+            yield batch
 from discopy import frobenius, monoidal, closed
 
 # Import the C-based parser bridge

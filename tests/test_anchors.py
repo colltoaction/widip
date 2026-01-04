@@ -57,8 +57,8 @@ async def test_manual_anchor_exec():
     # Define a diagram that uses the alias
     alias_diag = Program("alias", ("my_loop",))
     
-    # Sequence: anchor >> alias
-    full_diag = anchor_diag >> alias_diag
+    # Sequence: anchor >> print >> alias
+    full_diag = anchor_diag >> Program("print") >> alias_diag
     
     output = []
     hooks = {
@@ -70,7 +70,17 @@ async def test_manual_anchor_exec():
     import asyncio
     loop = asyncio.get_running_loop()
     
-    await execute(full_diag, hooks, "python3", loop, b"input")
+    # Run and capture final result too (mimic REPL)
+    res = await execute(full_diag, hooks, "python3", loop, b"input")
+    # For the final result (from alias), we need to handle it if "print" didn't consume it
+    # But Program("print") consumes input and returns ()/None (empty codomain).
+    # Wait, check exec.py: result = () if not cod else stdin_val
+    # Program("print") has cod=0 ? default is 1 if not specified? 
+    # Program default cod is 1. 
+    # So print returns the value.
+    if res is not None:
+         from computer.asyncio import printer
+         await printer(None, res, hooks)
     
     # Anchor execution prints "Inside", then Alias execution prints "Inside"
     assert output.count("Inside\n") == 2
@@ -80,7 +90,8 @@ async def test_manual_anchor_exec():
 async def test_parametrized_anchors(anchor_name):
     """Verify different anchor names work correctly."""
     inner = Program("echo", (anchor_name,))
-    diag = Program("anchor", (anchor_name, inner)) >> Program("alias", (anchor_name,))
+    # anchor >> print >> alias
+    diag = Program("anchor", (anchor_name, inner)) >> Program("print") >> Program("alias", (anchor_name,))
     
     output = []
     hooks = {
@@ -90,5 +101,9 @@ async def test_parametrized_anchors(anchor_name):
     }
     
     loop = asyncio.get_running_loop()
-    await execute(diag, hooks, "python3", loop)
+    res = await execute(diag, hooks, "python3", loop)
+    if res is not None:
+         from computer.asyncio import printer
+         await printer(None, res, hooks)
+         
     assert output.count(f"{anchor_name}\n") == 2

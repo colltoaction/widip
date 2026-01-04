@@ -179,3 +179,5 @@ cython_debug/
 /lib/computer/y.tab.h
 /lib/computer/_yaml_parser
 /titi/yaml_parser
+/tests/yaml-test-suite
+

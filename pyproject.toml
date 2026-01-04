@@ -3,21 +3,25 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["titi", "bin", "lib"]
+packages = ["titi", "bin", "lib/computer"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"lib/computer/yaml_parser" = "lib/computer/yaml_parser"
+[tool.hatch.build.targets.wheel.sources]
+"lib/computer" = "computer"
 
 [project]
 name = "titi"
 version = "0.1.0"
 description = "Titi is an interactive environment for computing with wiring diagrams in modern systems"
 dependencies = [
-  "discopy>=1.2.2", "watchfiles>=1.1.1", "nx-yaml>=1.0.0",
+  "discopy>=1.2.2", "watchfiles>=1.1.1",
 ]
+
+[tool.hatch.build.targets.wheel.force-include]
+"lib/computer/_yaml_parser" = "computer/_yaml_parser"
 
 [project.scripts]
 titi = "titi.__main__:main"
+titi-parser = "computer.cli_parser:main"
 
 [project.optional-dependencies]
 test = [

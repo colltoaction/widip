@@ -14,10 +14,13 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Set up Python 3.10
+    - name: Set up Python 3.13
       uses: actions/setup-python@v4
       with:
-        python-version: "3.10"
+        python-version: "3.13"
+
+    - name: Clone YAML Test Suite
+      run: git clone https://github.com/yaml/yaml-test-suite tests/yaml-test-suite
 
     - name: Install System Dependencies
       run: |
@@ -38,6 +41,10 @@ jobs:
     - name: Run Demo (Hello World)
       run: make demo-hello
 
-    - name: Run Tests
+    - name: Run Core Tests
       run: make test
+
+    - name: Run YAML Test Suite
+      run: make test-suite
+      continue-on-error: true
 
