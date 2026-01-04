@@ -1,68 +1,83 @@
-from discopy import closed, monoidal
+from discopy import closed, monoidal, symmetric
 import functools
 import operator
+from typing import Any
 
-Language = closed.Ty("ℙ")  # ℙ is the type of programs/processes
-Language2 = Language @ Language  # Tensor product for binary operations
+# --- Core Types ---
+# Use fixed Ob instance
+ℙ_OB = closed.cat.Ob("ℙ")
+Language = closed.Ty(ℙ_OB)
+Language2 = Language.tensor(Language)
 
 class Data(closed.Box):
-    def __init__(self, name, dom=None, cod=None):
-        # Default to Language type for categorical composition
+    def __init__(self, name: Any, dom=None, cod=None):
         if dom is None: dom = Language
         if cod is None: cod = Language
-        super().__init__(name, dom, cod)
+        super().__init__(str(name), dom, cod)
 
 class Program(closed.Box):
-    def __init__(self, name, args=None, dom=None, cod=None):
-        # Default to Language type for categorical composition
+    def __init__(self, name: str, args=None, dom=None, cod=None):
         if dom is None: dom = Language
         if cod is None: cod = Language
         super().__init__(name, dom, cod)
         self.args = args or []
 
 class Partial(closed.Box):
-    def __init__(self, name, dom=None, cod=None):
-        # Ensure the name is a string to satisfy DisCoPy's expectations
-        name = str(name)
-        super().__init__(name, dom or Language, cod or Language)
+    def __init__(self, name: str, dom=None, cod=None):
+        super().__init__(str(name), dom or Language, cod or Language)
 
-def eval_diagram(tuples):
-    """
-    monoid
-    """
-    if not tuples:
-        return ()
-    return functools.reduce(operator.add, tuples, ())
-
-def eval_python(code):
-    """
-    functor
-    """
-    return eval(code)
-
-service_map = {}
-
-class Copy(monoidal.Box):
+# --- Algebraic Operations ---
+class Copy(closed.Box):
+    """Copying data (Δ)."""
     def __init__(self, x=None, n=2):
         x = x or Language
-        super().__init__(f"Copy({x}, {n})", x, x ** n)
+        super().__init__("Δ", x, closed.Ty(*[x[0]] * n))
         self.n = n
 
-class Merge(monoidal.Box):
+class Merge(closed.Box):
+    """Merging data (μ)."""
     def __init__(self, x=None, n=2):
         x = x or Language
-        super().__init__(f"Merge({x}, {n})", x ** n, x)
+        super().__init__("μ", closed.Ty(*[x[0]] * n), x)
         self.n = n
 
-class Discard(monoidal.Box):
+class Discard(closed.Box):
+    """Discarding data (ε)."""
     def __init__(self, x=None):
         x = x or Language
-        super().__init__(f"Discard({x})", x, monoidal.Ty())
+        super().__init__("ε", x, closed.Ty())
 
-class Computation:
-    # Stub for Computation category
-    pass
+# --- Core Combinator Diagrams ---
+# Helper to wrap a box in a diagram by composing with identity
+def box_to_diag(box):
+    return box >> closed.Id(box.cod)
+
+# Define as simple diagram objects
+copy = box_to_diag(Copy(Language, 2))
+merge = box_to_diag(Merge(Language, 2))
+discard = box_to_diag(Discard(Language))
+
+# eval_diagram is an alias for merge in the monoidal computer context
+eval_diagram = merge
+
+def eval_diagram_fn(x, y):
+    """Functional version of eval_diagram."""
+    return Merge(Language, 2)(x, y)
+
+def eval_python(code: str):
+    """Dynamic evaluator."""
+    return eval(code)
 
 class Titi:
-    read_stdin = Program("read_stdin")
-    printer = Program("print")
+    """Titi service objects."""
+    read_stdin = Program("read_stdin", dom=closed.Ty(), cod=Language)
+    printer = Program("print", dom=Language, cod=closed.Ty())
+
+service_map = {
+    "read_stdin": Titi.read_stdin,
+    "print": Titi.printer
+}
+
+class Computation:
+    """Stub for Computation category."""
+    pass

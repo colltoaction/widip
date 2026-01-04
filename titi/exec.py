@@ -59,83 +59,81 @@ def any_ty(n: int):
     return python.Ty(n * [object])
 
 def exec_swap(box: symmetric.Swap) -> Process:
-    return Process(lambda a, b: (b, a), any_ty(2), any_ty(2))
+    return Process(lambda a, b: (b, a), any_ty(len(box.dom)), any_ty(len(box.cod)))
 
 # --- Dispatcher ---
 
 def exec_dispatch(box: Any) -> Process:
     if isinstance(box, (closed.Box, symmetric.Box)):
         if isinstance(box, symmetric.Swap): return exec_swap(box)
-        if hasattr(box, 'name') and box.name == "Δ": return exec_copy(box)
+        if hasattr(box, 'name'):
+            if box.name == "Δ": return exec_copy(box)
+            if box.name == "μ": return exec_merge(box)
+            if box.name == "ε": return exec_discard(box)
         return exec_box(box)
     return Process.id(any_ty(getattr(box, 'dom', closed.Ty())))
 
-# --- Copy Execution ---
+# --- Core Combinators Execution ---
 
 def exec_copy(box: closed.Box) -> Process:
-    """Handles async copy by returning multiple awaitables."""
-    import asyncio
+    """Handles async copy (Δ) by returning multiple awaitables or teed streams."""
+    n = getattr(box, 'n', 2)
     
-    async def _resolve_and_copy(shared_task, index):
-        res = await shared_task
-        # Logic matches _copy service: value or stream tee
-        if hasattr(res, 'read'):
-            # TODO: robust caching/teeing for streams. 
-            # For now assume memory IO or lightweight streams that support seek/copy?
-            # Or use native _copy logic which reads fully.
-            # We can reuse _copy logic but we need to run it once.
-            pass
-        return res # Placeholder, correct logic below
-
     def copy_fn(x):
-        # x is the input awaitable/value
-        # Create a shared task to resolve x ONCE
         loop = _EXEC_CTX.get().loop
-        
+        from .asyncio import unwrap
+        import io
+
         async def loader():
-             # We rely on the native _copy anchor logic to do the heavy lifting (reading/teeing)!
-             # But _copy expects input. 
-             # We unwrap x using standard unwrap.
-             # Then call _copy logic.
-             from .asyncio import unwrap
              val = await unwrap(loop, x)
-             
-             # Reuse native _copy implementation from anchors?
-             # But anchors are async def.
-             # Let's verify if we can just return copies of x if x is awaitable?
-             # No, x is single input.
-             # We must resolve x.
-             
              if hasattr(val, 'read'):
                   content = await val.read()
-                  import io
-                  return (io.BytesIO(content), io.BytesIO(content))
-             return (val, val)
+                  return tuple(io.BytesIO(content) for _ in range(n))
+             return (val,) * n
 
-        # Shared task
+        # Shared task to resolve once
         task = loop.create_task(loader())
         
-        # Return N awaitables that wait for task and pick their component
         async def getter(i):
              res_tuple = await task
              return res_tuple[i]
              
-        return (getter(0), getter(1))
+        return tuple(getter(i) for i in range(n))
 
-    return Process(copy_fn, any_ty(1), any_ty(2))
+    return Process(copy_fn, any_ty(1), any_ty(n))
+
+def exec_merge(box: closed.Box) -> Process:
+    """Handles merging (μ). For now, defaults to first non-None."""
+    n = getattr(box, 'n', 2)
+    async def merge_fn(*args):
+        from .asyncio import unwrap
+        loop = _EXEC_CTX.get().loop
+        results = [await unwrap(loop, a) for a in args]
+        return next((r for r in results if r is not None), None)
+    return Process(merge_fn, any_ty(n), any_ty(1))
+
+def exec_discard(box: closed.Box) -> Process:
+    """Handles discarding (ε)."""
+    async def discard_fn(*args): return ()
+    return Process(discard_fn, any_ty(len(box.dom)), any_ty(0))
+
 
 def exec_functor(diag: closed.Diagram) -> Process:
     """Manual functor implementation to avoid DisCoPy version issues."""
     from discopy.closed import Functor
     from computer.core import Language
     # Map Language to Any in the python category
+    ob_map = {
+        discopy.cat.Ob("object"): object,
+        discopy.cat.Ob("Language"): object,
+        discopy.cat.Ob("P"): object,
+    }
+    # Add explicit Language mapping (ℙ)
+    if len(Language) > 0:
+        ob_map[Language[0]] = object
+    
     f = Functor(
-        ob={
-            closed.Ty("P")[0]: object,
-            discopy.cat.Ob("object"): object,
-            discopy.cat.Ob("Language"): object,
-            Language: object,
-        },
+        ob=ob_map,
         ar=exec_dispatch,
         cod=python.Category()
     )

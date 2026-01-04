@@ -1,5 +1,5 @@
 import pytest
-from discopy.frobenius import Box, Ty, Swap, Id
+from discopy.symmetric import Box, Ty, Swap, Id
 
 # Import from parse.py instead of hif.py
 from .yaml.parse import to_hif, from_hif

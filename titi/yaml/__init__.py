@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Any
 from functools import singledispatch
+import discopy
 from discopy import symmetric, closed
 
 from .parse import parse, impl_parse
@@ -45,40 +46,35 @@ def compose(node_wire):
 
 # --- Construct Functor ---
 
+class MapAll:
+    """Helper to map all types and objects to Language."""
+    def __init__(self, target): self.target = target
+    def __getitem__(self, _): return self.target
+    def get(self, _, default=None): return self.target
+    def __contains__(self, _): return True
+    def __iter__(self): return iter([])
+
 @singledispatch
 def construct_dispatch(box: Any) -> closed.Diagram:
     # Handle raw closed.Box instances (Program, Data, etc.)
     if isinstance(box, closed.Box):
-        return box.to_diagram() if hasattr(box, 'to_diagram') else closed.Diagram.id(Language).then(box)
+        return box >> closed.Id(box.cod)
     
     # Default for wires/nodes
-    if not hasattr(box, 'dom'): 
-        # For Identity boxes, dom might be Ty("Node")
-        return closed.Id(Language)
-    # Ensure we use closed.Ty for powers
-    return closed.Id(Language**len(box.dom))
+    dom = getattr(box, 'dom', closed.Ty())
+    return closed.Id(Language ** len(dom))
 
 construct_dispatch.register(ren.YamlBox, con.construct_box)
 
 # Original Functor that maps YamlBoxes to diagrams
 _construct_functor = closed.Functor(
-    ob={
-        "Node": Language, 
-        "P": Language,
-        ren.Node: Language,
-        closed.Ty("Node"): Language,
-        closed.Ty("P"): Language
-    }, 
+    ob=MapAll(Language), 
     ar=construct_dispatch, 
     cod=closed.Category()
 )
 
 def construct_functor(diag, *_, **__):
-    """Compatibility wrapper for tests.
-    The original Functor expects a single diagram argument. Some tests call
-    `compiler(fd, compiler, None)`. This wrapper forwards only the diagram to the
-    underlying Functor, ignoring the extra parameters.
-    """
+    """Compatibility wrapper for tests."""
     return _construct_functor(diag)
 
 # --- Load Pipeline ---

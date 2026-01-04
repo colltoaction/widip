@@ -3,37 +3,32 @@ from typing import Any
 from discopy import closed
 from . import representation as ren
 from computer import Program, Data, Titi, Discard
-from computer.core import Language
-from computer.common import TitiBox
+from computer.core import Language, copy, merge, discard
 
 # Language is now a Ty instance
 L = Language
 
-def CopyBox():
-    return TitiBox("Δ", Language, Language @ Language, data=(), draw_as_spider=True)
-
-def make_copy(n):
-    if n <= 1: return closed.Id(Language)
-    if n == 2: return CopyBox()
-    return CopyBox() >> (closed.Id(Language) @ make_copy(n - 1))
-
 # Helper to extract static arguments
 def extract_args(box):
     """Recursively extract static arguments from boxes."""
-    # Check for Scalar kind (name="Scalar")
-    if getattr(box, 'name', '') == "Scalar":
-        return (str(box.value),)
+    name = getattr(box, 'name', '')
+    if name == "Scalar":
+        return (str(getattr(box, 'value', '')),)
     
-    if hasattr(box, 'nested'): 
-        # Best effort traversal of nested diagram to find Scalars
-        args = []
-        nested = box.nested
+    nested = getattr(box, 'nested', None)
+    if nested is not None: 
         if hasattr(nested, 'boxes'):
+            args = []
             for b in nested.boxes:
-                args.extend(extract_args(b))
-        elif hasattr(nested, 'inside'): # Layers
-             for b in nested.boxes:
-                 args.extend(extract_args(b))
+                if hasattr(b, 'name') and b.name not in ["Δ", "μ", "ε"]:
+                    args.append(b.name)
+            return tuple(args)
+        
+        args = []
+        try:
+            if hasattr(nested, 'kind'):
+                 args.extend(extract_args(nested))
+        except Exception: pass
         return tuple(args)
     return ()
 
@@ -43,12 +38,8 @@ def construct_box(box) -> closed.Diagram:
     tag = getattr(box, 'tag', None)
     value = getattr(box, 'value', None)
     nested = getattr(box, 'nested', None)
-    name = getattr(box, 'name', None) # Kind is in name usually
+    name = getattr(box, 'name', None)
     kind = name 
-    
-    # Handle specific kinds if name is explicit (Anchors/Aliases might have specialized names)
-    # YamlBox sets kind=name passed to __init__.
-    # Anchor sets name="Anchor(x)", but we stored anchor_name in attributes.
     anchor_name = getattr(box, 'anchor_name', None)
 
     # 1. Handle Titi Special Case
@@ -77,28 +68,33 @@ def construct_box(box) -> closed.Diagram:
         return Data(value)
 
     # 5. Handle Container (Sequence / Mapping / Document / Stream)
-    # Try to extract static args first if tagged
     if tag:
         try:
             args = extract_args(box)
             if args:
                 return Program(tag, args)
         except Exception: 
-            pass # Fallback to generic wrapping
+            pass
 
     if nested is None:
-        # Fallback for unexpected empty nested boxes that aren't Scalar/Alias
         return closed.Id(Language)
 
+    # Core Logic: All nested things must be mapped to Language category
     inside = titi.yaml.construct_functor(nested)
     
-    # Implicit Input Copying for Mappings
+    # Mapping and algebraic operations
     if kind == "Mapping":
         n = len(inside.dom)
-        if n > 1:
-            inside = make_copy(n) >> inside
+        if n > 0:
+            # Note: make_copy or similar here if needed, 
+            # but usually Mapping just tensor components
+            pass
 
-    # 6. Handle Tags on Containers (Generic Program Wrapper fallback)
+    # Trace back algebraic ops if they appeared in representation
+    if name == "Δ": return copy
+    if name == "μ": return merge
+    if name == "ε": return discard
+
     if tag:
         return Program(tag, (inside,))
 
