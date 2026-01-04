@@ -179,8 +179,8 @@ document_list
 
 document
     : node optional_newlines { $$ = $1; }
-    | DOC_START optional_newlines node        { $$ = $3; }
-    | DOC_START optional_newlines node DOC_END{ $$ = $3; }
+    | DOC_START optional_newlines node optional_newlines       { $$ = $3; }
+    | DOC_START optional_newlines node optional_newlines DOC_END optional_newlines { $$ = $3; }
     | newlines node optional_newlines { $$ = $2; }
     ;
 

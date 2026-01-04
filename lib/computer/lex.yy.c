@@ -1,5 +1,6 @@
+#line 2 "lib/computer/lex.yy.c"
 
-#line 3 "lex.yy.c"
+#line 4 "lib/computer/lex.yy.c"
 
 #define  YY_INT_ALIGNED short int
 
@@ -373,8 +374,8 @@ static void yynoreturn yy_fatal_error ( const char* msg  );
 	(yy_hold_char) = *yy_cp; \
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
-#define YY_NUM_RULES 24
-#define YY_END_OF_BUFFER 25
+#define YY_NUM_RULES 23
+#define YY_END_OF_BUFFER 24
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -382,14 +383,13 @@ struct yy_trans_info
 	flex_int32_t yy_verify;
 	flex_int32_t yy_nxt;
 	};
-static const flex_int16_t yy_accept[52] =
+static const flex_int16_t yy_accept[51] =
     {   0,
-        0,    0,   25,   23,   22,   21,   21,   15,   23,   16,
-       23,   23,   23,    7,   19,   19,   19,   23,   23,    3,
-        4,    5,    6,   20,   22,   21,   15,    0,   17,    0,
-       16,   13,    0,   18,    0,   14,    8,   19,   19,    0,
-       19,   10,   11,   11,    9,   20,   19,    1,    2,   11,
-        0
+        0,    0,   24,   22,   21,   20,   20,   14,   22,   15,
+       22,   22,   22,    7,   18,   18,   18,   22,   22,    3,
+        4,    5,    6,   19,   21,   20,   14,    0,   16,    0,
+       15,   12,    0,   17,    0,   13,    8,   18,   18,    0,
+       18,   10,   11,   11,    9,   19,   18,    1,    2,    0
     } ;
 
 static const YY_CHAR yy_ec[256] =
@@ -431,24 +431,24 @@ static const YY_CHAR yy_meta[24] =
         1,    1,    1
     } ;
 
-static const flex_int16_t yy_base[57] =
+static const flex_int16_t yy_base[56] =
     {   0,
         0,   87,   91,   93,   22,   93,   87,    0,   18,    0,
        73,   16,   72,   93,   37,   52,   72,   67,   26,   93,
        93,   93,   93,   27,   28,   93,    0,   27,   93,   76,
         0,   48,   25,   93,   60,   46,   35,   30,   47,   44,
        46,   93,   93,   56,   93,   53,    0,   42,   34,   93,
-       93,   37,   72,   76,   80,   83
+       37,   72,   76,   80,   83
     } ;
 
-static const flex_int16_t yy_def[57] =
+static const flex_int16_t yy_def[56] =
     {   0,
-       51,    1,   51,   51,   51,   51,   51,   52,   53,   54,
-       51,   55,   51,   51,   51,   51,   16,   51,   51,   51,
-       51,   51,   51,   51,   51,   51,   52,   53,   51,   53,
-       54,   51,   55,   51,   55,   51,   56,   16,   16,   56,
-       16,   51,   51,   51,   51,   51,   40,   16,   16,   51,
-        0,   51,   51,   51,   51,   51
+       50,    1,   50,   50,   50,   50,   50,   51,   52,   53,
+       50,   54,   50,   50,   50,   50,   16,   50,   50,   50,
+       50,   50,   50,   50,   50,   50,   51,   52,   50,   52,
+       53,   50,   54,   50,   54,   50,   55,   16,   16,   55,
+       16,   50,   50,   50,   50,   50,   40,   16,   16,    0,
+       50,   50,   50,   50,   50
     } ;
 
 static const flex_int16_t yy_nxt[117] =
@@ -458,14 +458,14 @@ static const flex_int16_t yy_nxt[117] =
        21,   22,   23,   25,   29,   34,   25,   45,   25,   25,
        45,   46,   25,   29,   34,   35,   40,   30,   37,   40,
        27,   37,   48,   39,   35,   40,   30,   39,   40,   38,
-       39,   39,   39,   40,   25,   39,   40,   46,   50,   49,
-       39,   36,   51,   32,   39,   41,   39,   39,   42,   43,
-       44,   42,   28,   28,   28,   28,   31,   31,   51,   31,
+       39,   39,   39,   40,   25,   39,   40,   46,   43,   49,
+       39,   36,   50,   32,   39,   41,   39,   39,   42,   43,
+       44,   42,   28,   28,   28,   28,   31,   31,   50,   31,
        33,   33,   33,   33,   47,   39,   47,   36,   32,   26,
-       51,   24,    3,   51,   51,   51,   51,   51,   51,   51,
+       50,   24,    3,   50,   50,   50,   50,   50,   50,   50,
 
-       51,   51,   51,   51,   51,   51,   51,   51,   51,   51,
-       51,   51,   51,   51,   51,   51
+       50,   50,   50,   50,   50,   50,   50,   50,   50,   50,
+       50,   50,   50,   50,   50,   50
     } ;
 
 static const flex_int16_t yy_chk[117] =
@@ -474,22 +474,22 @@ static const flex_int16_t yy_chk[117] =
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    5,    9,   12,    5,   19,   24,   25,
        19,   24,   25,   28,   33,   12,   37,    9,   15,   37,
-       52,   15,   38,   38,   33,   40,   28,   49,   40,   15,
+       51,   15,   38,   38,   33,   40,   28,   49,   40,   15,
        15,   15,   15,   16,   46,   48,   16,   46,   44,   41,
        39,   36,   35,   32,   16,   16,   16,   16,   18,   18,
-       18,   18,   53,   53,   53,   53,   54,   54,   30,   54,
-       55,   55,   55,   55,   56,   17,   56,   13,   11,    7,
-        3,    2,   51,   51,   51,   51,   51,   51,   51,   51,
+       18,   18,   52,   52,   52,   52,   53,   53,   30,   53,
+       54,   54,   54,   54,   55,   17,   55,   13,   11,    7,
+        3,    2,   50,   50,   50,   50,   50,   50,   50,   50,
 
-       51,   51,   51,   51,   51,   51,   51,   51,   51,   51,
-       51,   51,   51,   51,   51,   51
+       50,   50,   50,   50,   50,   50,   50,   50,   50,   50,
+       50,   50,   50,   50,   50,   50
     } ;
 
 /* Table of booleans, true if rule could match eol. */
-static const flex_int32_t yy_rule_can_match_eol[25] =
+static const flex_int32_t yy_rule_can_match_eol[24] =
     {   0,
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 
-    0, 1, 0, 0, 0,     };
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 
+    1, 0, 0, 0,     };
 
 static yy_state_type yy_last_accepting_state;
 static char *yy_last_accepting_cpos;
@@ -505,8 +505,8 @@ int yy_flex_debug = 0;
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
 char *yytext;
-#line 1 "yaml.l"
-#line 2 "yaml.l"
+#line 1 "lib/computer/yaml.l"
+#line 2 "lib/computer/yaml.l"
 /* YAML 1.2 Lexer - Simplified Subset */
 #include <stdio.h>
 #include <string.h>
@@ -516,8 +516,8 @@ int current_indent = 0;
 int pending_indent = 0;
 
 extern YYSTYPE yylval;
-#line 520 "lex.yy.c"
-#line 521 "lex.yy.c"
+#line 520 "lib/computer/lex.yy.c"
+#line 521 "lib/computer/lex.yy.c"
 
 #define INITIAL 0
 
@@ -737,10 +737,10 @@ YY_DECL
 		}
 
 	{
-#line 26 "yaml.l"
+#line 26 "lib/computer/yaml.l"
 
 
-#line 744 "lex.yy.c"
+#line 744 "lib/computer/lex.yy.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -768,7 +768,7 @@ yy_match:
 			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 				{
 				yy_current_state = (int) yy_def[yy_current_state];
-				if ( yy_current_state >= 52 )
+				if ( yy_current_state >= 51 )
 					yy_c = yy_meta[yy_c];
 				}
 			yy_current_state = yy_nxt[yy_base[yy_current_state] + yy_c];
@@ -810,52 +810,52 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 28 "yaml.l"
+#line 28 "lib/computer/yaml.l"
 { return DOC_START; }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 29 "yaml.l"
+#line 29 "lib/computer/yaml.l"
 { return DOC_END; }
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 31 "yaml.l"
+#line 31 "lib/computer/yaml.l"
 { return LBRACKET; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 32 "yaml.l"
+#line 32 "lib/computer/yaml.l"
 { return RBRACKET; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 33 "yaml.l"
+#line 33 "lib/computer/yaml.l"
 { return LBRACE; }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 34 "yaml.l"
+#line 34 "lib/computer/yaml.l"
 { return RBRACE; }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 35 "yaml.l"
+#line 35 "lib/computer/yaml.l"
 { return COMMA; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 37 "yaml.l"
+#line 37 "lib/computer/yaml.l"
 { return SEQ_ENTRY; }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 38 "yaml.l"
+#line 38 "lib/computer/yaml.l"
 { return MAP_KEY; }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 39 "yaml.l"
+#line 39 "lib/computer/yaml.l"
 { return COLON; }
 	YY_BREAK
 case 11:
@@ -865,92 +865,84 @@ YY_LINENO_REWIND_TO(yy_bp + 1);
 (yy_c_buf_p) = yy_cp = yy_bp + 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 40 "yaml.l"
+#line 40 "lib/computer/yaml.l"
 { return COLON; }
 	YY_BREAK
 case 12:
-*yy_cp = (yy_hold_char); /* undo effects of setting up yytext */
-(yy_c_buf_p) = yy_cp -= 1;
-YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 41 "yaml.l"
-{ return COLON; }
+#line 42 "lib/computer/yaml.l"
+{ yylval.str = strdup(yytext+1); return ANCHOR; }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 43 "yaml.l"
-{ yylval.str = strdup(yytext+1); return ANCHOR; }
+#line 44 "lib/computer/yaml.l"
+{ yylval.str = strdup(yytext+1); return ALIAS; }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 44 "yaml.l"
-{ yylval.str = strdup(yytext+1); return ALIAS; }
+#line 45 "lib/computer/yaml.l"
+{ yylval.str = strdup(yytext+1); return TAG; }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 45 "yaml.l"
-{ yylval.str = strdup(yytext+1); return TAG; }
-	YY_BREAK
-case 16:
-YY_RULE_SETUP
-#line 47 "yaml.l"
+#line 47 "lib/computer/yaml.l"
 { /* Comment - ignore */ }
 	YY_BREAK
-case 17:
-/* rule 17 can match eol */
+case 16:
+/* rule 16 can match eol */
 YY_RULE_SETUP
-#line 49 "yaml.l"
+#line 49 "lib/computer/yaml.l"
 { 
                           /* Double-quoted string */
                           yylval.str = strndup(yytext+1, yyleng-2);
                           return DQUOTE_STRING;
                         }
 	YY_BREAK
-case 18:
-/* rule 18 can match eol */
+case 17:
+/* rule 17 can match eol */
 YY_RULE_SETUP
-#line 55 "yaml.l"
+#line 55 "lib/computer/yaml.l"
 {
                           /* Single-quoted string */
                           yylval.str = strndup(yytext+1, yyleng-2);
                           return SQUOTE_STRING;
                         }
 	YY_BREAK
-case 19:
+case 18:
 YY_RULE_SETUP
-#line 61 "yaml.l"
+#line 61 "lib/computer/yaml.l"
 { yylval.str = strdup(yytext); return PLAIN_SCALAR; }
 	YY_BREAK
-case 20:
+case 19:
 YY_RULE_SETUP
-#line 63 "yaml.l"
+#line 63 "lib/computer/yaml.l"
 { 
                           pending_indent = yyleng;
                           /* Indentation - track for block structure */
                         }
 	YY_BREAK
-case 21:
-/* rule 21 can match eol */
+case 20:
+/* rule 20 can match eol */
 YY_RULE_SETUP
-#line 68 "yaml.l"
+#line 68 "lib/computer/yaml.l"
 { current_indent = 0; return NEWLINE; }
+	YY_BREAK
+case 21:
+YY_RULE_SETUP
+#line 69 "lib/computer/yaml.l"
+{ /* Ignore other whitespace */ }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 69 "yaml.l"
-{ /* Ignore other whitespace */ }
+#line 71 "lib/computer/yaml.l"
+{ return yytext[0]; }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 71 "yaml.l"
-{ return yytext[0]; }
-	YY_BREAK
-case 24:
-YY_RULE_SETUP
-#line 73 "yaml.l"
+#line 73 "lib/computer/yaml.l"
 ECHO;
 	YY_BREAK
-#line 954 "lex.yy.c"
+#line 946 "lib/computer/lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -1248,7 +1240,7 @@ static int yy_get_next_buffer (void)
 		while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 			{
 			yy_current_state = (int) yy_def[yy_current_state];
-			if ( yy_current_state >= 52 )
+			if ( yy_current_state >= 51 )
 				yy_c = yy_meta[yy_c];
 			}
 		yy_current_state = yy_nxt[yy_base[yy_current_state] + yy_c];
@@ -1276,11 +1268,11 @@ static int yy_get_next_buffer (void)
 	while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 		{
 		yy_current_state = (int) yy_def[yy_current_state];
-		if ( yy_current_state >= 52 )
+		if ( yy_current_state >= 51 )
 			yy_c = yy_meta[yy_c];
 		}
 	yy_current_state = yy_nxt[yy_base[yy_current_state] + yy_c];
-	yy_is_jam = (yy_current_state == 51);
+	yy_is_jam = (yy_current_state == 50);
 
 		return yy_is_jam ? 0 : yy_current_state;
 }
@@ -1969,6 +1961,6 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 73 "yaml.l"
+#line 73 "lib/computer/yaml.l"
 
 

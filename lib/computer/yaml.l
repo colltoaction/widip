@@ -38,9 +38,9 @@ PLAIN_CHAR  [a-zA-Z0-9_\-./]
 "?"{WS}                 { return MAP_KEY; }
 ":"{WS}                 { return COLON; }
 ":"/{NEWLINE}           { return COLON; }
-":"$                    { return COLON; }
 
 "&"{ALNUM}+             { yylval.str = strdup(yytext+1); return ANCHOR; }
+
 "*"{ALNUM}+             { yylval.str = strdup(yytext+1); return ALIAS; }
 "!"{PLAIN_CHAR}*        { yylval.str = strdup(yytext+1); return TAG; }
 

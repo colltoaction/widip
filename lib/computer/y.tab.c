@@ -67,7 +67,7 @@
 
 
 /* First part of user prologue.  */
-#line 1 "yaml.y"
+#line 1 "lib/computer/yaml.y"
 
 /* YAML 1.2 Parser - Simplified Subset */
 #include <stdio.h>
@@ -215,7 +215,7 @@ void print_node(Node *n, int depth) {
 }
 
 
-#line 219 "y.tab.c"
+#line 219 "lib/computer/y.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -238,95 +238,7 @@ void print_node(Node *n, int depth) {
 #  endif
 # endif
 
-/* Use api.header.include to #include this header
-   instead of duplicating it here.  */
-#ifndef YY_YY_Y_TAB_H_INCLUDED
-# define YY_YY_Y_TAB_H_INCLUDED
-/* Debug traces.  */
-#ifndef YYDEBUG
-# define YYDEBUG 0
-#endif
-#if YYDEBUG
-extern int yydebug;
-#endif
-
-/* Token kinds.  */
-#ifndef YYTOKENTYPE
-# define YYTOKENTYPE
-  enum yytokentype
-  {
-    YYEMPTY = -2,
-    YYEOF = 0,                     /* "end of file"  */
-    YYerror = 256,                 /* error  */
-    YYUNDEF = 257,                 /* "invalid token"  */
-    DOC_START = 258,               /* DOC_START  */
-    DOC_END = 259,                 /* DOC_END  */
-    LBRACKET = 260,                /* LBRACKET  */
-    RBRACKET = 261,                /* RBRACKET  */
-    LBRACE = 262,                  /* LBRACE  */
-    RBRACE = 263,                  /* RBRACE  */
-    COMMA = 264,                   /* COMMA  */
-    SEQ_ENTRY = 265,               /* SEQ_ENTRY  */
-    MAP_KEY = 266,                 /* MAP_KEY  */
-    COLON = 267,                   /* COLON  */
-    NEWLINE = 268,                 /* NEWLINE  */
-    ANCHOR = 269,                  /* ANCHOR  */
-    ALIAS = 270,                   /* ALIAS  */
-    TAG = 271,                     /* TAG  */
-    PLAIN_SCALAR = 272,            /* PLAIN_SCALAR  */
-    DQUOTE_STRING = 273,           /* DQUOTE_STRING  */
-    SQUOTE_STRING = 274            /* SQUOTE_STRING  */
-  };
-  typedef enum yytokentype yytoken_kind_t;
-#endif
-/* Token kinds.  */
-#define YYEMPTY -2
-#define YYEOF 0
-#define YYerror 256
-#define YYUNDEF 257
-#define DOC_START 258
-#define DOC_END 259
-#define LBRACKET 260
-#define RBRACKET 261
-#define LBRACE 262
-#define RBRACE 263
-#define COMMA 264
-#define SEQ_ENTRY 265
-#define MAP_KEY 266
-#define COLON 267
-#define NEWLINE 268
-#define ANCHOR 269
-#define ALIAS 270
-#define TAG 271
-#define PLAIN_SCALAR 272
-#define DQUOTE_STRING 273
-#define SQUOTE_STRING 274
-
-/* Value type.  */
-#if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-union YYSTYPE
-{
-#line 149 "yaml.y"
-
-    char *str;
-    struct Node *node;
-
-#line 315 "y.tab.c"
-
-};
-typedef union YYSTYPE YYSTYPE;
-# define YYSTYPE_IS_TRIVIAL 1
-# define YYSTYPE_IS_DECLARED 1
-#endif
-
-
-extern YYSTYPE yylval;
-
-
-int yyparse (void);
-
-
-#endif /* !YY_YY_Y_TAB_H_INCLUDED  */
+#include "y.tab.h"
 /* Symbol kind.  */
 enum yysymbol_kind_t
 {
@@ -696,7 +608,7 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  37
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   133
+#define YYLAST   134
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  20
@@ -705,7 +617,7 @@ union yyalloc
 /* YYNRULES -- Number of rules.  */
 #define YYNRULES  43
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  68
+#define YYNSTATES  70
 
 /* YYMAXUTOK -- Last valid token kind.  */
 #define YYMAXUTOK   274
@@ -793,7 +705,7 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#define YYPACT_NINF (-11)
+#define YYPACT_NINF (-7)
 
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
@@ -807,13 +719,13 @@ yysymbol_name (yysymbol_kind_t yysymbol)
    STATE-NUM.  */
 static const yytype_int8 yypact[] =
 {
-      22,   -10,    54,    69,   114,   -11,   -10,   -11,   -10,   -11,
-     -11,   -11,     8,    22,   -11,    84,     9,   -11,   -11,   -11,
-     -11,   -11,   -11,   -10,   -11,   -10,   114,    -1,   -11,     4,
-       1,   -11,    11,    41,     4,   114,   114,   -11,   -11,   -11,
-       9,   -10,   -11,     7,    84,     2,   -11,   114,    99,   -11,
-     114,     4,     4,   -11,   114,   114,    14,   -11,     4,     4,
-      19,     4,     4,   -10,    99,   114,     4,    42
+      22,    -5,    55,    70,   115,    -7,    -5,    -7,    -5,    -7,
+      -7,    -7,    11,    22,    -7,    85,     2,    -7,    -7,    -7,
+      -7,    -7,    -7,    -5,    -7,    -5,   115,     6,    -7,    18,
+       0,    -7,    19,     9,    18,   115,   115,    -7,    -7,    -7,
+       2,    -5,    -7,    -6,    85,     2,    -7,   115,   100,    -7,
+     115,    18,    18,    -7,   115,   115,    31,    17,    18,    18,
+      35,    18,    18,    -5,    -5,   100,   115,    -7,    18,    10
 };
 
 /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -825,16 +737,16 @@ static const yytype_int8 yydefact[] =
       22,    23,     0,     2,     3,     0,     9,    13,    18,    19,
       14,    15,    16,    36,    17,    40,     0,    10,    26,    28,
        0,    31,     0,     0,    37,     0,     0,     1,     4,    12,
-       9,     9,     5,    39,    43,     6,    27,    30,     0,    32,
-      35,    25,    24,     8,     0,     0,     0,     7,    29,    33,
-       0,    41,    38,     9,     0,     0,    34,    42
+       9,     9,     5,    39,    43,     9,    27,    30,     0,    32,
+      35,    25,    24,     8,     0,     0,     0,     6,    29,    33,
+       0,    41,    38,     9,     9,     0,     0,     7,    34,    42
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-     -11,   -11,   -11,    31,     3,     5,    -2,   -11,   -11,   -11,
-     -11,   -11,   -11,   -11,   -11,   -11,   -11,   -11
+      -7,    -7,    -7,    37,     4,     3,    -2,    -7,    -7,    -7,
+      -7,    -7,    -7,    -7,    -7,    -7,    -7,    -7
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
@@ -849,38 +761,38 @@ static const yytype_int8 yydefgoto[] =
    number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int8 yytable[] =
 {
-      29,    32,    34,     5,    26,    15,    57,    46,    37,    35,
-      47,    36,    39,    40,    41,     0,    41,    55,    15,    42,
-      39,    41,     5,    48,    45,     1,    63,     2,    43,     3,
-      44,    64,     4,    51,    52,     5,     6,     7,     8,     9,
-      10,    11,    56,    53,    38,    58,    59,     0,    60,    49,
-      50,     0,    61,    62,    41,   -41,     0,     0,     0,     2,
-      28,     3,    66,    67,     4,     0,    65,     0,     6,     7,
-       8,     9,    10,    11,     2,     0,     3,    31,     0,     4,
-       0,     0,     0,     6,     7,     8,     9,    10,    11,     2,
-       0,     3,     0,     0,     4,     0,     0,    39,     6,     7,
-       8,     9,    10,    11,     2,     0,     3,     0,     0,     4,
-       0,     0,     5,     6,     7,     8,     9,    10,    11,     2,
-       0,     3,     0,     0,     4,     0,     0,     0,     6,     7,
-       8,     9,    10,    11
+      29,    32,    34,    15,    55,    26,    46,    39,     5,    47,
+      35,    37,    36,    40,    41,     5,    15,    49,    50,    39,
+      42,    64,    41,   -41,    45,     1,    43,     2,    44,     3,
+      41,    48,     4,    51,    52,     5,     6,     7,     8,     9,
+      10,    11,    56,    63,    53,    58,    59,    65,    60,    57,
+      38,     0,    61,    62,     0,     0,     0,     0,     0,     0,
+       2,    28,     3,    68,    69,     4,     0,    66,    67,     6,
+       7,     8,     9,    10,    11,     2,     0,     3,    31,     0,
+       4,     0,     0,     0,     6,     7,     8,     9,    10,    11,
+       2,     0,     3,     0,     0,     4,     0,     0,    39,     6,
+       7,     8,     9,    10,    11,     2,     0,     3,     0,     0,
+       4,     0,     0,     5,     6,     7,     8,     9,    10,    11,
+       2,     0,     3,     0,     0,     4,     0,     0,     0,     6,
+       7,     8,     9,    10,    11
 };
 
 static const yytype_int8 yycheck[] =
 {
-       2,     3,     4,    13,     1,     0,     4,     6,     0,     6,
-       9,     8,    13,    15,    12,    -1,    12,    10,    13,    16,
-      13,    12,    13,    12,    26,     3,    12,     5,    23,     7,
-      25,    12,    10,    35,    36,    13,    14,    15,    16,    17,
-      18,    19,    44,    40,    13,    47,    48,    -1,    50,     8,
-       9,    -1,    54,    55,    12,    13,    -1,    -1,    -1,     5,
-       6,     7,    64,    65,    10,    -1,    63,    -1,    14,    15,
-      16,    17,    18,    19,     5,    -1,     7,     8,    -1,    10,
-      -1,    -1,    -1,    14,    15,    16,    17,    18,    19,     5,
-      -1,     7,    -1,    -1,    10,    -1,    -1,    13,    14,    15,
-      16,    17,    18,    19,     5,    -1,     7,    -1,    -1,    10,
-      -1,    -1,    13,    14,    15,    16,    17,    18,    19,     5,
-      -1,     7,    -1,    -1,    10,    -1,    -1,    -1,    14,    15,
-      16,    17,    18,    19
+       2,     3,     4,     0,    10,     1,     6,    13,    13,     9,
+       6,     0,     8,    15,    12,    13,    13,     8,     9,    13,
+      16,     4,    12,    13,    26,     3,    23,     5,    25,     7,
+      12,    12,    10,    35,    36,    13,    14,    15,    16,    17,
+      18,    19,    44,    12,    40,    47,    48,    12,    50,    45,
+      13,    -1,    54,    55,    -1,    -1,    -1,    -1,    -1,    -1,
+       5,     6,     7,    65,    66,    10,    -1,    63,    64,    14,
+      15,    16,    17,    18,    19,     5,    -1,     7,     8,    -1,
+      10,    -1,    -1,    -1,    14,    15,    16,    17,    18,    19,
+       5,    -1,     7,    -1,    -1,    10,    -1,    -1,    13,    14,
+      15,    16,    17,    18,    19,     5,    -1,     7,    -1,    -1,
+      10,    -1,    -1,    13,    14,    15,    16,    17,    18,    19,
+       5,    -1,     7,    -1,    -1,    10,    -1,    -1,    -1,    14,
+      15,    16,    17,    18,    19
 };
 
 /* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
@@ -892,8 +804,8 @@ static const yytype_int8 yystos[] =
       30,    32,    34,    35,    36,    37,    24,    25,     6,    26,
       31,     8,    26,    33,    26,    24,    24,     0,    23,    13,
       26,    12,    24,    25,    25,    26,     6,     9,    12,     8,
-       9,    26,    26,    24,    24,    10,    26,     4,    26,    26,
-      26,    26,    26,    12,    12,    24,    26,    26
+       9,    26,    26,    24,    24,    10,    26,    24,    26,    26,
+      26,    26,    26,    12,     4,    12,    24,    24,    26,    26
 };
 
 /* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
@@ -909,7 +821,7 @@ static const yytype_int8 yyr1[] =
 /* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr2[] =
 {
-       0,     2,     1,     1,     2,     2,     3,     4,     3,     0,
+       0,     2,     1,     1,     2,     2,     4,     6,     3,     0,
        1,     1,     2,     1,     1,     1,     1,     1,     1,     1,
        1,     1,     1,     1,     3,     3,     2,     3,     1,     3,
        2,     2,     3,     3,     5,     2,     1,     2,     4,     2,
@@ -1377,121 +1289,121 @@ yyreduce:
   switch (yyn)
     {
   case 2: /* stream: document_list  */
-#line 172 "yaml.y"
+#line 172 "lib/computer/yaml.y"
                             { root = make_stream((yyvsp[0].node)); }
-#line 1383 "y.tab.c"
+#line 1295 "lib/computer/y.tab.c"
     break;
 
   case 3: /* document_list: document  */
-#line 176 "yaml.y"
+#line 176 "lib/computer/yaml.y"
                             { (yyval.node) = (yyvsp[0].node); }
-#line 1389 "y.tab.c"
+#line 1301 "lib/computer/y.tab.c"
     break;
 
   case 4: /* document_list: document_list document  */
-#line 177 "yaml.y"
+#line 177 "lib/computer/yaml.y"
                             { (yyval.node) = append_node((yyvsp[-1].node), (yyvsp[0].node)); }
-#line 1395 "y.tab.c"
+#line 1307 "lib/computer/y.tab.c"
     break;
 
   case 5: /* document: node optional_newlines  */
-#line 181 "yaml.y"
+#line 181 "lib/computer/yaml.y"
                              { (yyval.node) = (yyvsp[-1].node); }
-#line 1401 "y.tab.c"
+#line 1313 "lib/computer/y.tab.c"
     break;
 
-  case 6: /* document: DOC_START optional_newlines node  */
-#line 182 "yaml.y"
-                                              { (yyval.node) = (yyvsp[0].node); }
-#line 1407 "y.tab.c"
+  case 6: /* document: DOC_START optional_newlines node optional_newlines  */
+#line 182 "lib/computer/yaml.y"
+                                                               { (yyval.node) = (yyvsp[-1].node); }
+#line 1319 "lib/computer/y.tab.c"
     break;
 
-  case 7: /* document: DOC_START optional_newlines node DOC_END  */
-#line 183 "yaml.y"
-                                              { (yyval.node) = (yyvsp[-1].node); }
-#line 1413 "y.tab.c"
+  case 7: /* document: DOC_START optional_newlines node optional_newlines DOC_END optional_newlines  */
+#line 183 "lib/computer/yaml.y"
+                                                                                   { (yyval.node) = (yyvsp[-3].node); }
+#line 1325 "lib/computer/y.tab.c"
     break;
 
   case 8: /* document: newlines node optional_newlines  */
-#line 184 "yaml.y"
+#line 184 "lib/computer/yaml.y"
                                       { (yyval.node) = (yyvsp[-1].node); }
-#line 1419 "y.tab.c"
+#line 1331 "lib/computer/y.tab.c"
     break;
 
   case 13: /* node: scalar  */
-#line 198 "yaml.y"
+#line 198 "lib/computer/yaml.y"
                             { (yyval.node) = (yyvsp[0].node); }
-#line 1425 "y.tab.c"
+#line 1337 "lib/computer/y.tab.c"
     break;
 
   case 14: /* node: flow_sequence  */
-#line 199 "yaml.y"
+#line 199 "lib/computer/yaml.y"
                             { (yyval.node) = (yyvsp[0].node); }
-#line 1431 "y.tab.c"
+#line 1343 "lib/computer/y.tab.c"
     break;
 
   case 15: /* node: flow_mapping  */
-#line 200 "yaml.y"
+#line 200 "lib/computer/yaml.y"
                             { (yyval.node) = (yyvsp[0].node); }
-#line 1437 "y.tab.c"
+#line 1349 "lib/computer/y.tab.c"
     break;
 
   case 16: /* node: block_sequence  */
-#line 201 "yaml.y"
+#line 201 "lib/computer/yaml.y"
                             { (yyval.node) = (yyvsp[0].node); }
-#line 1443 "y.tab.c"
+#line 1355 "lib/computer/y.tab.c"
     break;
 
   case 17: /* node: block_mapping  */
-#line 202 "yaml.y"
+#line 202 "lib/computer/yaml.y"
                             { (yyval.node) = (yyvsp[0].node); }
-#line 1449 "y.tab.c"
+#line 1361 "lib/computer/y.tab.c"
     break;
 
   case 18: /* node: tagged_node  */
-#line 203 "yaml.y"
+#line 203 "lib/computer/yaml.y"
                             { (yyval.node) = (yyvsp[0].node); }
-#line 1455 "y.tab.c"
+#line 1367 "lib/computer/y.tab.c"
     break;
 
   case 19: /* node: anchored_node  */
-#line 204 "yaml.y"
+#line 204 "lib/computer/yaml.y"
                             { (yyval.node) = (yyvsp[0].node); }
-#line 1461 "y.tab.c"
+#line 1373 "lib/computer/y.tab.c"
     break;
 
   case 20: /* node: ALIAS  */
-#line 205 "yaml.y"
+#line 205 "lib/computer/yaml.y"
                             { (yyval.node) = make_alias((yyvsp[0].str)); }
-#line 1467 "y.tab.c"
+#line 1379 "lib/computer/y.tab.c"
     break;
 
   case 21: /* scalar: PLAIN_SCALAR  */
-#line 209 "yaml.y"
+#line 209 "lib/computer/yaml.y"
                             { (yyval.node) = make_scalar((yyvsp[0].str)); }
-#line 1473 "y.tab.c"
+#line 1385 "lib/computer/y.tab.c"
     break;
 
   case 22: /* scalar: DQUOTE_STRING  */
-#line 210 "yaml.y"
+#line 210 "lib/computer/yaml.y"
                             { (yyval.node) = make_scalar((yyvsp[0].str)); }
-#line 1479 "y.tab.c"
+#line 1391 "lib/computer/y.tab.c"
     break;
 
   case 23: /* scalar: SQUOTE_STRING  */
-#line 211 "yaml.y"
+#line 211 "lib/computer/yaml.y"
                             { (yyval.node) = make_scalar((yyvsp[0].str)); }
-#line 1485 "y.tab.c"
+#line 1397 "lib/computer/y.tab.c"
     break;
 
   case 24: /* tagged_node: TAG optional_newlines node  */
-#line 215 "yaml.y"
+#line 215 "lib/computer/yaml.y"
                                  { (yyval.node) = make_tag((yyvsp[-2].str), (yyvsp[0].node)); }
-#line 1491 "y.tab.c"
+#line 1403 "lib/computer/y.tab.c"
     break;
 
   case 25: /* anchored_node: ANCHOR optional_newlines node  */
-#line 219 "yaml.y"
+#line 219 "lib/computer/yaml.y"
                                     { 
                               (yyval.node) = malloc(sizeof(Node));
                               (yyval.node)->type = NODE_ANCHOR;
@@ -1499,119 +1411,119 @@ yyreduce:
                               (yyval.node)->children = (yyvsp[0].node);
                               (yyval.node)->next = NULL;
                             }
-#line 1503 "y.tab.c"
+#line 1415 "lib/computer/y.tab.c"
     break;
 
   case 26: /* flow_sequence: LBRACKET RBRACKET  */
-#line 230 "yaml.y"
+#line 230 "lib/computer/yaml.y"
                                             { (yyval.node) = make_seq(NULL); }
-#line 1509 "y.tab.c"
+#line 1421 "lib/computer/y.tab.c"
     break;
 
   case 27: /* flow_sequence: LBRACKET flow_seq_items RBRACKET  */
-#line 231 "yaml.y"
+#line 231 "lib/computer/yaml.y"
                                             { (yyval.node) = make_seq((yyvsp[-1].node)); }
-#line 1515 "y.tab.c"
+#line 1427 "lib/computer/y.tab.c"
     break;
 
   case 28: /* flow_seq_items: node  */
-#line 235 "yaml.y"
+#line 235 "lib/computer/yaml.y"
                                             { (yyval.node) = (yyvsp[0].node); }
-#line 1521 "y.tab.c"
+#line 1433 "lib/computer/y.tab.c"
     break;
 
   case 29: /* flow_seq_items: flow_seq_items COMMA node  */
-#line 236 "yaml.y"
+#line 236 "lib/computer/yaml.y"
                                             { (yyval.node) = append_node((yyvsp[-2].node), (yyvsp[0].node)); }
-#line 1527 "y.tab.c"
+#line 1439 "lib/computer/y.tab.c"
     break;
 
   case 30: /* flow_seq_items: flow_seq_items COMMA  */
-#line 237 "yaml.y"
+#line 237 "lib/computer/yaml.y"
                                             { (yyval.node) = (yyvsp[-1].node); /* trailing comma */ }
-#line 1533 "y.tab.c"
+#line 1445 "lib/computer/y.tab.c"
     break;
 
   case 31: /* flow_mapping: LBRACE RBRACE  */
-#line 242 "yaml.y"
+#line 242 "lib/computer/yaml.y"
                                             { (yyval.node) = make_map(NULL); }
-#line 1539 "y.tab.c"
+#line 1451 "lib/computer/y.tab.c"
     break;
 
   case 32: /* flow_mapping: LBRACE flow_map_entries RBRACE  */
-#line 243 "yaml.y"
+#line 243 "lib/computer/yaml.y"
                                             { (yyval.node) = make_map((yyvsp[-1].node)); }
-#line 1545 "y.tab.c"
+#line 1457 "lib/computer/y.tab.c"
     break;
 
   case 33: /* flow_map_entries: node COLON node  */
-#line 247 "yaml.y"
+#line 247 "lib/computer/yaml.y"
                                             { (yyval.node) = append_node((yyvsp[-2].node), (yyvsp[0].node)); }
-#line 1551 "y.tab.c"
+#line 1463 "lib/computer/y.tab.c"
     break;
 
   case 34: /* flow_map_entries: flow_map_entries COMMA node COLON node  */
-#line 248 "yaml.y"
+#line 248 "lib/computer/yaml.y"
                                             { (yyval.node) = append_node((yyvsp[-4].node), append_node((yyvsp[-2].node), (yyvsp[0].node))); }
-#line 1557 "y.tab.c"
+#line 1469 "lib/computer/y.tab.c"
     break;
 
   case 35: /* flow_map_entries: flow_map_entries COMMA  */
-#line 249 "yaml.y"
+#line 249 "lib/computer/yaml.y"
                                             { (yyval.node) = (yyvsp[-1].node); }
-#line 1563 "y.tab.c"
+#line 1475 "lib/computer/y.tab.c"
     break;
 
   case 36: /* block_sequence: block_seq_items  */
-#line 254 "yaml.y"
+#line 254 "lib/computer/yaml.y"
                                             { (yyval.node) = make_seq((yyvsp[0].node)); }
-#line 1569 "y.tab.c"
+#line 1481 "lib/computer/y.tab.c"
     break;
 
   case 37: /* block_seq_items: SEQ_ENTRY node  */
-#line 258 "yaml.y"
+#line 258 "lib/computer/yaml.y"
                                             { (yyval.node) = (yyvsp[0].node); }
-#line 1575 "y.tab.c"
+#line 1487 "lib/computer/y.tab.c"
     break;
 
   case 38: /* block_seq_items: block_seq_items newlines SEQ_ENTRY node  */
-#line 259 "yaml.y"
+#line 259 "lib/computer/yaml.y"
                                              { (yyval.node) = append_node((yyvsp[-3].node), (yyvsp[0].node)); }
-#line 1581 "y.tab.c"
+#line 1493 "lib/computer/y.tab.c"
     break;
 
   case 39: /* block_seq_items: block_seq_items newlines  */
-#line 260 "yaml.y"
+#line 260 "lib/computer/yaml.y"
                                              { (yyval.node) = (yyvsp[-1].node); }
-#line 1587 "y.tab.c"
+#line 1499 "lib/computer/y.tab.c"
     break;
 
   case 40: /* block_mapping: block_map_entries  */
-#line 265 "yaml.y"
+#line 265 "lib/computer/yaml.y"
                                             { (yyval.node) = make_map((yyvsp[0].node)); }
-#line 1593 "y.tab.c"
+#line 1505 "lib/computer/y.tab.c"
     break;
 
   case 41: /* block_map_entries: node COLON optional_newlines node  */
-#line 269 "yaml.y"
+#line 269 "lib/computer/yaml.y"
                                             { (yyval.node) = append_node((yyvsp[-3].node), (yyvsp[0].node)); }
-#line 1599 "y.tab.c"
+#line 1511 "lib/computer/y.tab.c"
     break;
 
   case 42: /* block_map_entries: block_map_entries newlines node COLON optional_newlines node  */
-#line 271 "yaml.y"
+#line 271 "lib/computer/yaml.y"
                                             { (yyval.node) = append_node((yyvsp[-5].node), append_node((yyvsp[-3].node), (yyvsp[0].node))); }
-#line 1605 "y.tab.c"
+#line 1517 "lib/computer/y.tab.c"
     break;
 
   case 43: /* block_map_entries: block_map_entries newlines  */
-#line 272 "yaml.y"
+#line 272 "lib/computer/yaml.y"
                                              { (yyval.node) = (yyvsp[-1].node); }
-#line 1611 "y.tab.c"
+#line 1523 "lib/computer/y.tab.c"
     break;
 
 
-#line 1615 "y.tab.c"
+#line 1527 "lib/computer/y.tab.c"
 
       default: break;
     }
@@ -1804,7 +1716,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 275 "yaml.y"
+#line 275 "lib/computer/yaml.y"
 
 
 void yyerror(const char *s) {
