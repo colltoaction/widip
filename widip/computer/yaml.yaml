@@ -1,0 +1,7 @@
+# widip/computer/yaml.yaml
+# Functor: Evaluates diagram structure to concrete tuples.
+
+eval_diagram:
+  !desc: "Monoid homomorphism: flatten tuple of tuples via reduce(add, tuples, ())."
+  !id: eval_diagram
+  !type: [Language, Language]

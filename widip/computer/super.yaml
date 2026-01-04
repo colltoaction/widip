@@ -1,0 +1,12 @@
+# widip/computer/super.yaml
+# Futamura Projections - Super-Computer for meta-compilation
+
+specializer: &specializer
+  !desc: "Partial evaluator / Specializer"
+  !type: [Language2, Language]
+  !id: specializer
+
+interpreter: &interpreter
+  !desc: "Interpreter for meta-compilation"
+  !type: [Language2, Language]
+  !id: interpreter
