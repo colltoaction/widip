@@ -7,6 +7,7 @@ from computer import python
 
 T = TypeVar("T")
 Process = python.Function
+Process.type_checking = False
 
 # --- Execution Context ---
 _EXEC_CTX = __import__('contextvars').ContextVar("exec_ctx")
@@ -115,7 +116,7 @@ def exec_box(box: closed.Box) -> Process:
     return Process(prog_fn, dom, cod)
 
 def any_ty(n: int):
-    return python.Ty(*[object] * n)
+    return tuple([object] * n)
 
 def exec_swap(box: symmetric.Swap) -> Process:
     async def swap_fn(a, b):
