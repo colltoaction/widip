@@ -290,6 +290,8 @@ async def drain_to_stdout(stream: Any, hooks: dict):
 
 async def printer(rec: Any, val: Any, hooks: dict):
     """Print output handler."""
+    with open("debug_out.txt", "a") as f:
+         f.write(f"printer called with val={val}\n")
     if val is None: return
     if hasattr(val, 'read'):
         await drain_to_stdout(val, hooks)

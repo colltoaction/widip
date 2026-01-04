@@ -1,8 +1,9 @@
 from __future__ import annotations
 from typing import Any, TypeVar, Dict, Callable
-from discopy import closed, python, symmetric, frobenius
+from discopy import closed, symmetric, frobenius
 from .asyncio import run_command, unwrap
 import discopy
+from computer import python
 
 T = TypeVar("T")
 Process = python.Function
@@ -63,9 +64,9 @@ def exec_box(box: closed.Box) -> Process:
              result = () if not cod else stdin_val
         elif box.name == "read_stdin":
              result = ctx.hooks['stdin_read']()
-        elif box.name == "Data":
-             result = args_data[0] if args_data else b""
-        elif box.name == "Partial":
+        if type(box).__name__ == "Data":
+             result = box.name
+        elif type(box).__name__ == "Partial":
              from computer import Partial
              # Returning the box itself as a 'partial' application (callable/process)
              result = box 
@@ -83,7 +84,7 @@ def exec_box(box: closed.Box) -> Process:
     return Process(prog_fn, dom, cod)
 
 def any_ty(n: int):
-    return python.Ty(n * [object])
+    return python.Ty(*[object] * n)
 
 def exec_swap(box: symmetric.Swap) -> Process:
     async def swap_fn(a, b):
