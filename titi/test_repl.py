@@ -15,13 +15,14 @@ from titi.io import value_to_bytes, get_executable
 
 @pytest.fixture
 def hooks():
+    from titi.io import impl_value_to_bytes, impl_get_executable
     return {
         'set_recursion_limit': lambda n: None,
-        'value_to_bytes': value_to_bytes,
+        'value_to_bytes': impl_value_to_bytes,
         'stdout_write': lambda d: None,
         'stdin_read': lambda: "",
         'stdin_isatty': lambda: False,
-        'get_executable': get_executable,
+        'get_executable': impl_get_executable,
         'fspath': os.fspath,
         'BytesIO': BytesIO,
         'Path': Path

@@ -24,10 +24,16 @@ def compose_dispatch(box: Any) -> symmetric.Diagram:
     return box
 
 # Registrations
-# Registrations
-compose_dispatch.register(ren.YamlBox, lambda b: ren.comp_box(b, compose_functor))
+compose_dispatch.register(ren.YamlBox, lambda b: getattr(ren, f"comp_{b.kind[:3].lower()}")(b, compose_functor))
 
 def _compose_ar(box):
+    if hasattr(box, 'kind'):
+         # YamlBox stores kind
+         if box.kind == "Scalar": return ren.comp_sca(box)
+         if box.kind == "Alias": return ren.comp_ali(box)
+    elif hasattr(box, 'name'):
+        if box.name == "Scalar": return ren.comp_sca(box)
+        if box.name.startswith("Alias"): return ren.comp_ali(box)
     return compose_dispatch(box)
 
 compose_functor = symmetric.Functor(ob={symmetric.Ty("Node"): ren.Node}, ar=_compose_ar)
@@ -41,16 +47,21 @@ def compose(node_wire):
 
 @singledispatch
 def construct_dispatch(box: Any) -> closed.Diagram:
+    # Handle raw closed.Box instances (Program, Data, etc.)
+    if isinstance(box, closed.Box):
+        return box.to_diagram() if hasattr(box, 'to_diagram') else closed.Diagram.id(Language).then(box)
+    
     # Default for wires/nodes
     if not hasattr(box, 'dom'): 
-        # For Identiy boxes, dom might be Ty("Node")
+        # For Identity boxes, dom might be Ty("Node")
         return closed.Id(Language)
     # Ensure we use closed.Ty for powers
     return closed.Id(Language**len(box.dom))
 
 construct_dispatch.register(ren.YamlBox, con.construct_box)
 
-construct_functor = closed.Functor(
+# Original Functor that maps YamlBoxes to diagrams
+_construct_functor = closed.Functor(
     ob={
         "Node": Language, 
         "P": Language,
@@ -61,6 +72,14 @@ construct_functor = closed.Functor(
     ar=construct_dispatch, 
     cod=closed.Category()
 )
+
+def construct_functor(diag, *_, **__):
+    """Compatibility wrapper for tests.
+    The original Functor expects a single diagram argument. Some tests call
+    `compiler(fd, compiler, None)`. This wrapper forwards only the diagram to the
+    underlying Functor, ignoring the extra parameters.
+    """
+    return _construct_functor(diag)
 
 # --- Load Pipeline ---
 load = lambda source: construct_functor(compose_functor(impl_parse(source)))

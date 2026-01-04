@@ -70,3 +70,38 @@ def comp_box(box, compose):
         nested=nested,
         anchor_name=box.anchor_name
     )
+
+# Additional composition helpers expected by compose_dispatch
+
+def comp_sca(box, compose):
+    """Compose scalar boxes – return the box unchanged (scalar is leaf)."""
+    return box
+
+def comp_ali(box, compose):
+    """Compose alias boxes – return the box unchanged."""
+    return box
+
+def comp_str(box, compose):
+    """Compose string (scalar) boxes – alias for comp_sca for compatibility."""
+    return box
+
+def comp_seq(box, compose):
+    """Compose sequence boxes – recursively compose nested content."""
+    nested = compose(box.nested) if box.nested else None
+    return Sequence(nested, tag=box.tag)
+
+def comp_map(box, compose):
+    """Compose mapping boxes – recursively compose nested content."""
+    nested = compose(box.nested) if box.nested else None
+    return Mapping(nested, tag=box.tag)
+
+def comp_doc(box, compose):
+    """Compose document boxes – recursively compose nested content."""
+    nested = compose(box.nested) if box.nested else None
+    return Document(nested)
+
+def comp_stream(box, compose):
+    """Compose stream boxes – recursively compose nested content."""
+    nested = compose(box.nested) if box.nested else None
+    return Stream(nested)
+

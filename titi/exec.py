@@ -24,14 +24,16 @@ def exec_box(box: closed.Box) -> Process:
     dom = any_ty(len(box.dom))
     cod = any_ty(len(box.cod))
     
-    if hasattr(box, 'data') and not isinstance(box.data, tuple): # Data box
-        async def data_fn(*args): return box.data
+    # Check if this is a Data box (has no args attribute)
+    if not hasattr(box, 'args'):
+        # Data box - return the box name as data
+        async def data_fn(*args): return box.name
         return Process(data_fn, dom, cod)
     
-    # Program box or structural box
+    # Program box - has args attribute
     async def prog_fn(*args):
         ctx = _EXEC_CTX.get()
-        args_data = box.data if hasattr(box, 'data') and isinstance(box.data, tuple) else ()
+        args_data = box.args if hasattr(box, 'args') else ()
         stdin_val = args[0] if args else None
         if len(args) > 1: stdin_val = args
         
@@ -125,9 +127,18 @@ def exec_copy(box: closed.Box) -> Process:
 def exec_functor(diag: closed.Diagram) -> Process:
     """Manual functor implementation to avoid DisCoPy version issues."""
     from discopy.closed import Functor
+    from computer.core import Language
     # Map Language to Any in the python category
-    f = Functor(ob={closed.Ty("P")[0]: object, discopy.cat.Ob("object"): object}, 
-                ar=exec_dispatch, cod=python.Category())
+    f = Functor(
+        ob={
+            closed.Ty("P")[0]: object,
+            discopy.cat.Ob("object"): object,
+            discopy.cat.Ob("Language"): object,
+            Language: object,
+        },
+        ar=exec_dispatch,
+        cod=python.Category()
+    )
     return f(diag)
 
 async def execute(diag: closed.Diagram, hooks: dict, executable: str, loop: Any, stdin: Any = None):

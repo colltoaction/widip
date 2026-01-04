@@ -7,7 +7,12 @@ async def interpreter(pipeline, source_gen, loop, capture_output):
     """
     if hasattr(source_gen, '__aiter__'):
         async for item in source_gen:
-            res = pipeline(item)
+            # item is (diagram, path, stream) tuple
+            if isinstance(item, tuple) and len(item) >= 1:
+                diagram = item[0]
+            else:
+                diagram = item
+            res = pipeline(diagram)
             # If pipeline is async, await it
             if hasattr(res, '__await__'):
                 res = await res
