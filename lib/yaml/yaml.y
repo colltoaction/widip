@@ -13,8 +13,6 @@ typedef enum {
     NODE_SEQ,
     NODE_MAP,
     NODE_ALIAS,
-    NODE_ANCHOR,
-    NODE_TAG,
     NODE_STREAM,
     NODE_BLOCK_SCALAR,
     NODE_NULL
@@ -76,14 +74,15 @@ Node *make_alias(char *name) {
 }
 
 Node *make_tag(char *tag, Node *child) {
-    Node *n = malloc(sizeof(Node));
-    n->type = NODE_TAG;
-    n->tag = tag;
-    n->anchor = NULL;
-    n->value = NULL;
-    n->children = child;
-    n->next = NULL;
-    return n;
+    if (!child) return NULL;
+    child->tag = tag;
+    return child;
+}
+
+Node *make_anchor(char *anchor, Node *child) {
+    if (!child) return NULL;
+    child->anchor = anchor;
+    return child;
 }
 
 Node *make_stream(Node *docs) {
@@ -127,13 +126,28 @@ Node *append_node(Node *list, Node *item) {
     return list;
 }
 
-void print_node(Node *n, int depth);
 void print_indent(int depth) {
     for (int i = 0; i < depth * 2; i++) putchar(' ');
 }
 
-void print_node(Node *n, int depth) {
+/* Recursive print that handles logic of anchor/tag wrapping simulation */
+void print_node_recursive(Node *n, int depth, int print_anchor, int print_tag) {
     if (!n) return;
+    
+    if (print_anchor && n->anchor) {
+        print_indent(depth);
+        printf("ANCHOR: &%s\n", n->anchor);
+        print_node_recursive(n, depth + 1, 0, 1);
+        return;
+    }
+    
+    if (print_tag && n->tag) {
+        print_indent(depth);
+        printf("TAG: %s\n", n->tag);
+        print_node_recursive(n, depth + 1, 0, 0);
+        return;
+    }
+
     print_indent(depth);
     switch (n->type) {
         case NODE_SCALAR:
@@ -142,28 +156,20 @@ void print_node(Node *n, int depth) {
         case NODE_SEQ:
             printf("SEQUENCE:\n");
             for (Node *c = n->children; c; c = c->next)
-                print_node(c, depth + 1);
+                print_node_recursive(c, depth + 1, 1, 1);
             break;
         case NODE_MAP:
             printf("MAPPING:\n");
             for (Node *c = n->children; c; c = c->next)
-                print_node(c, depth + 1);
+                print_node_recursive(c, depth + 1, 1, 1);
             break;
         case NODE_ALIAS:
             printf("ALIAS: *%s\n", n->value);
             break;
-        case NODE_ANCHOR:
-            printf("ANCHOR: &%s\n", n->anchor);
-            print_node(n->children, depth + 1);
-            break;
-        case NODE_TAG:
-            printf("TAG: %s\n", n->tag);
-            print_node(n->children, depth + 1);
-            break;
         case NODE_STREAM:
             printf("STREAM:\n");
             for (Node *c = n->children; c; c = c->next)
-                print_node(c, depth + 1);
+                print_node_recursive(c, depth + 1, 1, 1);
             break;
         case NODE_BLOCK_SCALAR:
             printf("BLOCK: %s\n", n->value);
@@ -172,6 +178,10 @@ void print_node(Node *n, int depth) {
             printf("SCALAR: null\n");
             break;
     }
+}
+
+void print_node(Node *n, int depth) {
+    print_node_recursive(n, depth, 1, 1);
 }
 
 char *join_scalar_values(char *s1, char *s2) {
@@ -209,7 +219,7 @@ char *join_scalar_values(char *s1, char *s2) {
 %type <node> stream document document_list node optional_node flow_node block_node optional_flow_node
 %type <node> flow_seq_items flow_map_entries flow_map_entry
 %type <node> block_sequence block_mapping block_seq_items block_map_entries map_entry
-%type <node> anchored_node tagged_node
+%type <node> anchored_node tagged_node anchored_tagged_node
 %type <str> merged_plain_scalar
 
 %start stream
@@ -220,8 +230,8 @@ char *join_scalar_values(char *s1, char *s2) {
 %%
 
 stream
-    : document_list         { root = make_stream($1); }
-    | opt_newlines          { root = make_stream(NULL); }
+    : opt_newlines document_list    { root = make_stream($2); }
+    | opt_newlines                  { root = make_stream(NULL); }
     ;
 
 document_list
@@ -283,6 +293,9 @@ optional_flow_node
 node
     : flow_node
     | block_node
+    | anchored_node
+    | tagged_node
+    | anchored_tagged_node
     ;
 
 flow_node
@@ -294,31 +307,6 @@ flow_node
     | LBRACKET RBRACKET { $$ = make_seq(NULL); }
     | LBRACE flow_map_entries RBRACE   { $$ = make_map($2); }
     | LBRACE RBRACE { $$ = make_map(NULL); }
-    | TAG opt_newlines flow_node { $$ = make_tag($1, $3); }
-    | TAG opt_newlines { $$ = make_tag($1, make_null()); } %prec LOW_PREC
-    | ANCHOR opt_newlines flow_node { 
-                              $$ = malloc(sizeof(Node));
-                              $$->type = NODE_ANCHOR;
-                              $$->anchor = $1;
-                              $$->children = $3;
-                              $$->next = NULL;
-                            }
-    | ANCHOR opt_newlines { 
-                              $$ = malloc(sizeof(Node));
-                              $$->type = NODE_ANCHOR;
-                              $$->anchor = $1;
-                              $$->children = make_null();
-                              $$->next = NULL;
-                            } %prec LOW_PREC
-    ;
-    | INDENT TAG opt_newlines DEDENT flow_node { $$ = make_tag($2, $5); }
-    | INDENT ANCHOR opt_newlines DEDENT flow_node {
-                              $$ = malloc(sizeof(Node));
-                              $$->type = NODE_ANCHOR;
-                              $$->anchor = $2;
-                              $$->children = $5;
-                              $$->next = NULL;
-                            }
     ;
 
 block_node
@@ -326,52 +314,41 @@ block_node
     | block_mapping         { $$ = $1; }
     | LITERAL LITERAL_CONTENT { $$ = make_block_scalar($2, 0); }
     | FOLDED LITERAL_CONTENT  { $$ = make_block_scalar($2, 1); }
-    | TAG opt_newlines block_node { $$ = make_tag($1, $3); }
-    | ANCHOR opt_newlines block_node { 
-                              $$ = malloc(sizeof(Node));
-                              $$->type = NODE_ANCHOR;
-                              $$->anchor = $1;
-                              $$->children = $3;
-                              $$->next = NULL;
-                            }
     | INDENT node DEDENT    { $$ = $2; }
-    | INDENT TAG opt_newlines DEDENT node { $$ = make_tag($2, $5); }
-    | INDENT ANCHOR opt_newlines DEDENT node {
-                              $$ = malloc(sizeof(Node));
-                              $$->type = NODE_ANCHOR;
-                              $$->anchor = $2;
-                              $$->children = $5;
-                              $$->next = NULL;
+    ;
+
+anchored_tagged_node
+    : ANCHOR opt_newlines TAG opt_newlines node {
+                              $$ = make_anchor($1, make_tag($3, $5));
                             }
+    | TAG opt_newlines ANCHOR opt_newlines node {
+                              $$ = make_tag($1, make_anchor($3, $5));
+                            }
+    | ANCHOR opt_newlines TAG opt_newlines {
+                              $$ = make_anchor($1, make_tag($3, make_null()));
+                            } %prec LOW_PREC
+    | TAG opt_newlines ANCHOR opt_newlines {
+                              $$ = make_tag($1, make_anchor($3, make_null()));
+                            } %prec LOW_PREC
     ;
 
 anchored_node
     : ANCHOR opt_newlines node {
-                              $$ = malloc(sizeof(Node));
-                              $$->type = NODE_ANCHOR;
-                              $$->anchor = $1;
-                              $$->children = $3;
-                              $$->next = NULL;
+                              $$ = make_anchor($1, $3);
                             }
     | ANCHOR newlines INDENT node DEDENT {
-                              $$ = malloc(sizeof(Node));
-                              $$->type = NODE_ANCHOR;
-                              $$->anchor = $1;
-                              $$->children = $4;
-                              $$->next = NULL;
+                              $$ = make_anchor($1, $4);
                             }
     | ANCHOR newlines DEDENT node {
-                              $$ = malloc(sizeof(Node));
-                              $$->type = NODE_ANCHOR;
-                              $$->anchor = $1;
-                              $$->children = $4;
-                              $$->next = NULL;
+                              $$ = make_anchor($1, $4);
                             }
+    | ANCHOR opt_newlines {
+                              $$ = make_anchor($1, make_null());
+                            } %prec LOW_PREC
     ;
 
 merged_plain_scalar
     : PLAIN_SCALAR { $$ = $1; }
-    /* | merged_plain_scalar NEWLINE INDENT PLAIN_SCALAR opt_newlines DEDENT { $$ = join_scalar_values($1, $4); } */
     | merged_plain_scalar PLAIN_SCALAR { $$ = join_scalar_values($1, $2); }
     ;
 
@@ -379,6 +356,7 @@ tagged_node
     : TAG opt_newlines node { $$ = make_tag($1, $3); }
     | TAG newlines INDENT node DEDENT { $$ = make_tag($1, $4); }
     | TAG newlines DEDENT node { $$ = make_tag($1, $4); }
+    | TAG opt_newlines { $$ = make_tag($1, make_null()); } %prec LOW_PREC
     ;
 
 flow_seq_items
@@ -400,7 +378,7 @@ flow_map_entry
     ;
 
 block_sequence
-    : block_seq_items                       { $$ = make_seq($1); }
+    : block_seq_items opt_newlines          { $$ = make_seq($1); }
     ;
 
 block_seq_items
@@ -409,7 +387,7 @@ block_seq_items
     ;
 
 block_mapping
-    : block_map_entries                     { $$ = make_map($1); }
+    : block_map_entries opt_newlines            { $$ = make_map($1); }
     ;
 
 /* Block mapping entries - key: value pairs at same indentation */
@@ -421,10 +399,8 @@ block_map_entries
 
 /* A single mapping entry: key: value (value can be inline or on next line indented) */
 map_entry
-    : node COLON opt_newlines optional_node { $$ = append_node($1, $4); }
-    | node COLON newlines INDENT node DEDENT { $$ = append_node($1, $5); }
-    | node COLON newlines anchored_node { $$ = append_node($1, $4); }
-    | node COLON newlines tagged_node { $$ = append_node($1, $4); }
+    : flow_node COLON opt_newlines optional_node { $$ = append_node($1, $4); }
+    | flow_node COLON newlines INDENT node DEDENT { $$ = append_node($1, $5); }
     | MAP_KEY optional_node COLON opt_newlines optional_node { $$ = append_node($2, $5); }
     | MAP_KEY optional_node                 { $$ = append_node($2, make_null()); }
     | MAP_KEY newlines INDENT optional_node DEDENT COLON opt_newlines optional_node { $$ = append_node($4, $8); }

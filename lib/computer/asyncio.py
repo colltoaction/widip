@@ -406,6 +406,13 @@ async def run_repl(env_fn: Callable, runner_ctx: Callable, get_params_fn: Callab
         pipeline = make_pipeline_fn(runner_data)
         output_handler = partial(printer, hooks=hooks)
 
+        if args.draw:
+            async for diagram, path, _ in source:
+                if path:
+                    hooks['diagram_draw'](path, diagram)
+                    # print(f"Generated SVG: {path.with_suffix('.svg')}")
+            return
+
         if args.watch and args.operands:
             await eval_with_watch(pipeline, source, loop, output_handler, reload_fn)
         else:

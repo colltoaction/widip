@@ -64,6 +64,7 @@ def env_fn():
     parser = argparse.ArgumentParser(prog="titi")
     parser.add_argument("-c", dest="command_string", help="Execute command string")
     parser.add_argument("-w", "--watch", action="store_true", help="Watch file for changes")
+    parser.add_argument("-d", "--draw", action="store_true", help="Generate SVG diagram")
     parser.add_argument("operands", nargs="*", help="File to execute and/or arguments")
     return parser.parse_args()
 

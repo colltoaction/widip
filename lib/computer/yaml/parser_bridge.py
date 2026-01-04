@@ -34,7 +34,7 @@ class YAMLParserBridge:
             # Default to lib/yaml/_yaml_parser
             base_dir = os.path.dirname(os.path.abspath(__file__)) # lib/computer/yaml
             project_root = os.path.dirname(os.path.dirname(os.path.dirname(base_dir)))
-            parser_path = os.path.join(project_root, "lib", "yaml", "_yaml_parser")
+            parser_path = os.path.join(project_root, "bin", "yaml", "parse")
         
         self.parser_path = parser_path
         

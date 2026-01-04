@@ -182,3 +182,4 @@ lib/computer/_yaml_parser
 lib/computer/yaml_parser
 titi/yaml_parser
 tests/yaml-test-suite
+bin/yaml/parse

@@ -28,7 +28,7 @@ YACC_SRC := $(PARSER_DIR)/yaml.y
 LEX_OUT := $(PARSER_DIR)/lex.yy.c
 YACC_OUT := $(PARSER_DIR)/y.tab.c
 YACC_HEADER := $(PARSER_DIR)/y.tab.h
-PARSER_BIN := $(PARSER_DIR)/_yaml_parser
+PARSER_BIN := $(BIN_DIR)/yaml/parse
 
 # YAML files
 YAML_FILES := $(shell find $(EXAMPLES_DIR) -name '*.yaml' 2>/dev/null)
@@ -106,7 +106,7 @@ examples: $(SVG_FILES) ## Generate SVG diagrams from all YAML examples
 
 %.svg: %.yaml
 	@echo "Generating $@..."
-	@echo "10" | $(PYTHON) -m titi $<
+	@$(PYTHON) -m titi --draw $<
 
 # --- Demonstration Targets ---
 demo-bootstrap: parser ## Run the bootstrap demonstration

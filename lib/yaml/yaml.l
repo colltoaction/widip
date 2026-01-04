@@ -90,10 +90,8 @@ NEWLINE     \n|\r\n|\r
 DIGIT       [0-9]
 ALPHA       [a-zA-Z_]
 ALNUM       [a-zA-Z0-9_]
-/* Block scalars can contain almost anything except indicators usually */
-PLAIN_CONT_BLOCK [a-zA-Z0-9_\-./!@#$%&()=+~\\,\[\]\{\}]
-/* Flow scalars cannot contain flow indicators , [] {} */
-PLAIN_CONT_FLOW  [a-zA-Z0-9_\-./!@#$%&()=+~\\]
+SAFE_BLOCK  [a-zA-Z0-9_\-./!@#$%&()=+~\\,\[\]\{\}]
+SAFE_FLOW   [a-zA-Z0-9_\-./!@#$%&()=+~\\]
 
 %%
 
@@ -240,30 +238,35 @@ PLAIN_CONT_FLOW  [a-zA-Z0-9_\-./!@#$%&()=+~\\]
 
 <INITIAL,FLOW>","       { return COMMA; }
 
-<INITIAL>[-?:]{PLAIN_CONT_BLOCK}+ { 
-                          yylval.str = strdup(yytext); 
-                          return PLAIN_SCALAR; 
-                        }
-                        
-<FLOW>[-?:]{PLAIN_CONT_FLOW}+ { 
-                          yylval.str = strdup(yytext); 
-                          return PLAIN_SCALAR; 
-                        }
+<INITIAL>"-"/[ \t\n]    { return SEQ_ENTRY; }
+<INITIAL>"?"/[ \t\n]    { return MAP_KEY; }
+<INITIAL>":"/[ \t\n]    { return COLON; }
 
-<INITIAL>"-"            { return SEQ_ENTRY; }
-<INITIAL>"?"            { return MAP_KEY; }
-<INITIAL>":"            { return COLON; }
+<INITIAL>"-"            { REJECT; }
 
-<FLOW>"-"               { return SEQ_ENTRY; } /* Wait, - is plain scalar start if not followed by space? */
-                        /* My regex above handles -foo */
-                        /* But - followed by space is SEQ_ENTRY */
-                        /* If regex matches greedy? */
-                        /* [-?:] followed by chars. */
-                        /* If just "-", it won't match regex + */
-                        /* So "-" fallback here returns SEQ_ENTRY. */
+<FLOW>"-"               { yylval.str = strdup("-"); return PLAIN_SCALAR; }
 
 <FLOW>"?"               { return MAP_KEY; }
-<FLOW>":"               { return COLON; }
+
+<FLOW>":"[ \t\r\n\[\]\{\}\,] {
+                            yyless(1); /* Push back the follower */
+                            return COLON; 
+                        }
+
+<INITIAL>{SAFE_BLOCK}+(":"{SAFE_BLOCK}+)*([ \t]+{SAFE_BLOCK}+(":"{SAFE_BLOCK}+)*)* {
+    yylval.str = strdup(yytext);
+    return PLAIN_SCALAR;
+}
+
+<FLOW>{SAFE_FLOW}+(":"{SAFE_FLOW}+)*([ \t]+{SAFE_FLOW}+(":"{SAFE_FLOW}+)*)* {
+    yylval.str = strdup(yytext);
+    return PLAIN_SCALAR;
+}
+
+<FLOW>":"               { 
+                            yylval.str = strdup(":");
+                            return PLAIN_SCALAR;
+                        }
 
 
 <INITIAL,FLOW>"&"{ALNUM}+    { yylval.str = strdup(yytext+1); return ANCHOR; }
@@ -282,13 +285,7 @@ PLAIN_CONT_FLOW  [a-zA-Z0-9_\-./!@#$%&()=+~\\]
                           return SQUOTE_STRING;
                         }
 
-<INITIAL>[a-zA-Z0-9_./@#$%&()=+~\\,][a-zA-Z0-9_\-./!@#$%&()=+~\\,\[\]\{\}]*([ \t]+[a-zA-Z0-9_\-./!@#$%&()=+~\\,\[\]\{\}]+)* { 
-                          yylval.str = strdup(yytext); return PLAIN_SCALAR; 
-                        }
 
-<FLOW>[a-zA-Z0-9_./@#$%&()=+~\\][a-zA-Z0-9_\-./!@#$%&()=+~\\]*([ \t]+[a-zA-Z0-9_\-./!@#$%&()=+~\\]+)* { 
-                          yylval.str = strdup(yytext); return PLAIN_SCALAR; 
-                        }
 
 <INITIAL>{NEWLINE}      { 
                           pending_indent = 0;
