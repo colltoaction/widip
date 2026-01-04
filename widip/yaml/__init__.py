@@ -7,7 +7,7 @@ from .parse import parse, SequenceBox, MappingBox, AnchorBox, DocumentBox, Strea
 from . import representation as ren
 from . import construct as con
 from . import presentation as pres
-from ..computer import Language
+from ..core import Language
 
 # --- Presentation Singletons ---
 

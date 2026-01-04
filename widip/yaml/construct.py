@@ -2,7 +2,8 @@ from __future__ import annotations
 from typing import Any
 from discopy import closed
 from . import representation as ren
-from ..computer import Program, Data, Language
+from ..computer import Program, Data
+from ..core import Language
 
 # Language is now a Ty instance, so we can use it directly
 L = Language
