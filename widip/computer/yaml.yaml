@@ -1,7 +1,11 @@
-# widip/computer/yaml.yaml
 # YAML bootstrapping definition
 
 load:
   !desc: "Parse and evaluate YAML source into a diagram structure."
   !id: yaml
   !type: [Str, Language]
+
+flatten:
+  !desc: "Flatten tuple of tuples (diagram evaluation semantics)."
+  !id: eval_diagram
+  !type: [Language, Language]

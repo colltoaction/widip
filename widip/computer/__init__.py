@@ -377,20 +377,12 @@ def compiler_compiler():
 Computation = closed.Category(closed.Ty, closed.Diagram)
 
 # =============================================================================
+# =============================================================================
 # § Bootstrap Functors (Evaluation)
 # =============================================================================
 
-eval_diagram = lambda tuples: functools.reduce(operator.add, tuples, ())
-eval_diagram.__doc__ = """
-Monoid homomorphism: flatten tuple of tuples via reduce(add, tuples, ()).
-Evaluates diagram structure to concrete tuples.
-"""
-
-eval_python = lambda code: eval(compile(ast.parse(code, mode='eval'), '<string>', 'eval'))
-eval_python.__doc__ = """
-Functor str → AST → object: parse and evaluate Python expressions via AST.
-Provides Python-level evaluation for metaprogramming.
-"""
+from .py import eval_python
+from .yaml import eval_yaml as eval_diagram
 
 # =============================================================================
 # § Public API
@@ -429,3 +421,4 @@ __all__ = [
     # Evaluation
     'eval_diagram', 'eval_python',
 ]
+

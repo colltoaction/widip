@@ -1,4 +1,6 @@
 # widip/computer/yaml.py
+import functools
+import operator
 from widip.yaml import load as yaml_load
 
 def yaml(source: str):
@@ -6,3 +8,7 @@ def yaml(source: str):
     return yaml_load(source)
 
 eval_yaml = yaml
+
+def eval_diagram(tuples):
+    """Monoid homomorphism: flatten tuple of tuples via reduce(add, tuples, ())."""
+    return functools.reduce(operator.add, tuples, ())
