@@ -2,8 +2,8 @@ from discopy import closed, monoidal
 import functools
 import operator
 
-Language = closed.Ty("Language")
-Language2 = closed.Ty("Language2")
+Language = closed.Ty("ℙ")  # ℙ is the type of programs/processes
+Language2 = Language @ Language  # Tensor product for binary operations
 
 class Data(closed.Box):
     def __init__(self, name, dom=None, cod=None):
