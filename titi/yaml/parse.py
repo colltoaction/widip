@@ -102,7 +102,7 @@ def _seq_builder(b, c):
     return Anchor(b.anchor, res) if getattr(b, 'anchor', None) else res
 
 def _map_builder(b, c):
-    pairs = [(_build_node(k) @ _build_node(v)) for k, v in batched(list(c or []), 2)]
+    pairs = [(_build_node(k) >> _build_node(v)) for k, v in batched(list(c or []), 2)]
     res = pairs[0] if pairs else frobenius.Id(Node)
     for p in pairs[1:]: res @= p
     res = Mapping(res, tag=getattr(b, 'tag', ""))

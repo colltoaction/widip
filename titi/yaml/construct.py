@@ -89,7 +89,6 @@ def construct_box(box) -> closed.Diagram:
         if tag:
             args = (value,) if value is not None else ()
             if tag == "id": return closed.Id(Language)
-            # Check for xargs and extract its arguments from the tag if it's a mapping key
             if tag == "xargs":
                  return Program("xargs", (value,))
             return Program(tag, args)
@@ -100,7 +99,6 @@ def construct_box(box) -> closed.Diagram:
     # 5. Handle Container (Sequence / Mapping / Document / Stream)
     if tag:
         try:
-            # Special case for xargs tag on a container (Sequence/Mapping)
             args = extract_args(box)
             if args:
                 return Program(tag, args)
@@ -110,57 +108,27 @@ def construct_box(box) -> closed.Diagram:
     if nested is None:
         return closed.Id(Language)
 
-    # Mapping and algebraic operations
-    if kind == "Mapping":
-        # REDEFINED: Mapping as a Choice of Branches
-        # Each entry (k: v) becomes k >> v. Then all are merged.
-        # This allows keys to act as filters (guards).
-        if hasattr(nested, 'inside'):
-             # This is a frobenius diagram. Its layers are [ (k1 @ v1), (k2 @ v2), ... ]
-             # No, actually frobenius.Diagram from _map_builder is exactly that.
-             # We want to re-map it.
-             pass
-        
-        # We need to reach back into the YamlBox to get its entries.
-        # But we only have 'nested'.
-        # Actually, if we use the constructor, we can just let 'inside' be constructed
-        # and then modify it IF it matches a Mapping structure.
-        
-        # Mapping logic: fan out, run pairs, fan in.
-        # The key is that the entry is (k @ v). We want (k >> v).
-        # We can achieve this by a special Functor!
-        pass
+    # Special: Treat untagged sequences as accumulative pipelines (print taps)
+    if kind == "Sequence" and not tag and hasattr(nested, 'inside'):
+          res = None
+          for layer in nested.inside:
+               layer_diag = titi.yaml.construct_functor(layer)
+               if res is None:
+                    res = layer_diag
+               else:
+                    # Accumulative Tap: res >> copy >> (printer @ next_layer)
+                    res = res >> make_copy(2) >> (Titi.printer @ layer_diag)
+          return res or closed.Id(Language)
 
-    # Core Logic: All nested things must be mapped to Language category
     inside = titi.yaml.construct_functor(nested)
     
     if kind == "Mapping":
-        # Adjust inside to be Sequential composition for pairs
-        # Frobenius Mapping entry is (Node @ Node). Correct.
-        # F(Node @ Node) = Language @ Language.
-        # We want to turn (L @ L) into (L -> L).
-        # We can use Curry? Or just manual re-weaving.
-        # Actually, let's just use the current n-wire structure.
         n = len(inside.dom)
         if n > 0:
             target_dom = Language ** n
             if inside.dom != target_dom:
                 inside = closed.Diagram(inside.inside, target_dom, inside.cod)
-            
-            # weave: (1 -> n) >> inside
-            # inside is (k1 @ v1) @ (k2 @ v2) ... 
-            # We want (k1 >> v1) @ (k2 >> v2) ...
-            # Wait! That's not possible with just tensor.
-            # But if we change how Mapping is PARSED, it would be easier.
-            
-            # Since we can't change the parser easily now, let's just make
-            # xargs a guard in exec.py.
-            # If (k1 @ v1) runs, and k1 fails, it returns None.
-            # If v1 sees None, it skips.
-            # Then Merge picks the non-None result.
-            # This works even with @ tensor!
-            
-            # Key takes input, Value takes input.
+            # fan out input
             inside = make_copy(n) >> inside 
             
             n_out = len(inside.cod)
