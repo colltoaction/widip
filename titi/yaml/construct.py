@@ -19,10 +19,37 @@ def construct_scalar(box: ren.ScalarBox) -> closed.Diagram:
     # Data expects value
     return Data(box.value)
 
+def extract_args(box):
+    """Recursively extract static arguments from boxes."""
+    if isinstance(box, ren.ScalarBox):
+        return (str(box.value),)
+    if hasattr(box, 'nested'): # Sequence, Mapping
+        # For Sequence: boxes are in nested (Diagram)
+        # For Mapping: keys are in nested (Diagram) ?? 
+        # Mapping structure is Key >> Value tensor.
+        # This is hard to robustly extract from a Diagram topology.
+        # But if it's simple data sequence, it might be just boxes in parallel or sequence.
+        
+        args = []
+        for b in box.nested.boxes:
+             args.extend(extract_args(b))
+        return tuple(args)
+    # If structural box like Copy/Id handling in Diagram:
+    return ()
+
 def construct_sequence(box: ren.SequenceBox) -> closed.Diagram:
     import titi.yaml
     if box.tag == "titi":
         return construct_titi(ren.TitiBox(box.nested))
+    
+    # Try to extract static args if tagged
+    if box.tag:
+         try:
+             args = extract_args(box)
+             if args:
+                 return Program(box.tag, args)
+         except: pass
+
     inside_computer = titi.yaml.construct_functor(box.nested)
     if box.tag:
         return Program(box.tag, (inside_computer,))
@@ -35,6 +62,20 @@ def construct_mapping(box: ren.MappingBox) -> closed.Diagram:
     # Helper for structural Copy box
     def CopyBox():
         return TitiBox("Δ", Language, Language @ Language, data=(), draw_as_spider=True)
+
+    # Try to extract static args if tagged (e.g. !tr {a, b})
+    if box.tag:
+         try:
+             args = extract_args(box)
+             # Note: Extracting from Mapping Diagram (key>>value) is tricky.
+             # Keys are often Scalars. Values might be None.
+             # "Key >> Value" -> Scalar box followed by Value box?
+             # If value is Identity (None), it's just Scalar.
+             # So we might find Scalar boxes.
+             # But parallel mappings are tensors.
+             if args:
+                 return Program(box.tag, args)
+         except: pass
 
     inside_computer = titi.yaml.construct_functor(box.nested)
     
@@ -49,16 +90,19 @@ def construct_mapping(box: ren.MappingBox) -> closed.Diagram:
         inside_computer = make_copy(n) >> inside_computer
 
     if box.tag == "titi":
-        from computer import Titi
-        return Titi.read_stdin >> inside_computer >> Titi.printer
+        return construct_titi(ren.TitiBox(box.nested))
     if box.tag:
         return Program(box.tag, (inside_computer,))
     return inside_computer
 
 def construct_titi(box: ren.TitiBox) -> closed.Diagram:
     import titi.yaml
-    from computer import Titi
+    from computer import Titi, Discard
     inside = titi.yaml.construct_functor(box.nested)
     # F(D) = stdin >> D >> printer
-    # Use Titi services if available
-    return Titi.read_stdin >> inside >> Titi.printer
+    
+    start = Titi.read_stdin
+    if not inside.dom:
+         start = start >> Discard()
+    
+    return start >> inside >> Titi.printer

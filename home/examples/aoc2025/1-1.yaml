@@ -1,4 +1,4 @@
-- !cat examples/aoc2025/1-1.input
+- !cat home/examples/aoc2025/1-1.input
 - !tr {LR, -+}
 - !awk 'BEGIN {sum=50} {sum = (sum+$1+100)%100; print sum}'
 - !grep {-c, ^0$}
