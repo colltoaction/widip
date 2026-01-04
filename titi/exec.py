@@ -45,17 +45,49 @@ def exec_box(box: closed.Box) -> Process:
         if box.name == "anchor":
             name, inside = args_data
             ctx.anchors[name] = inside
-            res = await execute(inside, ctx.hooks, ctx.executable, ctx.loop, stdin_val)
-            from .asyncio import printer
-            await printer(None, res, ctx.hooks)
+            
+            # Execute inside process ensuring we use the same context/loop
+            proc = exec_functor(inside)
+            
+            # Prepare arguments matching process domain
+            arg_val = stdin_val
+            if arg_val is None and len(proc.dom) > 0:
+                 arg_val = b"" if len(proc.dom) == 1 else tuple([b""] * len(proc.dom))
+            
+            # Tuplify input if needed
+            args_in = (arg_val,)
+            if len(proc.dom) > 1 and isinstance(arg_val, tuple):
+                 args_in = arg_val
+            elif len(proc.dom) == 0:
+                 args_in = ()
+                 
+            res = await unwrap(proc(*args_in), ctx.loop, memo)
+            
+            # from .asyncio import printer
+            # await printer(None, res, ctx.hooks)
             result = res
         elif box.name == "alias":
             name = args_data[0]
             if name not in ctx.anchors:
                 raise ValueError(f"Unknown anchor: {name}")
-            res = await execute(ctx.anchors[name], ctx.hooks, ctx.executable, ctx.loop, stdin_val)
-            from .asyncio import printer
-            await printer(None, res, ctx.hooks)
+                
+            # Execute aliased process in same context
+            proc = exec_functor(ctx.anchors[name])
+            
+            arg_val = stdin_val
+            if arg_val is None and len(proc.dom) > 0:
+                 arg_val = b"" if len(proc.dom) == 1 else tuple([b""] * len(proc.dom))
+                 
+            args_in = (arg_val,)
+            if len(proc.dom) > 1 and isinstance(arg_val, tuple):
+                 args_in = arg_val
+            elif len(proc.dom) == 0:
+                 args_in = ()
+
+            res = await unwrap(proc(*args_in), ctx.loop, memo)
+            
+            # from .asyncio import printer
+            # await printer(None, res, ctx.hooks)
             result = res
         elif box.name == "print":
              from .asyncio import printer
@@ -151,17 +183,27 @@ def exec_copy(box: closed.Box) -> Process:
     return Process(copy_fn, any_ty(1), any_ty(n))
 
 def exec_merge(box: closed.Box) -> Process:
-    """Handles merging (μ). Prioritizes last non-None result."""
+    """Handles merging (μ). Concatenates results."""
     n = getattr(box, 'n', 2)
     async def merge_fn(*args):
-        from .asyncio import unwrap
+        from .asyncio import unwrap, to_bytes
         loop = _EXEC_CTX.get().loop
         # Await all inputs
         results = [await unwrap(a, loop) for a in args]
-        # Return the last non-None result (shadowing/overwrite behavior)
-        for r in reversed(results):
-            if r is not None: return r
-        return None
+        
+        # Filter None and join
+        valid = []
+        for r in results:
+             if r is not None:
+                  # Convert to bytes for safe concatenation
+                  b = await to_bytes(r, loop, _EXEC_CTX.get().hooks)
+                  valid.append(b)
+        
+        if not valid: return None
+        # Join with newline if they look like lines, or empty?
+        # Shell tools usually output trailing newlines. Concatenating them safely:
+        # If we use empty separator, we rely on tools providing newlines.
+        return b"".join(valid) 
     return Process(merge_fn, any_ty(n), any_ty(1))
 
 def exec_discard(box: closed.Box) -> Process:

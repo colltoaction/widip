@@ -1,6 +1,5 @@
-!echo "3": &countdown
-  !xargs { test, 0, -eq }: Liftoff!
-  !xargs { test, 0, -lt }:
-    - !xargs { -I, "{}" , expr, "{}", -, 1 }
-    - *countdown
-  ? !echo TestAlias: *countdown
+&countdown
+? !xargs { test, 0, -eq }: Liftoff!
+? !xargs { test, 0, -lt }:
+  - !xargs { -I, "{}", sh, -c, "expr {} - 1 || true" }
+  - *countdown

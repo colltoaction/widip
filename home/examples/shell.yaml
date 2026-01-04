@@ -2,4 +2,4 @@
 !cat home/examples/shell.yaml:
   ? !wc -c
   ? !grep grep: !wc -c
-  ? !tail -2
+  ? !tail -n 2
