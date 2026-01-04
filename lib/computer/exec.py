@@ -24,9 +24,10 @@ def exec_box(box: closed.Box) -> Process:
     dom = any_ty(len(box.dom))
     cod = any_ty(len(box.cod))
     
-    # The generic data/program box logic handles both tagged/untagged boxes.
-    # We only need one async function prog_fn that dispatches correctly.
-    
+    # Generic property access helper
+    def get_attr(obj, name, default=None):
+        return getattr(obj, name, default)
+
     # Program box logic
     async def prog_fn(*args):
         ctx = _EXEC_CTX.get()
@@ -39,33 +40,61 @@ def exec_box(box: closed.Box) -> Process:
         if len(dom) > 0 and unwrapped_args and unwrapped_args[0] is None:
              return None
         
-        args_data = box.args if hasattr(box, 'args') else ()
+        # Determine box properties (handling generic Box and YamlBox)
+        box_name = box.name
+        box_kind = get_attr(box, 'kind', box_name)
+        args_data = get_attr(box, 'args', ())
+        if not args_data:
+             # Try getting value from YamlBox
+             args_data = get_attr(box, 'value', None)
+             if args_data is None: args_data = ()
+             else: args_data = (args_data,)
+
         stdin_val = unwrapped_args[0] if unwrapped_args else None
         if len(unwrapped_args) > 1: stdin_val = unwrapped_args
         
-        if box.name == "anchor":
-            name, inside = args_data
-            ctx.anchors[name] = inside
+        # --- Dispatch based on Kind/Name ---
+        
+        box_name = box.name
+        box_kind = get_attr(box, 'kind', box_name)
+        # print(f"DEBUG: exec_box name='{box_name}' kind='{box_kind}' args={args_data}", file=sys.stderr)
+
+        if box_kind == "Anchor" or box_name.startswith("Anchor"):
+            name = get_attr(box, 'anchor_name')
+            # Extract name from string if needed (e.g. "Anchor(hello)")
+            if name is None and "(" in box_name:
+                name = box_name.split("(")[1].rstrip(")")
+            
+            if name is None and len(args_data) >= 2:
+                 name, inside = args_data
+            
+            # print(f"DEBUG: Setting anchor '{name}'", file=sys.stderr)
+            if name:
+                ctx.anchors[name] = inside
             
             # Execute inside process ensuring we use the same context/loop
-            proc = exec_functor(inside)
-            
-            # Prepare arguments matching process domain
-            arg_val = stdin_val
-            if arg_val is None and len(proc.dom) > 0:
-                 arg_val = b"" if len(proc.dom) == 1 else tuple([b""] * len(proc.dom))
-            
-            # Tuplify input if needed
-            args_in = (arg_val,)
-            if len(proc.dom) > 1 and isinstance(arg_val, tuple):
-                 args_in = arg_val
-            elif len(proc.dom) == 0:
-                 args_in = ()
-                 
-            res = await unwrap(proc(*args_in), ctx.loop, memo)
-            result = res
-        elif box.name == "alias":
-            name = args_data[0]
+            if inside:
+                proc = exec_functor(inside)
+                
+                # Prepare arguments matching process domain
+                arg_val = stdin_val
+                if arg_val is None and len(proc.dom) > 0:
+                     arg_val = b"" if len(proc.dom) == 1 else tuple([b""] * len(proc.dom))
+                
+                # Tuplify input if needed
+                args_in = (arg_val,)
+                if len(proc.dom) > 1 and isinstance(arg_val, tuple):
+                     args_in = arg_val
+                elif len(proc.dom) == 0:
+                     args_in = ()
+                     
+                res = await unwrap(proc(*args_in), ctx.loop, memo)
+                result = res
+            else:
+                result = stdin_val
+
+        elif box_kind == "Alias" or box_name == "alias":
+            name = get_attr(box, 'anchor_name') or (args_data[0] if args_data else None)
             if name not in ctx.anchors:
                 raise ValueError(f"Unknown anchor: {name}")
                 
@@ -85,36 +114,41 @@ def exec_box(box: closed.Box) -> Process:
                 return await unwrap(proc(*args_in), ctx_inner.loop, memo_inner)
 
             result = alias_proxy
-        elif box.name == "print":
+
+        elif box_name == "print":
              from .asyncio import printer
              await printer(None, stdin_val, ctx.hooks)
              result = () if not cod else stdin_val
-        elif box.name == "read_stdin":
+        elif box_name == "read_stdin":
              result = ctx.hooks['stdin_read']()
-        elif type(box).__name__ == "Data":
-             result = box.name
+        elif type(box).__name__ == "Data" or box_kind == "Scalar":
+             # Handle Data box or Scalar YamlBox
+             if box_kind == "Scalar": 
+                  result = get_attr(box, 'value')
+             else:
+                  result = box.name
         elif type(box).__name__ == "Partial":
              from .core import Partial
              # Returning the box itself as a 'partial' application (callable/process)
              result = box 
-        elif box.name == "ackermann":
+        elif box_name == "ackermann":
              from .hyper_extended import ackermann_impl
              m, n = map(int, stdin_val) if isinstance(stdin_val, tuple) else (0, 0)
              result = ackermann_impl(m, n)
-        elif box.name == "busy_beaver":
+        elif box_name == "busy_beaver":
              from .hyper_extended import busy_beaver_impl
              n = int(stdin_val) if stdin_val is not None else 0
              result = busy_beaver_impl(n)
-        elif box.name == "fast_growing":
+        elif box_name == "fast_growing":
              from .hyper_extended import fast_growing
              alpha, n = map(int, stdin_val) if isinstance(stdin_val, tuple) else (0, 0)
              result = fast_growing(alpha, n)
-        elif box.name == "supercompile":
+        elif box_name == "supercompile":
              from .super_extended import Supercompiler
              # For supercompile, stdin_val might be a diagram or its name
              sc = Supercompiler()
              result = sc.supercompile(stdin_val)
-        elif box.name == "specializer":
+        elif box_name == "specializer":
              from .super_extended import specialize
              if isinstance(stdin_val, tuple) and len(stdin_val) >= 2:
                   prog, data = stdin_val[0], stdin_val[1]
@@ -125,7 +159,7 @@ def exec_box(box: closed.Box) -> Process:
                   result = specialize(prog, data)
              else:
                   result = stdin_val
-        elif box.name == "choice":
+        elif box_name == "choice":
              if len(args_data) >= 2:
                   branch1, branch2 = args_data
                   # Determine truthiness of stdin_val
@@ -145,56 +179,43 @@ def exec_box(box: closed.Box) -> Process:
                   result = await execute(target, ctx.hooks, ctx.executable, ctx.loop, stdin_val)
              else:
                   result = stdin_val
-        elif box.name in ["decrement", "dec", "r"]:
+        elif box_name in ["decrement", "dec", "r"]:
              # Predecessor
              try: result = int(stdin_val) - 1
              except: result = 0
-        elif box.name in ["increment", "succ", "s"]:
+        elif box_name in ["increment", "succ", "s"]:
              # Successor
              try: result = int(stdin_val) + 1
              except: result = 1
-        elif box.name in ["multiply", "mul"]:
+        elif box_name in ["multiply", "mul"]:
              # Product
              if isinstance(stdin_val, tuple) and len(stdin_val) >= 2:
                   result = int(stdin_val[0]) * int(stdin_val[1])
              else:
                   result = 0
-        elif box.name in ["check_exponent", "test_zero", "0?"]:
+        elif box_name in ["check_exponent", "test_zero", "0?"]:
              # Truthiness test
              try: result = int(stdin_val) == 0
              except: result = False
-        elif box.name == "python_interpreter":
+        elif box_name == "python_interpreter":
              # Eval
              try: result = eval(stdin_val)
              except: result = stdin_val
-        elif box.name == "stream":
+        elif box_kind.lower() == "stream":
              from .core import Program
              # Execute each item in the stream sequentially with CLEARED context
-             stream_items = args_data[0] if args_data else []
+             stream_items = get_attr(box, 'nested', [])
+             if not stream_items and args_data: stream_items = args_data[0]
              
              last_res = None
              if len(cod) == 1: 
                   # Accumulate results if codomain is 1 (Language)
-                  # This mimics the "Accumulative Tap" at the document level
-                  # But typically Stream returns a tuple or merged content?
-                  # For now, let's execute all, but we need to MERGE their outputs if they produce any.
-                  # Since "stream" box is usually constructed with cod=1 if it's a Titi stream.
                   results = []
                   for item in stream_items:
                        # CLEAR ANCHORS before each document
                        ctx.anchors.clear()
+                       item_proc = exec_functor(item)
                        
-                       # Compile and execute item
-                       item_diag = item 
-                       item_proc = exec_functor(item_diag)
-                       
-                       # Input to item? Usually documents start fresh or share stdin?
-                       # Standard YAML: each doc is independent.
-                       # But in streams, we might pipe?
-                       # For now: pass empty input or stdin_val?
-                       # If we want independence, pass stdin_val to all (tap).
-                       
-                       # Prepare input args
                        item_in = (stdin_val,) if len(item_proc.dom) > 0 else ()
                        if len(item_proc.dom) > 1 and isinstance(stdin_val, tuple): item_in = stdin_val
                        
@@ -214,14 +235,54 @@ def exec_box(box: closed.Box) -> Process:
              else:
                   # If codomain is 0 or >1, just run
                   for item in stream_items:
-                       ctx.anchors.clear()
+                       # Do not clear anchors effectively allowing them to persist across stream items
+                       # ctx.anchors.clear() 
                        item_proc = exec_functor(item)
                        item_in = (stdin_val,) if len(item_proc.dom) > 0 else ()
                        if len(item_proc.dom) > 1 and isinstance(stdin_val, tuple): item_in = stdin_val
                        await unwrap(item_proc(*item_in), ctx.loop, memo)
                   result = ()
         else:
-             result = await run_command(lambda x: x, ctx.loop, box.name, args_data, stdin_val, ctx.hooks)
+             # Regular Command Execution
+             # Tagged boxes: use tag as command name if name is "Tagged"
+             cmd_name = box_name
+             if box_kind == "Tagged":
+                  cmd_name = get_attr(box, 'tag', box_name)
+                  # Special handling for known core tags
+                  if cmd_name == "Data":
+                       # Extract value from nested
+                       nested = get_attr(box, 'nested')
+                       if getattr(nested, 'kind', '') == 'Scalar':
+                            result = get_attr(nested, 'value')
+                            return discopy.utils.tuplify(result) if len(cod) > 1 else result
+                  
+                  # For tagged boxes, arguments might be in the 'nested' structure
+                  # If nested is a Scalar/Sequence, we should extract values
+                  nested = get_attr(box, 'nested')
+                  if nested:
+                       # Simple extraction logic: if nested is Scalar, use its value as arg
+                       nested_kind = getattr(nested, 'kind', '')
+                       if nested_kind == 'Scalar':
+                            val = get_attr(nested, 'value')
+                            if val is not None: args_data = (val,)
+                       elif hasattr(nested, 'boxes'):
+                            # It's a Diagram (Sequence or Mapping)
+                            # We treat it as a Sequence of arguments
+                            extracted_args = []
+                            for b in nested.boxes:
+                                 # We expect Scalar boxes or equivalent
+                                 b_kind = getattr(b, 'kind', getattr(b, 'name', ''))
+                                 if b_kind == 'Scalar' or b.name == 'Scalar':
+                                      val = getattr(b, 'value', None)
+                                      if val is None and hasattr(b, 'data'): val = b.data # legacy
+                                      if val is not None: extracted_args.append(str(val))
+                                 elif hasattr(b, 'name'):
+                                      # Fallback: simple scalar boxes might just use name
+                                      extracted_args.append(b.name)
+                            if extracted_args:
+                                 args_data = tuple(extracted_args)
+             
+             result = await run_command(lambda x: x, ctx.loop, cmd_name, args_data, stdin_val, ctx.hooks)
         
         # Enforce DisCoPy Process return conventions
         n_out = len(cod)

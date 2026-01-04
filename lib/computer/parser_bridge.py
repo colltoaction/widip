@@ -175,12 +175,18 @@ class YAMLParserBridge:
             if not children:
                 return Mapping(frobenius.Id(Node), tag="")
             
-            # Children come in pairs (key, value). We collect the values.
+            # Children come in pairs (key, value). We compose them: key >> value
+            # This enables keys to act as guards or transformers for values.
             diagrams = []
             for i in range(0, len(children), 2):
                 if i + 1 < len(children):
+                    key_diag = self._convert_node(children[i])
                     val_diag = self._convert_node(children[i + 1])
-                    diagrams.append(val_diag)
+                    # Compose key and value
+                    # If key is purely declarative, it might just pass through data
+                    # If key is a command (e.g. !xargs), it acts on input and passes to value
+                    pair_diag = key_diag >> val_diag
+                    diagrams.append(pair_diag)
             
             if not diagrams:
                 return Mapping(frobenius.Id(Node), tag="")
@@ -243,7 +249,15 @@ class YAMLParserBridge:
             Categorical diagram ready for execution
         """
         ast = self.parse_to_ast(yaml_source)
-        return self.ast_to_diagram(ast)
+        diagram = self.ast_to_diagram(ast)
+        
+        # Unwrap single-document streams to match typical expectation
+        if getattr(diagram, 'kind', '') == 'Stream':
+            docs = getattr(diagram, 'nested', [])
+            if len(docs) == 1:
+                return docs[0]
+        
+        return diagram
 
 
 # --- Integration with Supercompilation ---
