@@ -50,17 +50,8 @@ class Discard(closed.Box):
         super().__init__("ε", x, closed.Ty())
 
 # --- Core Combinator Diagrams ---
-# Helper to wrap a box in a diagram by composing with identity
-def box_to_diag(box):
-    return box >> closed.Id(box.cod)
-
-# Define as simple diagram objects
-copy = box_to_diag(Copy(Language, 2))
-merge = box_to_diag(Merge(Language, 2))
-discard = box_to_diag(Discard(Language))
-
-# eval_diagram is an alias for merge in the monoidal computer context
-eval_diagram = merge
+# Note: copy, merge, discard are now defined in services.yaml
+# Kept here for backwards compatibility as class definitions
 
 def eval_diagram_fn(x, y):
     """Functional version of eval_diagram."""
@@ -71,7 +62,8 @@ def eval_python(code: str):
     return eval(code)
 
 class Titi:
-    """Titi service objects."""
+    """Titi service objects - now defined in services.yaml."""
+    # These are kept for backwards compatibility but should use YAML definitions
     read_stdin = Program("read_stdin", dom=closed.Ty(), cod=Language)
     printer = Program("print", dom=Language, cod=closed.Ty())
 

@@ -27,7 +27,43 @@ compiler_generator: &compiler_generator
     type: [Language, Language]
     desc: "Compiler generator via third Futamura projection"
 
-# --- Futamura Projections ---
+# --- Futamura Projections as Diagrams ---
+
+# First Futamura: specializer(interpreter, program) = compiled_program
+futamura1_diagram: &futamura1_diagram
+  !seq
+    - !copy 2  # Duplicate inputs (interpreter, program)
+    - !seq
+        - !id
+        - *specializer  # Apply specializer to (interpreter, program)
+
+# Second Futamura: specializer(specializer, interpreter) = compiler  
+futamura2_diagram: &futamura2_diagram
+  !seq
+    - !copy 2  # Duplicate inputs (interpreter, specializer)
+    - !swap    # Swap to get (specializer, interpreter)
+    - *specializer  # Apply specializer
+
+# Third Futamura: specializer(specializer, specializer) = compiler_generator
+futamura3_diagram: &futamura3_diagram
+  !seq
+    - !copy 2  # Duplicate specializer
+    - *specializer  # Apply to itself
+
+# --- Specialization Pattern ---
+
+# Specialize: static_data @ program >> Copy @ Id >> Id @ eval
+specialize_pattern: &specialize_pattern
+  !seq
+    - !tensor  # static_data @ program
+        - !id
+        - !id
+    - !copy 2  # Duplicate static_data
+    - !tensor  # (static_data @ static_data) @ program
+        - !id
+        - !id
+
+# --- Futamura Projections (Box Interface) ---
 
 futamura1: &futamura1
   !box
@@ -71,5 +107,9 @@ __all__:
   - futamura1
   - futamura2
   - futamura3
+  - futamura1_diagram
+  - futamura2_diagram
+  - futamura3_diagram
+  - specialize_pattern
   - supercompile
   - partial_eval

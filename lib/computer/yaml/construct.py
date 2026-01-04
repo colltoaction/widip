@@ -1,9 +1,13 @@
 from __future__ import annotations
 from typing import Any
-from discopy import closed
-from . import representation as ren
-from computer import Program, Data, Titi, Discard
-from ..core import Language, copy, merge, discard, Copy, Merge
+from discopy import closed, symmetric, frobenius
+from .representation import Scalar, Sequence, Mapping, Anchor, Alias, Document, Stream
+from ..core import Language, Copy, Merge, Discard, Program, Data, Titi
+
+# Create diagram instances for copy, merge, discard
+copy = Copy(Language, 2) >> closed.Id(Language ** 2)
+merge = Merge(Language, 2) >> closed.Id(Language)
+discard = Discard(Language) >> closed.Id(closed.Ty())
 
 # Ensure Language is the base closed.Ty
 L = Language

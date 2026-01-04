@@ -217,7 +217,9 @@ def iterate_omega(f: closed.Diagram) -> closed.Diagram:
     This is a symbolic representation - actual execution would require
     a limit process.
     """
-    # Create a symbolic box representing ω-iteration
+    # omega_iterate box is now defined in hyper.yaml
+    # Return a composition with the omega iteration box
+    from .core import Language
     omega_iter = closed.Box("ω-iterate", f.cod, f.cod)
     return f >> omega_iter
 
