@@ -26,16 +26,29 @@ def exec_box(box: closed.Box) -> Process:
     
     # Check if this is a Data box (has no args attribute)
     if not hasattr(box, 'args'):
-        # Data box - return the box name as data
-        async def data_fn(*args): return box.name
+        # Data box - return the box name as data, but skip if input is None
+        async def data_fn(*args):
+            ctx = _EXEC_CTX.get()
+            val = await unwrap(ctx.loop, args[0]) if args else None
+            if val is None: return None
+            return box.name
         return Process(data_fn, dom, cod)
     
     # Program box - has args attribute
     async def prog_fn(*args):
         ctx = _EXEC_CTX.get()
+        # Unpack and await all incoming wires
+        unwrapped_args = []
+        for stage in args:
+            unwrapped_args.append(await unwrap(ctx.loop, stage))
+        
+        # Skip Execution if primary input is None (Conditional Guard)
+        if unwrapped_args and unwrapped_args[0] is None:
+             return None
+        
         args_data = box.args if hasattr(box, 'args') else ()
-        stdin_val = args[0] if args else None
-        if len(args) > 1: stdin_val = args
+        stdin_val = unwrapped_args[0] if unwrapped_args else None
+        if len(unwrapped_args) > 1: stdin_val = unwrapped_args
         
         # Intercept Special Commands
         if box.name == "anchor":
@@ -59,7 +72,13 @@ def any_ty(n: int):
     return python.Ty(n * [object])
 
 def exec_swap(box: symmetric.Swap) -> Process:
-    return Process(lambda a, b: (b, a), any_ty(len(box.dom)), any_ty(len(box.cod)))
+    # Await swap inputs
+    async def swap_fn(a, b):
+        ctx = _EXEC_CTX.get()
+        ua = await unwrap(ctx.loop, a)
+        ub = await unwrap(ctx.loop, b)
+        return (ub, ua)
+    return Process(swap_fn, any_ty(len(box.dom)), any_ty(len(box.cod)))
 
 # --- Dispatcher ---
 
@@ -86,6 +105,7 @@ def exec_copy(box: closed.Box) -> Process:
 
         async def loader():
              val = await unwrap(loop, x)
+             if val is None: return (None,) * n
              if hasattr(val, 'read'):
                   content = await val.read()
                   return tuple(io.BytesIO(content) for _ in range(n))
@@ -103,41 +123,44 @@ def exec_copy(box: closed.Box) -> Process:
     return Process(copy_fn, any_ty(1), any_ty(n))
 
 def exec_merge(box: closed.Box) -> Process:
-    """Handles merging (μ). For now, defaults to first non-None."""
+    """Handles merging (μ). For now, defaults to first non-None and non-empty."""
     n = getattr(box, 'n', 2)
     async def merge_fn(*args):
         from .asyncio import unwrap
         loop = _EXEC_CTX.get().loop
         results = [await unwrap(loop, a) for a in args]
+        # Skip None or empty results if possible
+        for r in results:
+            if r is not None:
+                if hasattr(r, 'read'): return r # Keep streams
+                if str(r).strip(): return r
         return next((r for r in results if r is not None), None)
     return Process(merge_fn, any_ty(n), any_ty(1))
 
 def exec_discard(box: closed.Box) -> Process:
-    """Handles discarding (ε)."""
-    async def discard_fn(*args): return ()
+    """Handles discarding (ε). Ensures all inputs are awaited."""
+    async def discard_fn(*args):
+        from .asyncio import unwrap
+        loop = _EXEC_CTX.get().loop
+        for a in args:
+             await unwrap(loop, a)
+        return ()
     return Process(discard_fn, any_ty(len(box.dom)), any_ty(0))
 
 
-def exec_functor(diag: closed.Diagram) -> Process:
+class UniversalObMap:
+    def __getitem__(self, _): return object
+    def get(self, key, default=None): return object
+
+def _exec_functor_impl(diag: closed.Diagram) -> Process:
     """Manual functor implementation to avoid DisCoPy version issues."""
     from discopy.closed import Functor
-    from computer.core import Language
-    # Map Language to Any in the python category
-    ob_map = {
-        discopy.cat.Ob("object"): object,
-        discopy.cat.Ob("Language"): object,
-        discopy.cat.Ob("P"): object,
-    }
-    # Add explicit Language mapping (ℙ)
-    if len(Language) > 0:
-        ob_map[Language[0]] = object
-    
-    f = Functor(
-        ob=ob_map,
-        ar=exec_dispatch,
-        cod=python.Category()
-    )
+    f = Functor(ob=UniversalObMap(), ar=exec_dispatch, cod=python.Category())
     return f(diag)
+
+# --- Composable exec_functor ---
+from .yaml import Composable
+exec_functor = Composable(_exec_functor_impl)
 
 async def execute(diag: closed.Diagram, hooks: dict, executable: str, loop: Any, stdin: Any = None):
     parent = _EXEC_CTX.get(None)
@@ -148,7 +171,6 @@ async def execute(diag: closed.Diagram, hooks: dict, executable: str, loop: Any,
     token = _EXEC_CTX.set(ctx)
     try:
         proc = exec_functor(diag)
-        # Pass stdin to the process if it's expected
         arg = (stdin,) if proc.dom else ()
         res = await unwrap(loop, proc(*arg))
         return res
@@ -157,7 +179,6 @@ async def execute(diag: closed.Diagram, hooks: dict, executable: str, loop: Any,
 
 @contextmanager
 def titi_runner(hooks: Dict[str, Callable], executable: str = "python3", loop: Any = None):
-    """Context manager for the execution environment."""
     if loop is None:
         import asyncio
         loop = asyncio.get_running_loop()
@@ -166,7 +187,5 @@ def titi_runner(hooks: Dict[str, Callable], executable: str = "python3", loop: A
         return execute(diag, hooks, executable, loop, stdin)
     yield runner, loop
 
-# Legacy alias for tests
 compile_exec = exec_functor
-
 __all__ = ['execute', 'ExecContext', 'exec_dispatch', 'Process', 'titi_runner', 'compile_exec']

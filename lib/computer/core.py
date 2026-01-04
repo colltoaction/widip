@@ -31,14 +31,16 @@ class Copy(closed.Box):
     """Copying data (Δ)."""
     def __init__(self, x=None, n=2):
         x = x or Language
-        super().__init__("Δ", x, closed.Ty(*[x[0]] * n))
+        # Use power operator for types to ensure flat closed.Ty
+        super().__init__("Δ", x, x ** n)
         self.n = n
 
 class Merge(closed.Box):
     """Merging data (μ)."""
     def __init__(self, x=None, n=2):
         x = x or Language
-        super().__init__("μ", closed.Ty(*[x[0]] * n), x)
+        # Use power operator for types to ensure flat closed.Ty
+        super().__init__("μ", x ** n, x)
         self.n = n
 
 class Discard(closed.Box):

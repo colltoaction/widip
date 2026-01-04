@@ -7,12 +7,13 @@ from pathlib import Path
 import asyncio
 import contextvars
 import inspect
+import sys
 
 from discopy import closed, python, utils
 
 T = TypeVar("T")
-type EventLoop = asyncio.AbstractEventLoop
-type AbstractEventLoop = asyncio.AbstractEventLoop
+EventLoop = asyncio.AbstractEventLoop
+AbstractEventLoop = asyncio.AbstractEventLoop
 
 
 # --- Event Loop Context ---
@@ -69,8 +70,6 @@ def recursion_scope():
 
 # --- Unwrapping ---
 
-# --- Unwrapping ---
-
 async def callable_unwrap(func: Callable[[], Any]) -> Any:
     """Unwrap a callable."""
     result = func()
@@ -91,14 +90,14 @@ async def unwrap_step(rec: Callable[[Any], Awaitable[T]], x: Any) -> T | tuple[T
     """Step function for recursive unwrapping."""
     while True:
         match x:
-            case _ if callable(x) and not isinstance(x, (list, tuple, dict, str)):
+            case _ if callable(x) and not isinstance(x, (list, tuple, dict, str, bytes)):
                  x = await callable_unwrap(x)
             case _ if inspect.iscoroutine(x) or inspect.isawaitable(x):
                  x = await awaitable_unwrap(x)
             case _:
                  break
 
-    if isinstance(x, (Iterator, tuple, list)):
+    if isinstance(x, (Iterator, tuple, list)) and not isinstance(x, (str, bytes)):
         items = list(x)
         results = await asyncio.gather(*(rec(i) for i in items))
         return tuple(results)
@@ -138,13 +137,10 @@ async def recurse(
 
 async def unwrap(loop: EventLoop, x: Any) -> T | tuple[T, ...]:
     """Unwrap a lazy value to its final value."""
+    if x is None: return None
     if loop is None:
          loop = loop_var.get() or asyncio.get_event_loop()
     return await recurse(unwrap_step, x, loop)
-
-
-# --- Collection Operations ---
-# (Removed deprecated thunk_map/thunk_reduce)
 
 
 # --- Async Composition Helpers ---
@@ -164,8 +160,6 @@ async def tensor_async(left_fn, left_dom, right_fn, loop, *args):
     res1 = await unwrap(loop, left_fn(*args1))
     res2 = await unwrap(loop, right_fn(*args2))
     return utils.tuplify(res1) + utils.tuplify(res2)
-
-
 
 
 # --- Async Stream Operations ---
@@ -239,6 +233,7 @@ def make_subprocess_stream(stream: Any, process: asyncio.subprocess.Process, fee
 async def to_bytes(item: Any, loop: EventLoop, hooks: dict) -> bytes:
     """Convert any value to bytes asynchronously."""
     val = await unwrap(loop, item)
+    if val is None: return b""
     if isinstance(val, (list, tuple)):
         return b"".join([await to_bytes(i, loop, hooks) for i in val])
     return hooks['value_to_bytes'](val)
@@ -248,6 +243,7 @@ async def feed_stdin(loop: EventLoop, stdin: Any, process: asyncio.subprocess.Pr
     """Feed data to subprocess stdin asynchronously."""
     try:
          in_stream = await unwrap(loop, stdin)
+         if in_stream is None: return
          items = in_stream if isinstance(in_stream, (list, tuple)) else (in_stream,)
          
          for src in items:
@@ -260,6 +256,7 @@ async def feed_stdin(loop: EventLoop, stdin: Any, process: asyncio.subprocess.Pr
                       await process.stdin.drain()
             elif src is not None:
                  v = await unwrap(loop, src)
+                 if v is None: continue
                  if isinstance(v, bytes): 
                      d = v
                  elif isinstance(v, str): 
@@ -289,17 +286,34 @@ async def run_command(runner: Callable, loop: EventLoop,
     from computer import get_anchor, set_anchor
     
     # Check for recursive anchor
-    item = get_anchor(name)
+    name_str = (await to_bytes(name, loop, hooks)).decode()
+    item = get_anchor(name_str)
     if item is not None:
          if not callable(item):
               item = runner(item)
-              set_anchor(name, item)
+              set_anchor(name_str, item)
          return await unwrap(loop, item(stdin))
 
     # Execute subprocess
-    name_str = (await to_bytes(name, loop, hooks)).decode()
     args_str = [(await to_bytes(a, loop, hooks)).decode() for a in args]
     
+    # xargs as a GUARD special handling
+    if name_str == "xargs":
+         process = await asyncio.create_subprocess_exec(
+             hooks['fspath'](name_str), *args_str,
+             stdin=asyncio.subprocess.PIPE,
+             stdout=asyncio.subprocess.PIPE,
+             stderr=asyncio.subprocess.PIPE
+         )
+         await feed_stdin(loop, stdin, process, hooks)
+         stdout_data, _ = await process.communicate()
+         if process.returncode != 0:
+              return None
+         # If no stdout, return original stdin (it's a guard)
+         if not stdout_data.strip():
+              return stdin
+         return stdout_data
+
     process = await asyncio.create_subprocess_exec(
         hooks['fspath'](name_str), *args_str,
         stdin=asyncio.subprocess.PIPE,
@@ -319,20 +333,22 @@ async def drain_to_stdout(stream: Any, hooks: dict):
 
 async def printer(rec: Any, val: Any, hooks: dict):
     """Print output handler."""
+    if val is None: return
     if hasattr(val, 'read'):
         await drain_to_stdout(val, hooks)
     elif isinstance(val, bytes):
         hooks['stdout_write'](val)
     elif isinstance(val, (list, tuple)):
         for item in val:
+            if item is None: continue
             if hasattr(item, 'read'):
                 await drain_to_stdout(item, hooks)
             elif isinstance(item, bytes):
                 hooks['stdout_write'](item)
             else:
-                print(item)
+                hooks['stdout_write'](str(item).encode() + b"\n")
     else:
-        print(val)
+        hooks['stdout_write'](str(val).encode() + b"\n")
 
 
 async def run_with_watcher(coro, reload_fn):

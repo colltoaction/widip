@@ -3,16 +3,23 @@ from typing import Any
 from discopy import closed
 from . import representation as ren
 from computer import Program, Data, Titi, Discard
-from computer.core import Language, copy, merge, discard
+from computer.core import Language, copy, merge, discard, Copy, Merge
 
-# Language is now a Ty instance
+# Ensure Language is the base closed.Ty
 L = Language
+
+def make_copy(n):
+    if n <= 1: return closed.Id(Language ** n)
+    return Copy(Language, n) >> closed.Id(Language ** n)
+
+def make_merge(n):
+    if n <= 1: return closed.Id(Language ** n)
+    return Merge(Language, n) >> closed.Id(Language)
 
 # Helper to extract static arguments
 def extract_args(box):
-    """Recursively extract static arguments from boxes."""
-    name = getattr(box, 'name', '')
-    if name == "Scalar":
+    """Recursively extract static arguments from boxes, following representation kinds."""
+    if hasattr(box, 'kind') and box.kind == "Scalar":
         return (str(getattr(box, 'value', '')),)
     
     nested = getattr(box, 'nested', None)
@@ -20,7 +27,10 @@ def extract_args(box):
         if hasattr(nested, 'boxes'):
             args = []
             for b in nested.boxes:
-                if hasattr(b, 'name') and b.name not in ["Δ", "μ", "ε"]:
+                # If it's a Scalar box, we want its value
+                if hasattr(b, 'kind') and b.kind == "Scalar":
+                    args.append(str(getattr(b, 'value', '')))
+                elif hasattr(b, 'name') and b.name not in ["Δ", "μ", "ε"]:
                     args.append(b.name)
             return tuple(args)
         
@@ -46,11 +56,27 @@ def construct_box(box) -> closed.Diagram:
     if kind == "Titi" or tag == "titi":
         inside = titi.yaml.construct_functor(nested)
         start = Titi.read_stdin
-        if not inside.dom: start = start >> Discard()
-        return start >> inside >> Titi.printer
+        # Match inside domain
+        n_in = len(inside.dom)
+        if n_in == 0:
+            start = start >> Discard()
+        elif n_in > 1:
+            start = start >> make_copy(n_in)
+        
+        # Match inside codomain to printer
+        n_out = len(inside.cod)
+        if n_out == 0:
+            core = start >> inside
+        else:
+            if n_out > 1:
+                inside = inside >> make_merge(n_out)
+            core = start >> inside >> Titi.printer
+        
+        return Discard() >> core >> Data("")
 
     # 2. Handle Anchor
     if kind == "Anchor" or (kind and kind.startswith("Anchor(")):
+        anchor_name = anchor_name or name.split("(")[1].split(")")[0]
         inside = titi.yaml.construct_functor(nested)
         return Program("anchor", (anchor_name, inside))
 
@@ -62,6 +88,10 @@ def construct_box(box) -> closed.Diagram:
     if kind == "Scalar" or (nested is None and value is not None):
         if tag:
             args = (value,) if value is not None else ()
+            if tag == "id": return closed.Id(Language)
+            # Check for xargs and extract its arguments from the tag if it's a mapping key
+            if tag == "xargs":
+                 return Program("xargs", (value,))
             return Program(tag, args)
         if value is None or value == "":
             return closed.Id(Language)
@@ -70,6 +100,7 @@ def construct_box(box) -> closed.Diagram:
     # 5. Handle Container (Sequence / Mapping / Document / Stream)
     if tag:
         try:
+            # Special case for xargs tag on a container (Sequence/Mapping)
             args = extract_args(box)
             if args:
                 return Program(tag, args)
@@ -79,16 +110,64 @@ def construct_box(box) -> closed.Diagram:
     if nested is None:
         return closed.Id(Language)
 
+    # Mapping and algebraic operations
+    if kind == "Mapping":
+        # REDEFINED: Mapping as a Choice of Branches
+        # Each entry (k: v) becomes k >> v. Then all are merged.
+        # This allows keys to act as filters (guards).
+        if hasattr(nested, 'inside'):
+             # This is a frobenius diagram. Its layers are [ (k1 @ v1), (k2 @ v2), ... ]
+             # No, actually frobenius.Diagram from _map_builder is exactly that.
+             # We want to re-map it.
+             pass
+        
+        # We need to reach back into the YamlBox to get its entries.
+        # But we only have 'nested'.
+        # Actually, if we use the constructor, we can just let 'inside' be constructed
+        # and then modify it IF it matches a Mapping structure.
+        
+        # Mapping logic: fan out, run pairs, fan in.
+        # The key is that the entry is (k @ v). We want (k >> v).
+        # We can achieve this by a special Functor!
+        pass
+
     # Core Logic: All nested things must be mapped to Language category
     inside = titi.yaml.construct_functor(nested)
     
-    # Mapping and algebraic operations
     if kind == "Mapping":
+        # Adjust inside to be Sequential composition for pairs
+        # Frobenius Mapping entry is (Node @ Node). Correct.
+        # F(Node @ Node) = Language @ Language.
+        # We want to turn (L @ L) into (L -> L).
+        # We can use Curry? Or just manual re-weaving.
+        # Actually, let's just use the current n-wire structure.
         n = len(inside.dom)
         if n > 0:
-            # Note: make_copy or similar here if needed, 
-            # but usually Mapping just tensor components
-            pass
+            target_dom = Language ** n
+            if inside.dom != target_dom:
+                inside = closed.Diagram(inside.inside, target_dom, inside.cod)
+            
+            # weave: (1 -> n) >> inside
+            # inside is (k1 @ v1) @ (k2 @ v2) ... 
+            # We want (k1 >> v1) @ (k2 >> v2) ...
+            # Wait! That's not possible with just tensor.
+            # But if we change how Mapping is PARSED, it would be easier.
+            
+            # Since we can't change the parser easily now, let's just make
+            # xargs a guard in exec.py.
+            # If (k1 @ v1) runs, and k1 fails, it returns None.
+            # If v1 sees None, it skips.
+            # Then Merge picks the non-None result.
+            # This works even with @ tensor!
+            
+            # Key takes input, Value takes input.
+            inside = make_copy(n) >> inside 
+            
+            n_out = len(inside.cod)
+            if n_out > 1:
+                inside = inside >> make_merge(n_out)
+            elif n_out == 0:
+                inside = inside >> Data("")
 
     # Trace back algebraic ops if they appeared in representation
     if name == "Δ": return copy
