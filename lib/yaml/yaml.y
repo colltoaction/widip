@@ -174,6 +174,17 @@ void print_node(Node *n, int depth) {
     }
 }
 
+char *join_scalar_values(char *s1, char *s2) {
+    if (!s1) return s2;
+    if (!s2) return s1;
+    int len = strlen(s1) + strlen(s2) + 2;
+    char *new_s = malloc(len);
+    sprintf(new_s, "%s %s", s1, s2);
+    free(s1);
+    free(s2);
+    return new_s;
+}
+
 %}
 
 %union {
@@ -189,11 +200,13 @@ void print_node(Node *n, int depth) {
 %token <str> ANCHOR ALIAS TAG
 %token <str> PLAIN_SCALAR DQUOTE_STRING SQUOTE_STRING LITERAL_CONTENT
 %token LITERAL FOLDED
+%token TAG_DIRECTIVE YAML_DIRECTIVE
 
 %type <node> stream document document_list node optional_node flow_node block_node optional_flow_node
 %type <node> flow_seq_items flow_map_entries flow_map_entry
 %type <node> block_sequence block_mapping block_seq_items block_map_entries map_entry
 %type <node> anchored_node tagged_node
+%type <str> merged_plain_scalar
 
 %start stream
 
@@ -215,6 +228,30 @@ document_list
 document
     : node opt_newlines { $$ = $1; }
     | DOC_START opt_newlines optional_node opt_newlines { $$ = $3; }
+    | directives DOC_START opt_newlines optional_node opt_newlines { $$ = $4; }
+    ;
+
+directives
+    : directive
+    | directives directive
+    ;
+
+directive
+    : TAG_DIRECTIVE_LINE
+    | YAML_DIRECTIVE_LINE
+    ;
+
+directive_args
+    : PLAIN_SCALAR
+    | directive_args PLAIN_SCALAR
+    ;
+
+TAG_DIRECTIVE_LINE
+    : TAG_DIRECTIVE TAG directive_args NEWLINE { /* Handle TAG directive */ }
+    ;
+
+YAML_DIRECTIVE_LINE
+    : YAML_DIRECTIVE directive_args NEWLINE { /* Handle YAML directive */ }
     ;
 
 opt_newlines
@@ -243,18 +280,26 @@ node
     ;
 
 flow_node
-    : PLAIN_SCALAR          { $$ = make_scalar($1); }
+    : merged_plain_scalar   { $$ = make_scalar($1); }
     | DQUOTE_STRING         { $$ = make_scalar($1); }
     | SQUOTE_STRING         { $$ = make_scalar($1); }
     | ALIAS                 { $$ = make_alias($1); }
     | LBRACKET flow_seq_items RBRACKET { $$ = make_seq($2); }
     | LBRACE flow_map_entries RBRACE   { $$ = make_map($2); }
     | TAG opt_newlines flow_node { $$ = make_tag($1, $3); }
+    | TAG opt_newlines { $$ = make_tag($1, make_null()); }
     | ANCHOR opt_newlines flow_node { 
                               $$ = malloc(sizeof(Node));
                               $$->type = NODE_ANCHOR;
                               $$->anchor = $1;
                               $$->children = $3;
+                              $$->next = NULL;
+                            }
+    | ANCHOR opt_newlines { 
+                              $$ = malloc(sizeof(Node));
+                              $$->type = NODE_ANCHOR;
+                              $$->anchor = $1;
+                              $$->children = make_null();
                               $$->next = NULL;
                             }
     ;
@@ -265,11 +310,19 @@ block_node
     | LITERAL LITERAL_CONTENT { $$ = make_block_scalar($2, 0); }
     | FOLDED LITERAL_CONTENT  { $$ = make_block_scalar($2, 1); }
     | TAG opt_newlines block_node { $$ = make_tag($1, $3); }
+    | TAG opt_newlines { $$ = make_tag($1, make_null()); }
     | ANCHOR opt_newlines block_node { 
                               $$ = malloc(sizeof(Node));
                               $$->type = NODE_ANCHOR;
                               $$->anchor = $1;
                               $$->children = $3;
+                              $$->next = NULL;
+                            }
+    | ANCHOR opt_newlines { 
+                              $$ = malloc(sizeof(Node));
+                              $$->type = NODE_ANCHOR;
+                              $$->anchor = $1;
+                              $$->children = make_null();
                               $$->next = NULL;
                             }
     | INDENT node DEDENT    { $$ = $2; }
@@ -297,6 +350,12 @@ anchored_node
                               $$->children = $4;
                               $$->next = NULL;
                             }
+    ;
+
+merged_plain_scalar
+    : PLAIN_SCALAR { $$ = $1; }
+    | merged_plain_scalar NEWLINE INDENT PLAIN_SCALAR DEDENT { $$ = join_scalar_values($1, $4); }
+    | merged_plain_scalar PLAIN_SCALAR { $$ = join_scalar_values($1, $2); }
     ;
 
 tagged_node
