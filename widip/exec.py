@@ -38,7 +38,7 @@ def exec_box(box: closed.Box) -> Process:
 
 def any_ty(n: int):
     """Returns a tensor of n object types."""
-    return python.Ty(*(n * ["object"]))
+    return python.Ty(n * [object])
 
 def exec_swap(box: symmetric.Swap) -> Process:
     return Process(lambda a, b: (b, a), any_ty(2), any_ty(2))
@@ -74,6 +74,9 @@ async def execute(diag: closed.Diagram, hooks: dict, executable: str, loop: Any,
 @contextmanager
 def widip_runner(hooks: Dict[str, Callable], executable: str = "python3", loop: Any = None):
     """Context manager for the execution environment."""
+    if loop is None:
+        import asyncio
+        loop = asyncio.get_running_loop()
     ctx = ExecContext(hooks, executable, loop)
     def runner(diag: closed.Diagram, stdin: Any = None):
         return execute(diag, hooks, executable, loop, stdin)

@@ -24,6 +24,11 @@ class MappingBox(symmetric.Box):
         super().__init__("Mapping", dom, cod, data=inside)
         self.tag, self.nested = tag, inside
 
+class TitiBox(symmetric.Box):
+    def __init__(self, inside: symmetric.Diagram, **kwargs):
+        super().__init__("Titi", Node, Node, data=inside)
+        self.nested = inside
+
 class AnchorBox(symmetric.Box):
     def __init__(self, name: str, inside: symmetric.Diagram, dom=Node, cod=Node):
         super().__init__(f"Anchor({name})", dom, cod, data=inside)
@@ -49,6 +54,7 @@ class StreamBox(symmetric.Box):
 Scalar = lambda tag, val: ScalarBox(tag, val)
 Sequence = lambda inside, tag="", *args, **kwargs: SequenceBox(inside, tag, *args, **kwargs)
 Mapping = lambda inside, tag="": MappingBox(inside, tag)
+Titi = lambda inside, *args, **kwargs: TitiBox(inside, **kwargs)
 Anchor = lambda name, inside: AnchorBox(name, inside)
 Alias = lambda name: AliasBox(name)
 Document = lambda inside: DocumentBox(inside)

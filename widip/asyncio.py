@@ -286,7 +286,7 @@ async def feed_stdin(loop: EventLoop, stdin: Any, process: asyncio.subprocess.Pr
 async def run_command(runner: Callable, loop: EventLoop, 
                      name: Any, args: Sequence[Any], stdin: Any, hooks: dict) -> Any:
     """Starts an async subprocess and returns its output stream."""
-    from .computer import get_anchor, set_anchor
+    from computer import get_anchor, set_anchor
     
     # Check for recursive anchor
     item = get_anchor(name)

@@ -18,6 +18,8 @@ def construct_scalar(box: ren.ScalarBox) -> closed.Diagram:
 
 def construct_sequence(box: ren.SequenceBox) -> closed.Diagram:
     import widip.yaml
+    if box.tag == "titi":
+        return construct_titi(ren.TitiBox(box.nested))
     inside_computer = widip.yaml.construct_functor(box.nested)
     if box.tag:
         return Program(box.tag, (inside_computer,))
@@ -29,3 +31,10 @@ def construct_mapping(box: ren.MappingBox) -> closed.Diagram:
     if box.tag:
         return Program(box.tag, (inside_computer,))
     return inside_computer
+def construct_titi(box: ren.TitiBox) -> closed.Diagram:
+    import widip.yaml
+    from computer import Titi
+    inside = widip.yaml.construct_functor(box.nested)
+    # F(D) = stdin >> D >> printer
+    # Use Titi services if available
+    return Titi.read_stdin >> inside >> Titi.printer

@@ -5,7 +5,7 @@ from discopy import symmetric, closed
 
 from .parse import parse, impl_parse, SequenceBox, MappingBox, AnchorBox, DocumentBox, StreamBox
 from . import representation as ren
-from .representation import Scalar, Sequence, Mapping, Alias, Document, Stream
+from .representation import Scalar, Sequence, Mapping, Alias, Document, Stream, Titi
 from . import construct as con
 from . import presentation as pres
 from computer.core import Language
@@ -57,6 +57,9 @@ def construct_dispatch(box: Any) -> closed.Diagram:
 construct_dispatch.register(ren.ScalarBox, con.construct_scalar)
 construct_dispatch.register(ren.SequenceBox, con.construct_sequence)
 construct_dispatch.register(ren.MappingBox, con.construct_mapping)
+construct_dispatch.register(ren.DocumentBox, lambda b: construct_dispatch(b.nested))
+construct_dispatch.register(ren.StreamBox, lambda b: construct_dispatch(b.nested))
+construct_dispatch.register(ren.TitiBox, con.construct_titi)
 
 construct_functor = closed.Functor(
     ob={

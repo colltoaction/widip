@@ -1,0 +1,3 @@
+#!/usr/bin/env python3
+import sys
+from widip import __main__; __main__.repl()
