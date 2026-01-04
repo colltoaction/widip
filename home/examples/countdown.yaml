@@ -1,4 +1,4 @@
-#!/home/colltoaction/GitHub/widip/bin/widish
+#!/usr/bin/env titi
 10: &countdown
   !xargs { test, 0, -eq }: Liftoff!
   !xargs { test, 0, -lt }:

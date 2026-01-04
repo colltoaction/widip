@@ -1,11 +1,11 @@
 import sys
 from itertools import batched
 from pathlib import Path
-sys.path.append("/home/colltoaction/GitHub/widip")
+sys.path.append(str(Path(__file__).parent))
 
 from nx_yaml import nx_compose_all
-import widip.loader as loader
-import widip.hif as hif
+import titi.loader as loader
+import titi.hif as hif
 
 filename = "tests/test_complex_expr.test.yaml"
 with open(filename) as f:

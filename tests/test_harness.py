@@ -25,11 +25,11 @@ def test_case(test_file):
 
     # Run the shell
     # Assuming running from repo root
-    cmd = ["bin/widish", test_file]
+    cmd = ["bin/titi", test_file]
 
     try:
         proc = subprocess.run(
-            ["python", "-m", "widip", test_file],
+            ["python", "-m", "titi", test_file],
             capture_output=True,
             text=True,
             timeout=2.0

@@ -2,7 +2,7 @@ import pytest
 from discopy import closed
 from .yaml import Sequence, Mapping, Scalar
 from .yaml.representation import SequenceBox, MappingBox
-from widip.yaml import construct_functor as SHELL_COMPILER
+from titi.yaml import construct_functor as SHELL_COMPILER
 from computer import Data, Program, Language
 
 # Helper to create dummy scalars for testing

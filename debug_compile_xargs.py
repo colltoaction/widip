@@ -1,6 +1,6 @@
-from widip.files import repl_read
-from widip.compiler import SHELL_COMPILER
-from widip.computer import Data, Copy, Swap, Discard
+from titi.files import repl_read
+from titi.compiler import SHELL_COMPILER
+from titi.computer import Data, Copy, Swap, Discard
 from discopy import closed
 
 yaml_str = "!xargs { test, -eq, 0 }"

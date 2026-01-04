@@ -6,12 +6,12 @@ from io import BytesIO
 import os
 
 from discopy import closed
-from widip.repl import read, env_fn, get_source, read_diagram
-from widip.asyncio import eval_diagram
-from widip.super import interpreter
-from widip.compiler import SHELL_COMPILER as compiler
-from widip.exec import widip_runner
-from widip.io import value_to_bytes, get_executable
+from titi.repl import read, env_fn, get_source, read_diagram
+from titi.asyncio import eval_diagram
+from computer.super import interpreter
+from titi.yaml import construct_functor as compiler
+from titi.exec import titi_runner
+from titi.io import value_to_bytes, get_executable
 
 @pytest.fixture
 def hooks():
@@ -39,9 +39,8 @@ async def test_read_file_handling(loop, hooks):
     """Test that repl.py can read and parse a file."""
     import tempfile
     content = """
-    x:
-        tag: !eval
-        inside: "2+2"
+    - tag: !eval
+      inside: "2+2"
     """
     with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
         f.write(content)
@@ -62,15 +61,15 @@ async def test_read_file_handling(loop, hooks):
 @pytest.mark.asyncio
 async def test_eval_logic(loop, hooks):
     """Test execution of an eval-like construct."""
-    from widip.computer import Program, Language
+    from computer import Program, Language
 
-    program = Program("python3", Language, Language, ("-c", "print(2+2)"))
+    program = Program("python3", ("-c", "print(2+2)"))
     output_captured = []
 
     async def capture_output(rec, val):
         output_captured.append(val)
 
-    with widip_runner(hooks=hooks, executable="python3", loop=loop) as (runner, _):
+    with titi_runner(hooks=hooks, executable="python3", loop=loop) as (runner, _):
         pipeline = lambda fd: runner(compiler(fd, compiler, None))
         async def source_gen():
             yield program, Path("test"), BytesIO(b"")
@@ -90,14 +89,14 @@ async def test_eval_logic(loop, hooks):
 @pytest.mark.asyncio
 async def test_print_logic(loop, hooks):
     """Test output handling."""
-    from widip.computer import Data, Language
-    data_box = Data("Hello World", Language, Language)
+    from computer import Data, Language
+    data_box = Data("Hello World")
     output_captured = []
 
     async def capture_output(rec, val):
         output_captured.append(val)
 
-    with widip_runner(hooks=hooks, loop=loop) as (runner, _):
+    with titi_runner(hooks=hooks, loop=loop) as (runner, _):
         pipeline = lambda fd: runner(compiler(fd, compiler, None))
         async def source_gen():
             yield data_box, Path("test"), BytesIO(b"")
@@ -109,13 +108,14 @@ async def test_print_logic(loop, hooks):
 @pytest.mark.asyncio
 async def test_data_logic(loop, hooks):
     """Test passing data through."""
-    from widip.computer import Data, Language
-    data_box = Data("test_input", Language, Language)
+    from computer import Data, Language
+    data_box = Data("test_input")
+
     output_captured = []
     async def capture_output(rec, val):
         output_captured.append(val)
 
-    with widip_runner(hooks=hooks, loop=loop) as (runner, _):
+    with titi_runner(hooks=hooks, loop=loop) as (runner, _):
         pipeline = lambda fd: runner(compiler(fd, compiler, None))
         async def source_gen():
             yield data_box, Path("test"), BytesIO(b"")

@@ -1,4 +1,4 @@
-from widip.files import repl_read
+from titi.files import repl_read
 
 yaml_str = "!xargs { test, -eq, 0 }"
 

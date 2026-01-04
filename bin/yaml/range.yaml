@@ -1,2 +1,2 @@
-#!/bin/widish
+#!/bin/titi
 !seq { 1, 100 }

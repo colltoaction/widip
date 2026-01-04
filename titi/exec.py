@@ -127,7 +127,7 @@ async def execute(diag: closed.Diagram, hooks: dict, executable: str, loop: Any,
         _EXEC_CTX.reset(token)
 
 @contextmanager
-def widip_runner(hooks: Dict[str, Callable], executable: str = "python3", loop: Any = None):
+def titi_runner(hooks: Dict[str, Callable], executable: str = "python3", loop: Any = None):
     """Context manager for the execution environment."""
     if loop is None:
         import asyncio
@@ -140,4 +140,4 @@ def widip_runner(hooks: Dict[str, Callable], executable: str = "python3", loop: 
 # Legacy alias for tests
 compile_exec = exec_functor
 
-__all__ = ['execute', 'ExecContext', 'exec_dispatch', 'Process', 'widip_runner', 'compile_exec']
+__all__ = ['execute', 'ExecContext', 'exec_dispatch', 'Process', 'titi_runner', 'compile_exec']

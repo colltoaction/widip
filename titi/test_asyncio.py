@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 
-from widip.asyncio import *
+from titi.asyncio import *
 
 
 @pytest.mark.asyncio

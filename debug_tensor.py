@@ -1,8 +1,8 @@
 import asyncio
 from discopy import closed
-from widip.widish import SHELL_RUNNER, Constant, Process
-from widip.computer import Language
-from widip.async_ import unwrap
+from titi.titi import SHELL_RUNNER, Constant, Process
+from titi.computer import Language
+from titi.async_ import unwrap
 
 async def main():
     # Setup Gamma (dom=Ty())
@@ -28,9 +28,9 @@ async def main():
     print(f"Result: {res}")
     
     # Check decomposition
-    # Gamma should return ("bin/widish",)
+    # Gamma should return ("bin/titi",)
     # Id should return ("some_input",)
-    # Result should be ("bin/widish", "some_input")
+    # Result should be ("bin/titi", "some_input")
 
 if __name__ == "__main__":
     asyncio.run(main())

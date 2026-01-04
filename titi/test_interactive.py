@@ -7,11 +7,11 @@ import pytest
     ("home/examples/aoc2025/1-1.yaml", "1147\n"),
     ("home/examples/countdown.yaml", "3\n2\n1\nLiftoff!\n"),
 ])
-def test_piping_to_widish(filename, expected_output, capfd):
+def test_piping_to_titi(filename, expected_output, capfd):
     with open(filename, "r") as f:
         content = f.read()
     
-    subprocess.run(["python", "-m", "widip", filename], input=content, text=True, check=False)
+    subprocess.run(["python", "-m", "titi", filename], input=content, text=True, check=False)
     
     out, err = capfd.readouterr()
     if err:

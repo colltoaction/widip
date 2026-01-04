@@ -1,8 +1,8 @@
 import pytest
 from discopy import closed
-from widip.computer import Language
-from widip.computer.super import Language2
-from widip.computer.hyper import ackermann
+from computer import Language
+from computer.super import Language2
+from computer.hyper import ackermann
 
 def test_ackermann_structure():
     """Test that ackermann is a closed.Box."""

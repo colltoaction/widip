@@ -1,13 +1,13 @@
 # Rosetta Code Examples
 
-Examples from [rosettacode.org](https://rosettacode.org) implemented in widip.
+Examples from [rosettacode.org](https://rosettacode.org) implemented in titi.
 
 ## FizzBuzz
 
 Classic FizzBuzz using standard Unix tools (`xargs`, `printf`, `bc`, `test`, `tee`).
 
 ```bash
-python -m widip examples/rosetta/FizzBuzz.yaml | head -16
+python -m titi examples/rosetta/FizzBuzz.yaml | head -16
 # Expected:
 # 1
 # 2
@@ -40,6 +40,6 @@ Recursive Fibonacci structure demonstration.
 Simple string repetition using Python eval.
 
 ```bash
-echo "ha" | python -m widip examples/rosetta/repeat-a-string.yaml
+echo "ha" | python -m titi examples/rosetta/repeat-a-string.yaml
 # Expected: hahahahaha
 ```

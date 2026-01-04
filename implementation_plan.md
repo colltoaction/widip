@@ -1,7 +1,7 @@
-# Task: Refactor and Fix Widip
+# Task: Refactor and Fix Titi
 
 ## Status
-- [x] Refactor `widip/exec.py` to be a "dumb parameter passing" module.
+- [x] Refactor `titi/exec.py` to be a "dumb parameter passing" module.
 - [x] Rename `EXEC` to `Exec` and thread the functor.
 - [x] Move `trace_output` logic to `ar_map`.
 - [x] Pass `sys.executable` to `Exec`.
@@ -13,7 +13,7 @@
 - [ ] Run all examples in README files and verify.
 
 ## Plan
-1.  **Refactor `interactive.py`**: Inline `async_command_main` and `async_widish_main` if they are just wrappers, or consolidate them into a more flexible `run` function.
+1.  **Refactor `interactive.py`**: Inline `async_command_main` and `async_titi_main` if they are just wrappers, or consolidate them into a more flexible `run` function.
 2.  **Update `__main__.py`**: Adjust calls to the consolidated functions in `interactive.py`.
 3.  **Fix IO handling**: Ensure that merged results have appropriate newlines or that `echo` behavior is consistent.
 4.  **Update log files**: Specifically `xargs-curry.log` to match the "dumb parameter passing" results.

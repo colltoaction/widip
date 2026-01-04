@@ -1,6 +1,6 @@
 # Advent of Code 2025
 
-Solutions pipelines for [AoC 2025](https://adventofcode.com/2025) implemented in widip YAML.
+Solutions pipelines for [AoC 2025](https://adventofcode.com/2025) implemented in titi YAML.
 
 ## Day 1-1
 

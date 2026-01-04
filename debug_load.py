@@ -1,4 +1,4 @@
-from widip.loader import load_file
+from titi.loader import load_file
 import sys
 
 try:

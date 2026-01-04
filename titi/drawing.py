@@ -156,7 +156,7 @@ def diagram_draw(path: Path, fd):
         "fontsize_types": params["fontsize_types"]
     }
     
-    # standardization: prepare for drawing without leaking widip types
+    # standardization: prepare for drawing without leaking titi types
     # This prevents 'Mapping', 'Scalar' etc. from leaking into the SVG as class names.
     # It also handles the left-alignment padding without mutating the original diagram.
 

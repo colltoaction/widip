@@ -1,4 +1,4 @@
-# Widip - Wiring Diagrams in Python
+# Titi - Wiring Diagrams in Python
 import sys
 import os
 

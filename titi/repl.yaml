@@ -1,5 +1,5 @@
-# widip/repl.yaml
-# !/usr/bin/env widish
+# titi/repl.yaml
+# !/usr/bin/env titi
 # Read-Eval-Print Loop Implementation in YAML
 
 !WhileLoop:

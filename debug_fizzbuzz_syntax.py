@@ -1,6 +1,6 @@
-from widip.files import repl_read
-from widip.compiler import SHELL_COMPILER
-from widip.computer import Program, Data
+from titi.files import repl_read
+from titi.compiler import SHELL_COMPILER
+from titi.computer import Program, Data
 from discopy import closed
 
 yaml_str = """
@@ -23,10 +23,10 @@ try:
     
     # Actually repl_read returns a Diagram.
     # I should look at the original YAML nodes if possible, but SHELL_COMPILER works on Yaml nodes (Scalar, Sequence, Mapping, etc.)
-    # Wait, repl_read in widip/files.py converts incidences to diagram using SHELL_COMPILER?
+    # Wait, repl_read in titi/files.py converts incidences to diagram using SHELL_COMPILER?
     # No, it uses incidences_to_diagram.
     
-    from widip.loader import load_sequence
+    from titi.loader import load_sequence
     # I might need to mock the stream or use a higher level loader.
     
 except Exception as e:

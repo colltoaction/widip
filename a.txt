@@ -8,7 +8,7 @@ diff --git a/examples/aoc2025/README.md b/examples/aoc2025/README.md
 index 5b2c9cd..37efbcf 100644
 --- a/examples/aoc2025/README.md
 +++ b/examples/aoc2025/README.md
-@@ -7,7 +7,7 @@ $ python -m widip examples/aoc2025/1-1.yaml
+@@ -7,7 +7,7 @@ $ python -m titi examples/aoc2025/1-1.yaml
  1147
  ```
  
@@ -17,7 +17,7 @@ index 5b2c9cd..37efbcf 100644
  
  ## Day 1-2
  
-@@ -16,7 +16,7 @@ $ python -m widip examples/aoc2025/1-2.yaml
+@@ -16,7 +16,7 @@ $ python -m titi examples/aoc2025/1-2.yaml
  6789
  ```
  
@@ -26,7 +26,7 @@ index 5b2c9cd..37efbcf 100644
  
  ## Day 2-1
  
-@@ -25,7 +25,7 @@ $ python -m widip examples/aoc2025/2-1.yaml
+@@ -25,7 +25,7 @@ $ python -m titi examples/aoc2025/2-1.yaml
  13108371860
  ```
  
@@ -35,7 +35,7 @@ index 5b2c9cd..37efbcf 100644
  
  ## Day 2-2
  
-@@ -34,7 +34,7 @@ $ python -m widip examples/aoc2025/2-2.yaml
+@@ -34,7 +34,7 @@ $ python -m titi examples/aoc2025/2-2.yaml
  22471660255
  ```
  
@@ -44,7 +44,7 @@ index 5b2c9cd..37efbcf 100644
  
  ## Day 3-1
  
-@@ -43,4 +43,4 @@ $ python -m widip examples/aoc2025/3-1.yaml
+@@ -43,4 +43,4 @@ $ python -m titi examples/aoc2025/3-1.yaml
  17324
  ```
  
@@ -7825,10 +7825,10 @@ index 0000000..2697bf4
 +++ b/test_output.yaml
 @@ -0,0 +1 @@
 +"Test output reached"
-diff --git a/widip/compiler.py b/widip/compiler.py
+diff --git a/titi/compiler.py b/titi/compiler.py
 index 02b19ef..f5d6deb 100644
---- a/widip/compiler.py
-+++ b/widip/compiler.py
+--- a/titi/compiler.py
++++ b/titi/compiler.py
 @@ -1,7 +1,8 @@
  from functools import reduce
 -from discopy import closed, monoidal
@@ -7948,11 +7948,11 @@ index 02b19ef..f5d6deb 100644
 -    diagram = SHELL_COMPILER(diagram)
 -    return diagram
 +    return SHELL_COMPILER(to_symmetric(diagram))
-diff --git a/widip/drawing.py b/widip/drawing.py
+diff --git a/titi/drawing.py b/titi/drawing.py
 new file mode 100644
 index 0000000..ffa3b88
 --- /dev/null
-+++ b/widip/drawing.py
++++ b/titi/drawing.py
 @@ -0,0 +1,306 @@
 +import math
 +import sys
@@ -8124,7 +8124,7 @@ index 0000000..ffa3b88
 +        "fontsize_types": params["fontsize_types"]
 +    }
 +    
-+    # standardization: prepare for drawing without leaking widip types
++    # standardization: prepare for drawing without leaking titi types
 +    # This prevents 'Mapping', 'Scalar' etc. from leaking into the SVG as class names.
 +    # It also handles the left-alignment padding without mutating the original diagram.
 +
@@ -8260,10 +8260,10 @@ index 0000000..ffa3b88
 +        fd_draw.draw(path=output_png, **draw_params)
 +    except Exception as e:
 +        print(f"Failed to save PNG: {e}", file=sys.stderr)
-diff --git a/widip/files.py b/widip/files.py
+diff --git a/titi/files.py b/titi/files.py
 index 68910dd..f374f33 100644
---- a/widip/files.py
-+++ b/widip/files.py
+--- a/titi/files.py
++++ b/titi/files.py
 @@ -7,6 +7,7 @@ from discopy import monoidal
  
  from nx_yaml import nx_compose_all
@@ -8445,10 +8445,10 @@ index 68910dd..f374f33 100644
 -            fontsize_types=int(fsize * 0.7))
 -
  files_f = Functor(lambda x: Ty(""), files_ar)
-diff --git a/widip/loader.py b/widip/loader.py
+diff --git a/titi/loader.py b/titi/loader.py
 index c4dd070..394c245 100644
---- a/widip/loader.py
-+++ b/widip/loader.py
+--- a/titi/loader.py
++++ b/titi/loader.py
 @@ -8,7 +8,7 @@ from nx_hif.hif import HyperGraph
  
  import sys
@@ -8488,10 +8488,10 @@ index c4dd070..394c245 100644
 -        return Stream(result)
 -    return result
 +    return to_symmetric(result)
-diff --git a/widip/widish.py b/widip/widish.py
+diff --git a/titi/titi.py b/titi/titi.py
 index 4cea019..8f4525b 100644
---- a/widip/widish.py
-+++ b/widip/widish.py
+--- a/titi/titi.py
++++ b/titi/titi.py
 @@ -12,8 +12,6 @@ async def _bridge_pipe(f, g, *args):
      
      def is_failure(x):
@@ -8594,10 +8594,10 @@ index 4cea019..8f4525b 100644
  
      @staticmethod
      def run_constant_gamma(ar, *args):
-diff --git a/widip/yaml.py b/widip/yaml.py
+diff --git a/titi/yaml.py b/titi/yaml.py
 index 5d34f3e..f7155a4 100644
---- a/widip/yaml.py
-+++ b/widip/yaml.py
+--- a/titi/yaml.py
++++ b/titi/yaml.py
 @@ -10,42 +10,14 @@ class Scalar(symmetric.Box):
          if cod is None:
              cod = Node

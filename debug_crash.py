@@ -1,8 +1,8 @@
 import sys
 import asyncio
 from discopy import closed, monoidal, symmetric
-from widip import computer, compiler, loader, yaml
-from widip.exec import ExecFunctor
+from titi import computer, compiler, loader, yaml
+from titi.exec import ExecFunctor
 
 def test_crash():
     # Construct a simple diagram simulating test_complex_expr

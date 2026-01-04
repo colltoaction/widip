@@ -26,7 +26,7 @@ from .io import (
     Path
 )
 from .asyncio import async_read, run_repl, run, loop_scope
-from .exec import execute, widip_runner
+from .exec import execute, titi_runner
 
 
 
@@ -60,7 +60,7 @@ def read(fd: Any | None, path: Path | None, file_name: str, loop: Any, hooks: di
 
 def env_fn():
     import argparse
-    parser = argparse.ArgumentParser(prog="widip")
+    parser = argparse.ArgumentParser(prog="titi")
     parser.add_argument("-c", dest="command_string", help="Execute command string")
     parser.add_argument("-w", "--watch", action="store_true", help="Watch file for changes")
     parser.add_argument("operands", nargs="*", help="File to execute and/or arguments")
@@ -114,7 +114,7 @@ async def async_repl():
         'Path': Path
     }
 
-    await run_repl(env_fn, widip_runner, get_source, read, make_pipeline, reload_diagram, hooks)
+    await run_repl(env_fn, titi_runner, get_source, read, make_pipeline, reload_diagram, hooks)
 
 
 def repl():

@@ -1,4 +1,4 @@
-#!/home/colltoaction/GitHub/widip/bin/widish
+#!/usr/bin/env titi/bin/titi
 !cat home/examples/shell.yaml:
   ? !wc -c
   ? !grep grep: !wc -c

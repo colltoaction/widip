@@ -1,7 +1,7 @@
 import pytest
 from discopy.frobenius import Box, Ty, Spider, Diagram, Id, Functor, Swap
 
-from widip.files import stream_diagram, files_f
+from titi.files import stream_diagram, files_f
 
 def test_monoid():
     diagram = files_f(Box("file://./src/data/monoid.yaml", Ty(), Ty()))

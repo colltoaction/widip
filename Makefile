@@ -7,7 +7,7 @@ all: $(SVG_FILES)
 
 %.svg: %.yaml
 	@echo "Generating $@..."
-	@echo "10" | python3 -m widip $<
+	@echo "10" | python3 -m titi $<
 
 clean:
 	rm -f $(SVG_FILES)

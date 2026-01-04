@@ -1,6 +1,6 @@
-from widip.files import file_diagram
-from widip.compiler import SHELL_COMPILER
-from widip.widish import SHELL_RUNNER
+from titi.files import file_diagram
+from titi.compiler import SHELL_COMPILER
+from titi.titi import SHELL_RUNNER
 import asyncio
 
 async def main():
@@ -9,8 +9,8 @@ async def main():
         print(f"YAML Diagram items: {yaml_d.boxes}")
         compiled_d = SHELL_COMPILER(yaml_d)
         print(f"Compiled Diagram boxes: {compiled_d.boxes}")
-        widish_d = SHELL_RUNNER(compiled_d)
-        print(f"Widish Diagram boxes: {widish_d.boxes}")
+        titi_d = SHELL_RUNNER(compiled_d)
+        print(f"Widish Diagram boxes: {titi_d.boxes}")
     except Exception as e:
         print(f"Error: {e}")
         import traceback
