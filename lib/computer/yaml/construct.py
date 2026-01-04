@@ -107,51 +107,11 @@ def construct_box(box) -> closed.Diagram:
             return Data(value)
 
     # Special: Treat untagged sequences as accumulative pipelines (print taps)
-    is_seq = kind == "Sequence" and not tag
+    is_seq = kind in ["Sequence", "Stream"] and not tag
     has_inside = hasattr(nested, 'inside') or isinstance(nested, list)
     if is_seq and has_inside:
-          res = None
           items = nested.inside if hasattr(nested, 'inside') else nested
-          
-          # Edge case: If 1 item and it's a Program, just return it directly (unwrap)
-          # unless specifically intended as a Sequence of 1.
-          if len(items) == 1:
-               return computer.yaml.construct_functor(items[0])
-
-          for layer in items:
-               layer_diag = computer.yaml.construct_functor(layer)
-               if res is None:
-                    res = layer_diag
-               else:
-                    # Robust Sequential composition: res >> layer_diag
-                    n_res = len(res.cod)
-                    n_layer = len(layer_diag.dom)
-                    
-                    if n_res == n_layer:
-                        res = res >> layer_diag
-                    elif n_layer == 0:
-                        # Next box takes nothing - discard previous output
-                        if n_res > 0:
-                            res = res >> Discard(res.cod)
-                        res = res >> layer_diag
-                    elif n_res == 0:
-                        # Previous box produced nothing - next box starts fresh
-                        res = res >> layer_diag
-                    elif n_res < n_layer:
-                        # Next box needs more than we have - fan out the last output?
-                        if n_res == 1:
-                            res = res >> make_copy(n_layer) >> layer_diag
-                        else:
-                            res = res >> layer_diag
-                    elif n_res > n_layer:
-                        # Too many outputs - merge or discard some
-                        if n_layer == 1:
-                            res = res >> make_merge(n_res) >> layer_diag
-                        else:
-                            # Discard extra
-                            extra = n_res - n_layer
-                            res = res >> (closed.Id(Language ** n_layer) @ Discard(Language ** extra)) >> layer_diag
-          return res or closed.Id(Language)
+          return sequential_compose(items)
 
     inside = computer.yaml.construct_functor(nested)
     
@@ -263,6 +223,15 @@ def construct_box(box) -> closed.Diagram:
                  return Program("choice", (branch1, branch2))
             return inside
         
+        if tag == "mapping":
+            # Explicit tensor product
+            return inside
+            
+        if tag == "seq":
+            # Explicit sequential composition
+            items = nested.inside if hasattr(nested, 'inside') else nested
+            return sequential_compose(items)
+        
         # --- Parser Integration Tags ---
         if tag == "parse_yaml":
             from ..parser_bridge import YAMLParserBridge
@@ -305,3 +274,56 @@ def construct_box(box) -> closed.Diagram:
         return Program(tag, args)
 
     return inside
+def sequential_compose(items: list) -> closed.Diagram:
+    """
+    Helper to compose a list of items with 'Accumulative Tap' behavior.
+    If multiple items produce output (codomain is Language), they are
+    automatically merged (μ) so all outputs are preserved.
+    """
+    import computer
+    from ..core import Language, Discard, make_copy, make_merge, Copy, Merge
+    from discopy import closed
+    
+    res = None
+    # Edge case: If 1 item and it's a Program, just return it directly (unwrap)
+    if len(items) == 1:
+        return computer.yaml.construct_functor(items[0])
+
+    for layer in items:
+        layer_diag = computer.yaml.construct_functor(layer)
+        if res is None:
+            res = layer_diag
+        else:
+            # Robust Accumulative Composition
+            n_res = len(res.cod)
+            n_layer = len(layer_diag.dom)
+            
+            # If both have Language cod/dom, we can pipe OR tap
+            # For "Accumulative Tap", we want to preserve previous output
+            # and ALSO run the next one.
+            
+            # If both have Language cod/dom, use Accumulative Tap
+            if n_res == 1 and n_layer == 1:
+                 # Shared input + Parallel output merged
+                 res = make_copy(2) >> (res @ layer_diag) >> make_merge(2)
+            elif n_res == n_layer:
+                res = res >> layer_diag
+            elif n_layer == 0:
+                # Parallel composition: next one is a source
+                res = res @ layer_diag
+            elif n_res == 0:
+                # Sequence: previous produced nothing, next starts fresh
+                res = res >> layer_diag
+            elif n_res < n_layer:
+                # fan out
+                if n_res == 1:
+                    res = res >> make_copy(n_layer) >> layer_diag
+                else: res = res >> layer_diag
+            elif n_res > n_layer:
+                # merge or discard
+                if n_layer == 1:
+                    res = res >> make_merge(n_res) >> layer_diag
+                else:
+                    extra = n_res - n_layer
+                    res = res >> (closed.Id(Language ** n_layer) @ Discard(Language ** extra)) >> layer_diag
+    return res or closed.Id(Language)

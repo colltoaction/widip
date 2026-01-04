@@ -49,6 +49,12 @@ class Discard(closed.Box):
         x = x or Language
         super().__init__("ε", x, closed.Ty())
 
+def make_copy(n: int, x=None):
+    return Copy(x, n)
+
+def make_merge(n: int, x=None):
+    return Merge(x, n)
+
 # --- Core Combinator Diagrams ---
 # Note: copy, merge, discard are now defined in services.yaml
 # Kept here for backwards compatibility as class definitions

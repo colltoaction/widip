@@ -26,12 +26,18 @@ def Scalar(tag, value):
     return YamlBox("Scalar", tag=tag, value=value)
 
 def Sequence(inside, tag="", **kwargs):
-    dom = getattr(inside, 'dom', Node)
-    cod = getattr(inside, 'cod', Node)
+    if isinstance(inside, list):
+        # Default domain/codomain for a list of items is Node
+        dom = Node
+        cod = Node
+    else:
+        dom = getattr(inside, 'dom', Node)
+        cod = getattr(inside, 'cod', Node)
     return YamlBox("Sequence", dom=dom, cod=cod, nested=inside, tag=tag, **kwargs)
 
 def Mapping(inside, tag=""):
     # Mappings are treated as a single node value in our representation category
+    # If it's a list (pairs), it still represents a single mapping node
     return YamlBox("Mapping", dom=Node, cod=Node, nested=inside, tag=tag)
 
 def Titi(inside, **kwargs):

@@ -29,13 +29,17 @@ def test_anchor_alias_execution(yaml_src, expected_output):
             res = await runner(diag)
             if res is not None:
                 # Mimic REPL
+                def _val_to_bytes(x):
+                    if isinstance(x, bytes): return x
+                    return str(x).encode()
+
                 if isinstance(res, tuple):
                     for r in res:
                         if hasattr(r, 'read'): r = await r.read()
-                        hooks['stdout_write'](hooks['value_to_bytes'](r))
+                        hooks['stdout_write'](_val_to_bytes(r))
                 else:
                     if hasattr(res, 'read'): res = await res.read()
-                    val = hooks['value_to_bytes'](res).decode()
+                    val = _val_to_bytes(res).decode()
                     if not val.endswith('\n'): val += '\n'
                     hooks['stdout_write'](val.encode())
     

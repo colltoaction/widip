@@ -165,13 +165,9 @@ class YAMLParserBridge:
             if not children:
                 return Sequence(frobenius.Id(Node), tag="")
             
-            # Compose all children sequentially
-            # Each child is a Diagram(Node, Node)
+            # Pass list of children to Sequence; let construct.py handle composition
             diagrams = [self._convert_node(child) for child in children]
-            result = diagrams[0]
-            for diag in diagrams[1:]:
-                result = result >> diag
-            return Sequence(result, tag="")
+            return Sequence(diagrams, tag="")
         
         elif node_type == 'MAPPING':
             # Mappings become nested Mapping boxes with tensor product structure
@@ -179,7 +175,7 @@ class YAMLParserBridge:
             if not children:
                 return Mapping(frobenius.Id(Node), tag="")
             
-            # Children come in pairs (key, value). We only tensor the values.
+            # Children come in pairs (key, value). We collect the values.
             diagrams = []
             for i in range(0, len(children), 2):
                 if i + 1 < len(children):
@@ -189,10 +185,7 @@ class YAMLParserBridge:
             if not diagrams:
                 return Mapping(frobenius.Id(Node), tag="")
             
-            result = diagrams[0]
-            for diag in diagrams[1:]:
-                result = result @ diag
-            return Mapping(result, tag="")
+            return Mapping(diagrams, tag="")
         
         elif node_type == 'ALIAS':
             # Aliases become Alias boxes
@@ -227,6 +220,13 @@ class YAMLParserBridge:
                 
             # Use specific YamlBox kind "Tagged" to let construct.py handle the tag
             return YamlBox("Tagged", dom=inner_diag.dom, cod=inner_diag.cod, kind="Tagged", tag=tag_name, nested=inner_diag)
+
+        elif node_type == 'STREAM':
+            # STREAM is a list of documents
+            from .yaml.representation import Stream
+            children = node.get('children', [])
+            diagrams = [self._convert_node(child) for child in children]
+            return Stream(diagrams)
 
         else:
             # Unknown node type - return identity on Node

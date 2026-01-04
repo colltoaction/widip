@@ -14,7 +14,8 @@ typedef enum {
     NODE_MAP,
     NODE_ALIAS,
     NODE_ANCHOR,
-    NODE_TAG
+    NODE_TAG,
+    NODE_STREAM
 } NodeType;
 
 typedef struct Node {
@@ -83,6 +84,17 @@ Node *make_tag(char *tag, Node *child) {
     return n;
 }
 
+Node *make_stream(Node *docs) {
+    Node *n = malloc(sizeof(Node));
+    n->type = NODE_STREAM;
+    n->tag = NULL;
+    n->anchor = NULL;
+    n->value = NULL;
+    n->children = docs;
+    n->next = NULL;
+    return n;
+}
+
 Node *append_node(Node *list, Node *item) {
     if (!list) return item;
     Node *curr = list;
@@ -124,6 +136,11 @@ void print_node(Node *n, int depth) {
             printf("TAG: %s\n", n->tag);
             print_node(n->children, depth + 1);
             break;
+        case NODE_STREAM:
+            printf("STREAM:\n");
+            for (Node *c = n->children; c; c = c->next)
+                print_node(c, depth + 1);
+            break;
     }
 }
 
@@ -152,7 +169,7 @@ void print_node(Node *n, int depth) {
 %%
 
 stream
-    : document_list         { root = make_seq($1); }
+    : document_list         { root = make_stream($1); }
     ;
 
 document_list

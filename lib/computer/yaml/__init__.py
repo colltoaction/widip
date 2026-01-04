@@ -83,8 +83,18 @@ _construct_functor_obj = closed.Functor(
     cod=closed.Category()
 )
 
+def _construct_functor_wrapped(diag: Any) -> closed.Diagram:
+    if isinstance(diag, list):
+        # Default to tensor product for plain lists
+        res = None
+        for item in diag:
+            d = _construct_functor_wrapped(item)
+            res = d if res is None else res @ d
+        return res or closed.Id(closed.Ty())
+    return _construct_functor_obj(diag)
+
 # Exposed as a composable functor
-construct_functor = Composable(lambda diag: _construct_functor_obj(diag))
+construct_functor = Composable(_construct_functor_wrapped)
 
 # --- Load Pipeline ---
 load = lambda source: construct_functor(compose_functor(impl_parse(source)))

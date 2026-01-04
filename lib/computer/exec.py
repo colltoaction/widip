@@ -63,33 +63,28 @@ def exec_box(box: closed.Box) -> Process:
                  args_in = ()
                  
             res = await unwrap(proc(*args_in), ctx.loop, memo)
-            
-            # from .asyncio import printer
-            # await printer(None, res, ctx.hooks)
             result = res
         elif box.name == "alias":
             name = args_data[0]
             if name not in ctx.anchors:
                 raise ValueError(f"Unknown anchor: {name}")
                 
-            # Execute aliased process in same context
-            proc = exec_functor(ctx.anchors[name])
-            
-            arg_val = stdin_val
-            if arg_val is None and len(proc.dom) > 0:
-                 arg_val = b"" if len(proc.dom) == 1 else tuple([b""] * len(proc.dom))
-                 
-            args_in = (arg_val,)
-            if len(proc.dom) > 1 and isinstance(arg_val, tuple):
-                 args_in = arg_val
-            elif len(proc.dom) == 0:
-                 args_in = ()
+            # DO NOT call exec_functor(ctx.anchors[name]) immediately!
+            # That would cause infinite recursion for recursive definitions.
+            # Instead, return a proxy that resolves it when called.
+            async def alias_proxy(*args_in):
+                ctx_inner = _EXEC_CTX.get()
+                memo_inner = {}
+                # Resolve the aliased process lazily
+                proc = exec_functor(ctx_inner.anchors[name])
+                
+                # Handling arguments (same as in standard leaf execution)
+                if not args_in and len(proc.dom) > 0:
+                     args_in = (b"",) if len(proc.dom) == 1 else (tuple([b""] * len(proc.dom)),)
+                
+                return await unwrap(proc(*args_in), ctx_inner.loop, memo_inner)
 
-            res = await unwrap(proc(*args_in), ctx.loop, memo)
-            
-            # from .asyncio import printer
-            # await printer(None, res, ctx.hooks)
-            result = res
+            result = alias_proxy
         elif box.name == "print":
              from .asyncio import printer
              await printer(None, stdin_val, ctx.hooks)
@@ -150,6 +145,28 @@ def exec_box(box: closed.Box) -> Process:
                   result = await execute(target, ctx.hooks, ctx.executable, ctx.loop, stdin_val)
              else:
                   result = stdin_val
+        elif box.name in ["decrement", "dec", "r"]:
+             # Predecessor
+             try: result = int(stdin_val) - 1
+             except: result = 0
+        elif box.name in ["increment", "succ", "s"]:
+             # Successor
+             try: result = int(stdin_val) + 1
+             except: result = 1
+        elif box.name in ["multiply", "mul"]:
+             # Product
+             if isinstance(stdin_val, tuple) and len(stdin_val) >= 2:
+                  result = int(stdin_val[0]) * int(stdin_val[1])
+             else:
+                  result = 0
+        elif box.name in ["check_exponent", "test_zero", "0?"]:
+             # Truthiness test
+             try: result = int(stdin_val) == 0
+             except: result = False
+        elif box.name == "python_interpreter":
+             # Eval
+             try: result = eval(stdin_val)
+             except: result = stdin_val
         else:
              result = await run_command(lambda x: x, ctx.loop, box.name, args_data, stdin_val, ctx.hooks)
         

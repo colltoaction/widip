@@ -3,7 +3,7 @@ import os
 from typing import Any
 from functools import partial
 
-from yaml import YAMLError
+
 from discopy import closed
 
 from computer.yaml import load as load_diagram
@@ -44,8 +44,10 @@ def reload_diagram(path_str):
         if hasattr(fd, "simplify"):
             fd = fd.simplify()
         diagram_draw(Path(path_str), fd)
-    except YAMLError as e:
+    except ValueError as e:
         print(e, file=sys.stderr)
+    except Exception as e:
+        print(f"Unexpected error: {e}", file=sys.stderr)
 
 
 # --- Input Reading ---

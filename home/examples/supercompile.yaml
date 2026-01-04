@@ -7,21 +7,12 @@
 - "╚════════════════════════════════════════╝"
 
 - "\n=== Step 1: Program Specialization ==="
-- "Specializing a power function..."
+- "Specializing a simple addition program..."
 
-# Complex recursive definitions are better defined as named anchors in a mapping
-- definitions:
-    power: &power
-      - !program "check_exponent"
-      - !choice
-        - 1
-        - !seq [ !program "decrement", *power, !program "multiply" ]
+- &add_five !specializer [ !program "increment", 5 ]
 
-# Then we can use them
-- &power2 !specializer [ *power, 2 ]
-
-- "Executing specialized power_2(3)..."
-- !seq [ 3, *power2, !print "" ]
+- "Executing specialized add_five(10)..."
+- !seq [ 10, *add_five, !print "" ]
 
 - "\n=== Step 2: Futamura Projections ==="
 
@@ -39,13 +30,19 @@
 - "COGEN generated."
 
 - "\n=== Step 3: Recursive Factorial Supercompilation ==="
+- "Optimization of recursive factorial..."
 
 - recursive_definitions:
     factorial: &fact
       - !program "test_zero"
       - !choice
         - 1
-        - !seq [ !copy 2, !seq [ !program "dec", *fact, !program "mul" ] ]
+        - !seq 
+            - !copy 2 
+            - !mapping
+                - !id ""
+                - !seq [ !program "dec", *fact ]
+            - !program "mul"
 
 - &opt_fact !supercompile *fact
 

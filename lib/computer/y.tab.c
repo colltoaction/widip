@@ -84,7 +84,8 @@ typedef enum {
     NODE_MAP,
     NODE_ALIAS,
     NODE_ANCHOR,
-    NODE_TAG
+    NODE_TAG,
+    NODE_STREAM
 } NodeType;
 
 typedef struct Node {
@@ -153,6 +154,17 @@ Node *make_tag(char *tag, Node *child) {
     return n;
 }
 
+Node *make_stream(Node *docs) {
+    Node *n = malloc(sizeof(Node));
+    n->type = NODE_STREAM;
+    n->tag = NULL;
+    n->anchor = NULL;
+    n->value = NULL;
+    n->children = docs;
+    n->next = NULL;
+    return n;
+}
+
 Node *append_node(Node *list, Node *item) {
     if (!list) return item;
     Node *curr = list;
@@ -194,11 +206,16 @@ void print_node(Node *n, int depth) {
             printf("TAG: %s\n", n->tag);
             print_node(n->children, depth + 1);
             break;
+        case NODE_STREAM:
+            printf("STREAM:\n");
+            for (Node *c = n->children; c; c = c->next)
+                print_node(c, depth + 1);
+            break;
     }
 }
 
 
-#line 202 "y.tab.c"
+#line 219 "y.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -289,12 +306,12 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 132 "yaml.y"
+#line 149 "yaml.y"
 
     char *str;
     struct Node *node;
 
-#line 298 "y.tab.c"
+#line 315 "y.tab.c"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -737,13 +754,13 @@ static const yytype_int8 yytranslate[] =
 
 #if YYDEBUG
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
-static const yytype_uint8 yyrline[] =
+static const yytype_int16 yyrline[] =
 {
-       0,   155,   155,   159,   160,   164,   165,   166,   167,   171,
-     172,   176,   177,   181,   182,   183,   184,   185,   186,   187,
-     188,   192,   193,   194,   198,   202,   213,   214,   218,   219,
-     220,   225,   226,   230,   231,   232,   237,   241,   242,   243,
-     248,   252,   253,   255
+       0,   172,   172,   176,   177,   181,   182,   183,   184,   188,
+     189,   193,   194,   198,   199,   200,   201,   202,   203,   204,
+     205,   209,   210,   211,   215,   219,   230,   231,   235,   236,
+     237,   242,   243,   247,   248,   249,   254,   258,   259,   260,
+     265,   269,   270,   272
 };
 #endif
 
@@ -1360,121 +1377,121 @@ yyreduce:
   switch (yyn)
     {
   case 2: /* stream: document_list  */
-#line 155 "yaml.y"
-                            { root = make_seq((yyvsp[0].node)); }
-#line 1366 "y.tab.c"
+#line 172 "yaml.y"
+                            { root = make_stream((yyvsp[0].node)); }
+#line 1383 "y.tab.c"
     break;
 
   case 3: /* document_list: document  */
-#line 159 "yaml.y"
+#line 176 "yaml.y"
                             { (yyval.node) = (yyvsp[0].node); }
-#line 1372 "y.tab.c"
+#line 1389 "y.tab.c"
     break;
 
   case 4: /* document_list: document_list document  */
-#line 160 "yaml.y"
+#line 177 "yaml.y"
                             { (yyval.node) = append_node((yyvsp[-1].node), (yyvsp[0].node)); }
-#line 1378 "y.tab.c"
+#line 1395 "y.tab.c"
     break;
 
   case 5: /* document: node optional_newlines  */
-#line 164 "yaml.y"
+#line 181 "yaml.y"
                              { (yyval.node) = (yyvsp[-1].node); }
-#line 1384 "y.tab.c"
+#line 1401 "y.tab.c"
     break;
 
   case 6: /* document: DOC_START optional_newlines node  */
-#line 165 "yaml.y"
+#line 182 "yaml.y"
                                               { (yyval.node) = (yyvsp[0].node); }
-#line 1390 "y.tab.c"
+#line 1407 "y.tab.c"
     break;
 
   case 7: /* document: DOC_START optional_newlines node DOC_END  */
-#line 166 "yaml.y"
+#line 183 "yaml.y"
                                               { (yyval.node) = (yyvsp[-1].node); }
-#line 1396 "y.tab.c"
+#line 1413 "y.tab.c"
     break;
 
   case 8: /* document: newlines node optional_newlines  */
-#line 167 "yaml.y"
+#line 184 "yaml.y"
                                       { (yyval.node) = (yyvsp[-1].node); }
-#line 1402 "y.tab.c"
+#line 1419 "y.tab.c"
     break;
 
   case 13: /* node: scalar  */
-#line 181 "yaml.y"
+#line 198 "yaml.y"
                             { (yyval.node) = (yyvsp[0].node); }
-#line 1408 "y.tab.c"
+#line 1425 "y.tab.c"
     break;
 
   case 14: /* node: flow_sequence  */
-#line 182 "yaml.y"
+#line 199 "yaml.y"
                             { (yyval.node) = (yyvsp[0].node); }
-#line 1414 "y.tab.c"
+#line 1431 "y.tab.c"
     break;
 
   case 15: /* node: flow_mapping  */
-#line 183 "yaml.y"
+#line 200 "yaml.y"
                             { (yyval.node) = (yyvsp[0].node); }
-#line 1420 "y.tab.c"
+#line 1437 "y.tab.c"
     break;
 
   case 16: /* node: block_sequence  */
-#line 184 "yaml.y"
+#line 201 "yaml.y"
                             { (yyval.node) = (yyvsp[0].node); }
-#line 1426 "y.tab.c"
+#line 1443 "y.tab.c"
     break;
 
   case 17: /* node: block_mapping  */
-#line 185 "yaml.y"
+#line 202 "yaml.y"
                             { (yyval.node) = (yyvsp[0].node); }
-#line 1432 "y.tab.c"
+#line 1449 "y.tab.c"
     break;
 
   case 18: /* node: tagged_node  */
-#line 186 "yaml.y"
+#line 203 "yaml.y"
                             { (yyval.node) = (yyvsp[0].node); }
-#line 1438 "y.tab.c"
+#line 1455 "y.tab.c"
     break;
 
   case 19: /* node: anchored_node  */
-#line 187 "yaml.y"
+#line 204 "yaml.y"
                             { (yyval.node) = (yyvsp[0].node); }
-#line 1444 "y.tab.c"
+#line 1461 "y.tab.c"
     break;
 
   case 20: /* node: ALIAS  */
-#line 188 "yaml.y"
+#line 205 "yaml.y"
                             { (yyval.node) = make_alias((yyvsp[0].str)); }
-#line 1450 "y.tab.c"
+#line 1467 "y.tab.c"
     break;
 
   case 21: /* scalar: PLAIN_SCALAR  */
-#line 192 "yaml.y"
+#line 209 "yaml.y"
                             { (yyval.node) = make_scalar((yyvsp[0].str)); }
-#line 1456 "y.tab.c"
+#line 1473 "y.tab.c"
     break;
 
   case 22: /* scalar: DQUOTE_STRING  */
-#line 193 "yaml.y"
+#line 210 "yaml.y"
                             { (yyval.node) = make_scalar((yyvsp[0].str)); }
-#line 1462 "y.tab.c"
+#line 1479 "y.tab.c"
     break;
 
   case 23: /* scalar: SQUOTE_STRING  */
-#line 194 "yaml.y"
+#line 211 "yaml.y"
                             { (yyval.node) = make_scalar((yyvsp[0].str)); }
-#line 1468 "y.tab.c"
+#line 1485 "y.tab.c"
     break;
 
   case 24: /* tagged_node: TAG optional_newlines node  */
-#line 198 "yaml.y"
+#line 215 "yaml.y"
                                  { (yyval.node) = make_tag((yyvsp[-2].str), (yyvsp[0].node)); }
-#line 1474 "y.tab.c"
+#line 1491 "y.tab.c"
     break;
 
   case 25: /* anchored_node: ANCHOR optional_newlines node  */
-#line 202 "yaml.y"
+#line 219 "yaml.y"
                                     { 
                               (yyval.node) = malloc(sizeof(Node));
                               (yyval.node)->type = NODE_ANCHOR;
@@ -1482,119 +1499,119 @@ yyreduce:
                               (yyval.node)->children = (yyvsp[0].node);
                               (yyval.node)->next = NULL;
                             }
-#line 1486 "y.tab.c"
+#line 1503 "y.tab.c"
     break;
 
   case 26: /* flow_sequence: LBRACKET RBRACKET  */
-#line 213 "yaml.y"
+#line 230 "yaml.y"
                                             { (yyval.node) = make_seq(NULL); }
-#line 1492 "y.tab.c"
+#line 1509 "y.tab.c"
     break;
 
   case 27: /* flow_sequence: LBRACKET flow_seq_items RBRACKET  */
-#line 214 "yaml.y"
+#line 231 "yaml.y"
                                             { (yyval.node) = make_seq((yyvsp[-1].node)); }
-#line 1498 "y.tab.c"
+#line 1515 "y.tab.c"
     break;
 
   case 28: /* flow_seq_items: node  */
-#line 218 "yaml.y"
+#line 235 "yaml.y"
                                             { (yyval.node) = (yyvsp[0].node); }
-#line 1504 "y.tab.c"
+#line 1521 "y.tab.c"
     break;
 
   case 29: /* flow_seq_items: flow_seq_items COMMA node  */
-#line 219 "yaml.y"
+#line 236 "yaml.y"
                                             { (yyval.node) = append_node((yyvsp[-2].node), (yyvsp[0].node)); }
-#line 1510 "y.tab.c"
+#line 1527 "y.tab.c"
     break;
 
   case 30: /* flow_seq_items: flow_seq_items COMMA  */
-#line 220 "yaml.y"
+#line 237 "yaml.y"
                                             { (yyval.node) = (yyvsp[-1].node); /* trailing comma */ }
-#line 1516 "y.tab.c"
+#line 1533 "y.tab.c"
     break;
 
   case 31: /* flow_mapping: LBRACE RBRACE  */
-#line 225 "yaml.y"
+#line 242 "yaml.y"
                                             { (yyval.node) = make_map(NULL); }
-#line 1522 "y.tab.c"
+#line 1539 "y.tab.c"
     break;
 
   case 32: /* flow_mapping: LBRACE flow_map_entries RBRACE  */
-#line 226 "yaml.y"
+#line 243 "yaml.y"
                                             { (yyval.node) = make_map((yyvsp[-1].node)); }
-#line 1528 "y.tab.c"
+#line 1545 "y.tab.c"
     break;
 
   case 33: /* flow_map_entries: node COLON node  */
-#line 230 "yaml.y"
+#line 247 "yaml.y"
                                             { (yyval.node) = append_node((yyvsp[-2].node), (yyvsp[0].node)); }
-#line 1534 "y.tab.c"
+#line 1551 "y.tab.c"
     break;
 
   case 34: /* flow_map_entries: flow_map_entries COMMA node COLON node  */
-#line 231 "yaml.y"
+#line 248 "yaml.y"
                                             { (yyval.node) = append_node((yyvsp[-4].node), append_node((yyvsp[-2].node), (yyvsp[0].node))); }
-#line 1540 "y.tab.c"
+#line 1557 "y.tab.c"
     break;
 
   case 35: /* flow_map_entries: flow_map_entries COMMA  */
-#line 232 "yaml.y"
+#line 249 "yaml.y"
                                             { (yyval.node) = (yyvsp[-1].node); }
-#line 1546 "y.tab.c"
+#line 1563 "y.tab.c"
     break;
 
   case 36: /* block_sequence: block_seq_items  */
-#line 237 "yaml.y"
+#line 254 "yaml.y"
                                             { (yyval.node) = make_seq((yyvsp[0].node)); }
-#line 1552 "y.tab.c"
+#line 1569 "y.tab.c"
     break;
 
   case 37: /* block_seq_items: SEQ_ENTRY node  */
-#line 241 "yaml.y"
+#line 258 "yaml.y"
                                             { (yyval.node) = (yyvsp[0].node); }
-#line 1558 "y.tab.c"
+#line 1575 "y.tab.c"
     break;
 
   case 38: /* block_seq_items: block_seq_items newlines SEQ_ENTRY node  */
-#line 242 "yaml.y"
+#line 259 "yaml.y"
                                              { (yyval.node) = append_node((yyvsp[-3].node), (yyvsp[0].node)); }
-#line 1564 "y.tab.c"
+#line 1581 "y.tab.c"
     break;
 
   case 39: /* block_seq_items: block_seq_items newlines  */
-#line 243 "yaml.y"
+#line 260 "yaml.y"
                                              { (yyval.node) = (yyvsp[-1].node); }
-#line 1570 "y.tab.c"
+#line 1587 "y.tab.c"
     break;
 
   case 40: /* block_mapping: block_map_entries  */
-#line 248 "yaml.y"
+#line 265 "yaml.y"
                                             { (yyval.node) = make_map((yyvsp[0].node)); }
-#line 1576 "y.tab.c"
+#line 1593 "y.tab.c"
     break;
 
   case 41: /* block_map_entries: node COLON optional_newlines node  */
-#line 252 "yaml.y"
+#line 269 "yaml.y"
                                             { (yyval.node) = append_node((yyvsp[-3].node), (yyvsp[0].node)); }
-#line 1582 "y.tab.c"
+#line 1599 "y.tab.c"
     break;
 
   case 42: /* block_map_entries: block_map_entries newlines node COLON optional_newlines node  */
-#line 254 "yaml.y"
+#line 271 "yaml.y"
                                             { (yyval.node) = append_node((yyvsp[-5].node), append_node((yyvsp[-3].node), (yyvsp[0].node))); }
-#line 1588 "y.tab.c"
+#line 1605 "y.tab.c"
     break;
 
   case 43: /* block_map_entries: block_map_entries newlines  */
-#line 255 "yaml.y"
+#line 272 "yaml.y"
                                              { (yyval.node) = (yyvsp[-1].node); }
-#line 1594 "y.tab.c"
+#line 1611 "y.tab.c"
     break;
 
 
-#line 1598 "y.tab.c"
+#line 1615 "y.tab.c"
 
       default: break;
     }
@@ -1787,7 +1804,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 258 "yaml.y"
+#line 275 "yaml.y"
 
 
 void yyerror(const char *s) {
