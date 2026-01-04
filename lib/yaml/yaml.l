@@ -25,6 +25,10 @@ int dequeue() {
     return 0;
 }
 bool q_empty() { return q_head == q_tail; }
+int q_peek() { 
+    if (q_head < q_tail) return token_queue[q_head]; 
+    return 0;
+}
 
 /* Process indentation and enqueue tokens */
 int process_indent(int indent) {
@@ -79,6 +83,7 @@ const char* tok_name(int tok) {
         case NEWLINE: return "NEWLINE";
         case INDENT: return "INDENT";
         case DEDENT: return "DEDENT";
+        case NEWLINE_DEDENT: return "NEWLINE_DEDENT";
         case ANCHOR: return "ANCHOR";
         case ALIAS: return "ALIAS";
         case TAG: return "TAG";
@@ -99,6 +104,13 @@ int yylex() {
     } else {
         tok = real_yylex();
     }
+    
+    // Lookahead: if NEWLINE is followed by DEDENT, emit combined token
+    if (tok == NEWLINE && !q_empty() && q_peek() == DEDENT) {
+        dequeue(); // Consume the DEDENT from queue
+        return NEWLINE_DEDENT;
+    }
+    
     // if (tok > 0) fprintf(stderr, "TOKEN: %s (%s) at line %d\n", tok_name(tok), yytext, yylineno);
     return tok;
 }

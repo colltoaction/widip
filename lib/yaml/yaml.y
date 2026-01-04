@@ -205,7 +205,7 @@ char *join_scalar_values(char *s1, char *s2) {
 %token DOC_START DOC_END
 %token LBRACKET RBRACKET LBRACE RBRACE COMMA
 %token SEQ_ENTRY MAP_KEY COLON
-%token NEWLINE INDENT DEDENT
+%token NEWLINE INDENT DEDENT NEWLINE_DEDENT
 
 %token <str> ANCHOR ALIAS TAG
 %token <str> PLAIN_SCALAR DQUOTE_STRING SQUOTE_STRING LITERAL_CONTENT
@@ -220,7 +220,7 @@ char *join_scalar_values(char *s1, char *s2) {
 %type <node> flow_seq_items flow_map_entries flow_entry flow_seq_item
 %type <node> block_sequence block_mapping map_entry
 %type <node> entry_key entry_value opt_entry_value
-%type <node> properties content seq_items map_items
+%type <node> properties content
 %type <str> merged_plain_scalar
 
 %start stream
@@ -359,23 +359,13 @@ flow_entry
     ;
 
 block_sequence
-    : SEQ_ENTRY opt_node seq_items { $$ = make_seq($2); append_node($$->children, $3); }
-    | SEQ_ENTRY opt_node { $$ = make_seq($2); }
-    ;
-
-seq_items
-    : NEWLINE SEQ_ENTRY opt_node { $$ = $3; }
-    | seq_items NEWLINE SEQ_ENTRY opt_node { append_node($1, $4); $$ = $1; }
+    : SEQ_ENTRY opt_node { $$ = make_seq($2); }
+    | block_sequence NEWLINE SEQ_ENTRY opt_node { append_node($1->children, $4); $$ = $1; }
     ;
 
 block_mapping
-    : map_entry map_items { $$ = make_map($1); append_node($$->children, $2); }
-    | map_entry { $$ = make_map($1); }
-    ;
-
-map_items
-    : NEWLINE map_entry { $$ = $2; }
-    | map_items NEWLINE map_entry { append_node($1, $3); $$ = $1; }
+    : map_entry { $$ = make_map($1); }
+    | block_mapping NEWLINE map_entry { append_node($1->children, $3); $$ = $1; }
     ;
 
 map_entry
@@ -390,7 +380,8 @@ entry_key
 
 entry_value
     : COLON opt_newlines flow_node { $$ = $3; }
-    | COLON opt_newlines INDENT block_node opt_newlines DEDENT { $$ = $4; }
+    | COLON opt_newlines INDENT block_node DEDENT { $$ = $4; }
+    | COLON opt_newlines INDENT block_node NEWLINE_DEDENT { $$ = $4; }
     ;
 
 opt_entry_value
