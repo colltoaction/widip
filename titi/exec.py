@@ -42,7 +42,6 @@ def exec_box(box: closed.Box) -> Process:
         stdin_val = unwrapped_args[0] if unwrapped_args else None
         if len(unwrapped_args) > 1: stdin_val = unwrapped_args
         
-        # Intercept Special Commands
         if box.name == "anchor":
             name, inside = args_data
             ctx.anchors[name] = inside
@@ -64,7 +63,7 @@ def exec_box(box: closed.Box) -> Process:
              result = () if not cod else stdin_val
         elif box.name == "read_stdin":
              result = ctx.hooks['stdin_read']()
-        if type(box).__name__ == "Data":
+        elif type(box).__name__ == "Data":
              result = box.name
         elif type(box).__name__ == "Partial":
              from computer import Partial
