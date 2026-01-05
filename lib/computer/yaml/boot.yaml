@@ -1,0 +1,3 @@
+# Monoidal Computer Boot Sequence (YAML)
+- !sh { lib/computer/sh/boot.sh }
+- !py { lib/computer/py/boot.py }

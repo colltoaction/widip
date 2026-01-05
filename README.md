@@ -1,54 +1,94 @@
-Widip
------
+# Titi: Titi is Terminal Intelligence
 
-> _Types? Where we're going, we don't need types!_
+**Titi bridges the gap between human intuition and machine precision.** It provides the structured communication and reasoning tools necessary for complex orchestration. By using **diagrams** as its core metaphor, Titi transforms the shell into a modern **interactive environment** built to run workflows for both humans and autonomous systems.
 
-Widip is an [interactive environment] for computing in modern systems. Many long-standing systems have thrived thanks to a uniform metaphor, which in our case is wiring diagrams.
+- **For Agents**: Titi leverages the YAML standard as a shared language for humans and agents. Instead of parsing messy text, agents reason using the same structured maps as humans, making their orchestration more predictable and reliable.
+- **For End Users**: Titi transforms "black-box" agent behavior into a transparent "white-box" loop. Its real-time diagrammatic feedback allows anyone to visually audit and understand an agent's reasoning as it unfolds.
+
+
+## Getting Started
+
+By leveraging the simplicity of YAML, the Titi Shell feels instantly familiar. It is designed for anyone who needs high-precision orchestration—honestly, for everyone. Install it via [pip](https://pypi.org/project/titi-sh/) and enter the environment instantly:
+
+```bash
+# 1. Install the shell for agents
+pip install titi-sh
+
+# 2. Enter the Titi Shell (the --watch flag enables live diagram updates)
+titi --watch
+```
+
+## Quick Demo
+
+The following demo showcases **Titi Shell** running with the **`--watch`** flag:
+1. **Live Feedback**: Notice the "watching for changes" message on startup.
+2. **Implicit Pipelines**: Running `!ls src: !wc -l` to count source directories.
+3. **Stateful Recursion**: Executing [`examples/demo.yaml`](examples/demo.yaml) to calculate a factorial (5! = 120) using diagrammatic recursion.
+
+<img src="examples/demo.svg" width="600">
+
+### Inside [`examples/demo.yaml`](examples/demo.yaml)
+A linear pipeline demonstrating sequential composition without complexity:
+```yaml
+!seq
+- !echo "Welcome to Titi Shell"
+- !tee /dev/stderr
+- !tr "[:lower:]" "[:upper:]": !tr "[:upper:]" "[:lower:]"
+- !cat
+```
+
+This composition demonstrates sequential processing and parallel execution (forking to two transformers).
+
+> Dependencies include [discopy](https://pypi.org/project/discopy/) and [watchfiles](https://pypi.org/project/watchfiles/).
+
+
+## The Titi Shell
+
+**You are in the driver's seat.** Titi helps you design, visualize, and control complex systems with ease. Whether you're debugging a simple pipeline or orchestrating a heavy workload, Titi keeps you in flow and in control.
+
+
+## For Transparent Reasoning
+Diagrams aren't just for humans; they are the high-level maps agents use to navigate complexity. When run with the **`--watch`** flag, Titi provides immediate visual feedback: as you and the agents work together in a codebase, Titi automatically re-renders the corresponding `.jpg` diagrams.
+
+This enables a seamless loop for human-in-the-loop oversight:
+1. Run `titi --watch` to enable visual orchestration.
+2. Agents propose or modify a workflow in YAML.
+3. Titi updates the visual diagram in real-time.
+4. Use VS Code's **Markdown Preview** (`Ctrl+Shift+V`) to audit the agent's logic visually as it evolves.
+
+## For the Human Oversight
+Titi is not just for agents; it is for the humans who build, audit, and coordinate them. By providing a common diagrammatic language, Titi empowers users with:
+- **Visual Auditing**: Instantly see how an agent is wiring together system tools.
+- **Rapid Composition**: Wire up complex shell pipelines in YAML and hand them to an agent as a single, high-level capability.
+- **Cross-Layer Observability**: Move seamlessly between raw terminal output and structured visual maps to debug complex agentic multi-step plans.
+
+## The Agent's Choice
+We believe programming should be as intuitive for agents as it is for humans. Titi is built for [agentic programming], where agents interact with system tools through simple diagram interfaces. By turning low-level shell details into composable diagrams, Titi allows agents to plan and execute complex tasks with much better clarity—while giving humans the visibility they need to stay in control.
+
+## Computing Metaphors
+
+Every major shift in computing has been driven by a new unifying metaphor. Just as **UNIX** unified system resources around the **File**, **Lisp** around the **List**, and **Smalltalk** around the **Object**, Titi unifies system orchestration around the **Diagram**.
 
 System   |Metaphor
 ---------|--------------
-Widip    |Wiring Diagram
+**Titi** |**Diagram**
 UNIX     |File
 Lisp     |List
 Smalltalk|Object
 
-![](examples/typical-vscode-setup.png)
+This shift elevates the shell from a text processor to a visual orchestration engine, making complex state and concurrency as intuitive to manipulate as files. For a deeper dive into the underlying categorical structures, see the [monoidal computer] internal documentation.
 
-
-# Installation
-
-`widip` can be installed via [pip](https://pypi.org/project/widip/) and run from the command line as follows:
-
-```bash
-pip install widip
-python -m widip
-```
-
-This will automatically install dependencies: [discopy](https://pypi.org/project/discopy/) (computing, drawing), [pyyaml](https://pypi.org/project/pyyaml/) (parser library), and [watchdog](https://pypi.org/project/watchdog/) (filesystem watcher).
-
-## Local install
-
-If you're working with a local copy of this repository, run `pip install -e .`.
-
-# Using `widip`
-The `widip` program starts a [chatbot] or [command-line interface]. It integrates with the [filesystem] for rendering diagram files. We give more information for a few use cases below.
-
-## For documentation
-Widis are meant for humans before computers and we find it valuable to give immediate visual feedback. Changes in a `.yaml` file trigger rendering a `.jpg` file next to it. This guides the user exploration while they can bring their own tools. As an example, VS Code will automatically reload markdown previews when `.jpg` files change.
-
-Widis are great for communication and this is a very convenient workflow for git- and text-based documentation.
-
-## For UNIX programming
-The lightweight `widish` [UNIX shell] works everywhere from developer workstations to cloud environments to production servers. Processes that read and write YAML document streams are first-class citizens. With this practical approach users can write programs in the same language of widis.
-
-## For graphical programming
-Programming is hard, but it shouldn't be _that_ hard.
-
-So far widis have mainly shaped the user interface. Widis are also [graphical programming](https://graphicallinearalgebra.net/2015/04/26/adding-part-1-and-mr-fibonacci/) tools and one can work with them in purely mathematical terms. Start with [examples/mascarpone](examples/mascarpone) then take a look at current work in a functional library at [src](src).
-
-
+[monoidal computer]: lib/computer
 [UNIX shell]: https://en.wikipedia.org/wiki/Unix_shell
+[agentic programming]: https://en.wikipedia.org/wiki/Autonomous_agent
 [chatbot]: https://en.wikipedia.org/wiki/chatbot
 [command-line interface]: https://en.wikipedia.org/wiki/Command-line_interface
 [filesystem]: https://en.wikipedia.org/wiki/File_manager
 [interactive environment]: https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop
+
+## Local Development
+
+For development, clone the repository and run:
+```bash
+pip install -e .[test]
+```

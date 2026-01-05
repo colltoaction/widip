@@ -1,0 +1,4 @@
+? !xargs { echo, branch 1 }:
+  ? !xargs { echo, branch 2 }:
+    ? !xargs { echo, branch 3 }:
+      ? !xargs { echo, branch 4 }:

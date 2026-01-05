@@ -1,0 +1,2072 @@
+State 1 conflicts: 2 shift/reduce
+State 5 conflicts: 13 shift/reduce
+State 6 conflicts: 14 shift/reduce
+State 9 conflicts: 1 shift/reduce
+State 11 conflicts: 1 shift/reduce
+State 27 conflicts: 1 shift/reduce
+State 33 conflicts: 2 shift/reduce
+State 35 conflicts: 1 shift/reduce
+State 37 conflicts: 1 shift/reduce
+State 40 conflicts: 13 shift/reduce
+State 50 conflicts: 1 shift/reduce
+State 52 conflicts: 1 shift/reduce
+State 54 conflicts: 12 shift/reduce
+State 55 conflicts: 2 shift/reduce
+State 56 conflicts: 12 shift/reduce
+State 57 conflicts: 2 shift/reduce
+State 65 conflicts: 1 shift/reduce
+State 68 conflicts: 1 shift/reduce
+State 72 conflicts: 1 shift/reduce
+State 74 conflicts: 14 shift/reduce
+State 84 conflicts: 1 shift/reduce
+State 86 conflicts: 1 shift/reduce
+State 93 conflicts: 13 shift/reduce
+State 94 conflicts: 13 shift/reduce
+State 95 conflicts: 2 shift/reduce
+State 97 conflicts: 13 shift/reduce
+State 99 conflicts: 2 reduce/reduce
+State 106 conflicts: 13 shift/reduce
+State 123 conflicts: 1 shift/reduce
+State 126 conflicts: 13 shift/reduce
+
+
+Grammar
+
+    0 $accept: stream $end
+
+    1 stream: document_list
+    2       | opt_newlines
+
+    3 document_list: document
+    4              | document_list document
+
+    5 document: node opt_newlines
+    6         | DOC_START opt_newlines optional_node opt_newlines
+    7         | directives DOC_START opt_newlines optional_node opt_newlines
+    8         | DOC_END opt_newlines
+    9         | DOC_START DOC_END opt_newlines
+
+   10 directives: directive
+   11           | directives directive
+
+   12 directive: TAG_DIRECTIVE_LINE
+   13          | YAML_DIRECTIVE_LINE
+
+   14 directive_args: PLAIN_SCALAR
+   15               | directive_args PLAIN_SCALAR
+
+   16 TAG_DIRECTIVE_LINE: TAG_DIRECTIVE TAG directive_args NEWLINE
+
+   17 YAML_DIRECTIVE_LINE: YAML_DIRECTIVE directive_args NEWLINE
+
+   18 opt_newlines: ε
+   19             | newlines
+
+   20 newlines: NEWLINE
+   21         | newlines NEWLINE
+
+   22 optional_node: node
+   23              | ε
+
+   24 optional_flow_node: flow_node
+   25                   | ε
+
+   26 node: flow_node
+   27     | block_node
+   28     | tagged_node
+   29     | anchored_node
+
+   30 tagged_node: TAG opt_newlines node
+   31            | TAG opt_newlines
+   32            | TAG newlines INDENT node DEDENT
+
+   33 anchored_node: ANCHOR opt_newlines node
+   34              | ANCHOR opt_newlines
+   35              | ANCHOR newlines INDENT node DEDENT
+
+   36 flow_node: merged_plain_scalar
+   37          | DQUOTE_STRING
+   38          | SQUOTE_STRING
+   39          | ALIAS
+   40          | LBRACKET flow_seq_items RBRACKET
+   41          | LBRACE flow_map_entries RBRACE
+
+   42 block_node: block_sequence
+   43           | block_mapping
+   44           | LITERAL LITERAL_CONTENT
+   45           | FOLDED LITERAL_CONTENT
+   46           | INDENT node DEDENT
+
+   47 merged_plain_scalar: PLAIN_SCALAR
+   48                    | merged_plain_scalar NEWLINE INDENT PLAIN_SCALAR opt_newlines DEDENT
+   49                    | merged_plain_scalar PLAIN_SCALAR
+
+   50 flow_seq_items: optional_flow_node
+   51               | flow_seq_items COMMA optional_flow_node
+
+   52 flow_map_entries: flow_map_entry
+   53                 | flow_map_entries COMMA flow_map_entry
+   54                 | flow_map_entries COMMA
+
+   55 flow_map_entry: flow_node COLON optional_flow_node
+   56               | flow_node
+   57               | MAP_KEY optional_flow_node COLON optional_flow_node
+   58               | MAP_KEY optional_flow_node
+
+   59 block_sequence: block_seq_items opt_newlines
+
+   60 block_seq_items: SEQ_ENTRY optional_node
+   61                | block_seq_items opt_newlines SEQ_ENTRY optional_node
+
+   62 block_mapping: block_map_entries opt_newlines
+
+   63 block_map_entries: map_entry
+   64                  | block_map_entries newlines map_entry
+
+   65 map_entry: node COLON opt_newlines optional_node
+   66          | node COLON newlines INDENT node DEDENT
+   67          | MAP_KEY optional_node COLON opt_newlines optional_node
+   68          | MAP_KEY optional_node
+   69          | MAP_KEY newlines INDENT optional_node DEDENT COLON opt_newlines optional_node
+   70          | MAP_KEY newlines INDENT optional_node DEDENT
+
+
+Terminals, with rules where they appear
+
+    $end (0) 0
+    error (256)
+    DOC_START (258) 6 7 9
+    DOC_END (259) 8 9
+    LBRACKET (260) 40
+    RBRACKET (261) 40
+    LBRACE (262) 41
+    RBRACE (263) 41
+    COMMA (264) 51 53 54
+    SEQ_ENTRY (265) 60 61
+    MAP_KEY (266) 57 58 67 68 69 70
+    COLON (267) 55 57 65 66 67 69
+    NEWLINE (268) 16 17 20 21 48
+    INDENT (269) 32 35 46 48 66 69 70
+    DEDENT (270) 32 35 46 48 66 69 70
+    ANCHOR <str> (271) 33 34 35
+    ALIAS <str> (272) 39
+    TAG <str> (273) 16 30 31 32
+    PLAIN_SCALAR <str> (274) 14 15 47 48 49
+    DQUOTE_STRING <str> (275) 37
+    SQUOTE_STRING <str> (276) 38
+    LITERAL_CONTENT <str> (277) 44 45
+    LITERAL (278) 44
+    FOLDED (279) 45
+    TAG_DIRECTIVE (280) 16
+    YAML_DIRECTIVE (281) 17
+    LOW_PREC (282)
+
+
+Nonterminals, with rules where they appear
+
+    $accept (28)
+        on left: 0
+    stream <node> (29)
+        on left: 1 2
+        on right: 0
+    document_list <node> (30)
+        on left: 3 4
+        on right: 1 4
+    document <node> (31)
+        on left: 5 6 7 8 9
+        on right: 3 4
+    directives (32)
+        on left: 10 11
+        on right: 7 11
+    directive (33)
+        on left: 12 13
+        on right: 10 11
+    directive_args (34)
+        on left: 14 15
+        on right: 15 16 17
+    TAG_DIRECTIVE_LINE (35)
+        on left: 16
+        on right: 12
+    YAML_DIRECTIVE_LINE (36)
+        on left: 17
+        on right: 13
+    opt_newlines (37)
+        on left: 18 19
+        on right: 2 5 6 7 8 9 30 31 33 34 48 59 61 62 65 67 69
+    newlines (38)
+        on left: 20 21
+        on right: 19 21 32 35 64 66 69 70
+    optional_node <node> (39)
+        on left: 22 23
+        on right: 6 7 60 61 65 67 68 69 70
+    optional_flow_node <node> (40)
+        on left: 24 25
+        on right: 50 51 55 57 58
+    node <node> (41)
+        on left: 26 27 28 29
+        on right: 5 22 30 32 33 35 46 65 66
+    tagged_node <node> (42)
+        on left: 30 31 32
+        on right: 28
+    anchored_node <node> (43)
+        on left: 33 34 35
+        on right: 29
+    flow_node <node> (44)
+        on left: 36 37 38 39 40 41
+        on right: 24 26 55 56
+    block_node <node> (45)
+        on left: 42 43 44 45 46
+        on right: 27
+    merged_plain_scalar <str> (46)
+        on left: 47 48 49
+        on right: 36 48 49
+    flow_seq_items <node> (47)
+        on left: 50 51
+        on right: 40 51
+    flow_map_entries <node> (48)
+        on left: 52 53 54
+        on right: 41 53 54
+    flow_map_entry <node> (49)
+        on left: 55 56 57 58
+        on right: 52 53
+    block_sequence <node> (50)
+        on left: 59
+        on right: 42
+    block_seq_items <node> (51)
+        on left: 60 61
+        on right: 59 61
+    block_mapping <node> (52)
+        on left: 62
+        on right: 43
+    block_map_entries <node> (53)
+        on left: 63 64
+        on right: 62 64
+    map_entry <node> (54)
+        on left: 65 66 67 68 69 70
+        on right: 63 64
+
+
+State 0
+
+    0 $accept: • stream $end
+
+    DOC_START       shift, and go to state 1
+    DOC_END         shift, and go to state 2
+    LBRACKET        shift, and go to state 3
+    LBRACE          shift, and go to state 4
+    SEQ_ENTRY       shift, and go to state 5
+    MAP_KEY         shift, and go to state 6
+    NEWLINE         shift, and go to state 7
+    INDENT          shift, and go to state 8
+    ANCHOR          shift, and go to state 9
+    ALIAS           shift, and go to state 10
+    TAG             shift, and go to state 11
+    PLAIN_SCALAR    shift, and go to state 12
+    DQUOTE_STRING   shift, and go to state 13
+    SQUOTE_STRING   shift, and go to state 14
+    LITERAL         shift, and go to state 15
+    FOLDED          shift, and go to state 16
+    TAG_DIRECTIVE   shift, and go to state 17
+    YAML_DIRECTIVE  shift, and go to state 18
+
+    $default  reduce using rule 18 (opt_newlines)
+
+    stream               go to state 19
+    document_list        go to state 20
+    document             go to state 21
+    directives           go to state 22
+    directive            go to state 23
+    TAG_DIRECTIVE_LINE   go to state 24
+    YAML_DIRECTIVE_LINE  go to state 25
+    opt_newlines         go to state 26
+    newlines             go to state 27
+    node                 go to state 28
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 1
+
+    6 document: DOC_START • opt_newlines optional_node opt_newlines
+    9         | DOC_START • DOC_END opt_newlines
+
+    DOC_END  shift, and go to state 39
+    NEWLINE  shift, and go to state 7
+
+    DOC_END   [reduce using rule 18 (opt_newlines)]
+    NEWLINE   [reduce using rule 18 (opt_newlines)]
+    $default  reduce using rule 18 (opt_newlines)
+
+    opt_newlines  go to state 40
+    newlines      go to state 27
+
+
+State 2
+
+    8 document: DOC_END • opt_newlines
+
+    NEWLINE  shift, and go to state 7
+
+    $default  reduce using rule 18 (opt_newlines)
+
+    opt_newlines  go to state 41
+    newlines      go to state 27
+
+
+State 3
+
+   40 flow_node: LBRACKET • flow_seq_items RBRACKET
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    ALIAS          shift, and go to state 10
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+
+    $default  reduce using rule 25 (optional_flow_node)
+
+    optional_flow_node   go to state 42
+    flow_node            go to state 43
+    merged_plain_scalar  go to state 33
+    flow_seq_items       go to state 44
+
+
+State 4
+
+   41 flow_node: LBRACE • flow_map_entries RBRACE
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    MAP_KEY        shift, and go to state 45
+    ALIAS          shift, and go to state 10
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+
+    flow_node            go to state 46
+    merged_plain_scalar  go to state 33
+    flow_map_entries     go to state 47
+    flow_map_entry       go to state 48
+
+
+State 5
+
+   60 block_seq_items: SEQ_ENTRY • optional_node
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    SEQ_ENTRY      shift, and go to state 5
+    MAP_KEY        shift, and go to state 6
+    INDENT         shift, and go to state 8
+    ANCHOR         shift, and go to state 9
+    ALIAS          shift, and go to state 10
+    TAG            shift, and go to state 11
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+    LITERAL        shift, and go to state 15
+    FOLDED         shift, and go to state 16
+
+    LBRACKET       [reduce using rule 23 (optional_node)]
+    LBRACE         [reduce using rule 23 (optional_node)]
+    SEQ_ENTRY      [reduce using rule 23 (optional_node)]
+    MAP_KEY        [reduce using rule 23 (optional_node)]
+    INDENT         [reduce using rule 23 (optional_node)]
+    ANCHOR         [reduce using rule 23 (optional_node)]
+    ALIAS          [reduce using rule 23 (optional_node)]
+    TAG            [reduce using rule 23 (optional_node)]
+    PLAIN_SCALAR   [reduce using rule 23 (optional_node)]
+    DQUOTE_STRING  [reduce using rule 23 (optional_node)]
+    SQUOTE_STRING  [reduce using rule 23 (optional_node)]
+    LITERAL        [reduce using rule 23 (optional_node)]
+    FOLDED         [reduce using rule 23 (optional_node)]
+    $default       reduce using rule 23 (optional_node)
+
+    optional_node        go to state 49
+    node                 go to state 50
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 6
+
+   67 map_entry: MAP_KEY • optional_node COLON opt_newlines optional_node
+   68          | MAP_KEY • optional_node
+   69          | MAP_KEY • newlines INDENT optional_node DEDENT COLON opt_newlines optional_node
+   70          | MAP_KEY • newlines INDENT optional_node DEDENT
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    SEQ_ENTRY      shift, and go to state 5
+    MAP_KEY        shift, and go to state 6
+    NEWLINE        shift, and go to state 7
+    INDENT         shift, and go to state 8
+    ANCHOR         shift, and go to state 9
+    ALIAS          shift, and go to state 10
+    TAG            shift, and go to state 11
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+    LITERAL        shift, and go to state 15
+    FOLDED         shift, and go to state 16
+
+    LBRACKET       [reduce using rule 23 (optional_node)]
+    LBRACE         [reduce using rule 23 (optional_node)]
+    SEQ_ENTRY      [reduce using rule 23 (optional_node)]
+    MAP_KEY        [reduce using rule 23 (optional_node)]
+    NEWLINE        [reduce using rule 23 (optional_node)]
+    INDENT         [reduce using rule 23 (optional_node)]
+    ANCHOR         [reduce using rule 23 (optional_node)]
+    ALIAS          [reduce using rule 23 (optional_node)]
+    TAG            [reduce using rule 23 (optional_node)]
+    PLAIN_SCALAR   [reduce using rule 23 (optional_node)]
+    DQUOTE_STRING  [reduce using rule 23 (optional_node)]
+    SQUOTE_STRING  [reduce using rule 23 (optional_node)]
+    LITERAL        [reduce using rule 23 (optional_node)]
+    FOLDED         [reduce using rule 23 (optional_node)]
+    $default       reduce using rule 23 (optional_node)
+
+    newlines             go to state 51
+    optional_node        go to state 52
+    node                 go to state 50
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 7
+
+   20 newlines: NEWLINE •
+
+    $default  reduce using rule 20 (newlines)
+
+
+State 8
+
+   46 block_node: INDENT • node DEDENT
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    SEQ_ENTRY      shift, and go to state 5
+    MAP_KEY        shift, and go to state 6
+    INDENT         shift, and go to state 8
+    ANCHOR         shift, and go to state 9
+    ALIAS          shift, and go to state 10
+    TAG            shift, and go to state 11
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+    LITERAL        shift, and go to state 15
+    FOLDED         shift, and go to state 16
+
+    node                 go to state 53
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 9
+
+   33 anchored_node: ANCHOR • opt_newlines node
+   34              | ANCHOR • opt_newlines
+   35              | ANCHOR • newlines INDENT node DEDENT
+
+    NEWLINE  shift, and go to state 7
+
+    NEWLINE   [reduce using rule 18 (opt_newlines)]
+    $default  reduce using rule 18 (opt_newlines)
+
+    opt_newlines  go to state 54
+    newlines      go to state 55
+
+
+State 10
+
+   39 flow_node: ALIAS •
+
+    $default  reduce using rule 39 (flow_node)
+
+
+State 11
+
+   30 tagged_node: TAG • opt_newlines node
+   31            | TAG • opt_newlines
+   32            | TAG • newlines INDENT node DEDENT
+
+    NEWLINE  shift, and go to state 7
+
+    NEWLINE   [reduce using rule 18 (opt_newlines)]
+    $default  reduce using rule 18 (opt_newlines)
+
+    opt_newlines  go to state 56
+    newlines      go to state 57
+
+
+State 12
+
+   47 merged_plain_scalar: PLAIN_SCALAR •
+
+    $default  reduce using rule 47 (merged_plain_scalar)
+
+
+State 13
+
+   37 flow_node: DQUOTE_STRING •
+
+    $default  reduce using rule 37 (flow_node)
+
+
+State 14
+
+   38 flow_node: SQUOTE_STRING •
+
+    $default  reduce using rule 38 (flow_node)
+
+
+State 15
+
+   44 block_node: LITERAL • LITERAL_CONTENT
+
+    LITERAL_CONTENT  shift, and go to state 58
+
+
+State 16
+
+   45 block_node: FOLDED • LITERAL_CONTENT
+
+    LITERAL_CONTENT  shift, and go to state 59
+
+
+State 17
+
+   16 TAG_DIRECTIVE_LINE: TAG_DIRECTIVE • TAG directive_args NEWLINE
+
+    TAG  shift, and go to state 60
+
+
+State 18
+
+   17 YAML_DIRECTIVE_LINE: YAML_DIRECTIVE • directive_args NEWLINE
+
+    PLAIN_SCALAR  shift, and go to state 61
+
+    directive_args  go to state 62
+
+
+State 19
+
+    0 $accept: stream • $end
+
+    $end  shift, and go to state 63
+
+
+State 20
+
+    1 stream: document_list •
+    4 document_list: document_list • document
+
+    DOC_START       shift, and go to state 1
+    DOC_END         shift, and go to state 2
+    LBRACKET        shift, and go to state 3
+    LBRACE          shift, and go to state 4
+    SEQ_ENTRY       shift, and go to state 5
+    MAP_KEY         shift, and go to state 6
+    INDENT          shift, and go to state 8
+    ANCHOR          shift, and go to state 9
+    ALIAS           shift, and go to state 10
+    TAG             shift, and go to state 11
+    PLAIN_SCALAR    shift, and go to state 12
+    DQUOTE_STRING   shift, and go to state 13
+    SQUOTE_STRING   shift, and go to state 14
+    LITERAL         shift, and go to state 15
+    FOLDED          shift, and go to state 16
+    TAG_DIRECTIVE   shift, and go to state 17
+    YAML_DIRECTIVE  shift, and go to state 18
+
+    $default  reduce using rule 1 (stream)
+
+    document             go to state 64
+    directives           go to state 22
+    directive            go to state 23
+    TAG_DIRECTIVE_LINE   go to state 24
+    YAML_DIRECTIVE_LINE  go to state 25
+    node                 go to state 28
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 21
+
+    3 document_list: document •
+
+    $default  reduce using rule 3 (document_list)
+
+
+State 22
+
+    7 document: directives • DOC_START opt_newlines optional_node opt_newlines
+   11 directives: directives • directive
+
+    DOC_START       shift, and go to state 65
+    TAG_DIRECTIVE   shift, and go to state 17
+    YAML_DIRECTIVE  shift, and go to state 18
+
+    directive            go to state 66
+    TAG_DIRECTIVE_LINE   go to state 24
+    YAML_DIRECTIVE_LINE  go to state 25
+
+
+State 23
+
+   10 directives: directive •
+
+    $default  reduce using rule 10 (directives)
+
+
+State 24
+
+   12 directive: TAG_DIRECTIVE_LINE •
+
+    $default  reduce using rule 12 (directive)
+
+
+State 25
+
+   13 directive: YAML_DIRECTIVE_LINE •
+
+    $default  reduce using rule 13 (directive)
+
+
+State 26
+
+    2 stream: opt_newlines •
+
+    $default  reduce using rule 2 (stream)
+
+
+State 27
+
+   19 opt_newlines: newlines •
+   21 newlines: newlines • NEWLINE
+
+    NEWLINE  shift, and go to state 67
+
+    NEWLINE   [reduce using rule 19 (opt_newlines)]
+    $default  reduce using rule 19 (opt_newlines)
+
+
+State 28
+
+    5 document: node • opt_newlines
+   65 map_entry: node • COLON opt_newlines optional_node
+   66          | node • COLON newlines INDENT node DEDENT
+
+    COLON    shift, and go to state 68
+    NEWLINE  shift, and go to state 7
+
+    $default  reduce using rule 18 (opt_newlines)
+
+    opt_newlines  go to state 69
+    newlines      go to state 27
+
+
+State 29
+
+   28 node: tagged_node •
+
+    $default  reduce using rule 28 (node)
+
+
+State 30
+
+   29 node: anchored_node •
+
+    $default  reduce using rule 29 (node)
+
+
+State 31
+
+   26 node: flow_node •
+
+    $default  reduce using rule 26 (node)
+
+
+State 32
+
+   27 node: block_node •
+
+    $default  reduce using rule 27 (node)
+
+
+State 33
+
+   36 flow_node: merged_plain_scalar •
+   48 merged_plain_scalar: merged_plain_scalar • NEWLINE INDENT PLAIN_SCALAR opt_newlines DEDENT
+   49                    | merged_plain_scalar • PLAIN_SCALAR
+
+    NEWLINE       shift, and go to state 70
+    PLAIN_SCALAR  shift, and go to state 71
+
+    NEWLINE       [reduce using rule 36 (flow_node)]
+    PLAIN_SCALAR  [reduce using rule 36 (flow_node)]
+    $default      reduce using rule 36 (flow_node)
+
+
+State 34
+
+   42 block_node: block_sequence •
+
+    $default  reduce using rule 42 (block_node)
+
+
+State 35
+
+   59 block_sequence: block_seq_items • opt_newlines
+   61 block_seq_items: block_seq_items • opt_newlines SEQ_ENTRY optional_node
+
+    NEWLINE  shift, and go to state 7
+
+    NEWLINE   [reduce using rule 18 (opt_newlines)]
+    $default  reduce using rule 18 (opt_newlines)
+
+    opt_newlines  go to state 72
+    newlines      go to state 27
+
+
+State 36
+
+   43 block_node: block_mapping •
+
+    $default  reduce using rule 43 (block_node)
+
+
+State 37
+
+   62 block_mapping: block_map_entries • opt_newlines
+   64 block_map_entries: block_map_entries • newlines map_entry
+
+    NEWLINE  shift, and go to state 7
+
+    NEWLINE   [reduce using rule 18 (opt_newlines)]
+    $default  reduce using rule 18 (opt_newlines)
+
+    opt_newlines  go to state 73
+    newlines      go to state 74
+
+
+State 38
+
+   63 block_map_entries: map_entry •
+
+    $default  reduce using rule 63 (block_map_entries)
+
+
+State 39
+
+    9 document: DOC_START DOC_END • opt_newlines
+
+    NEWLINE  shift, and go to state 7
+
+    $default  reduce using rule 18 (opt_newlines)
+
+    opt_newlines  go to state 75
+    newlines      go to state 27
+
+
+State 40
+
+    6 document: DOC_START opt_newlines • optional_node opt_newlines
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    SEQ_ENTRY      shift, and go to state 5
+    MAP_KEY        shift, and go to state 6
+    INDENT         shift, and go to state 8
+    ANCHOR         shift, and go to state 9
+    ALIAS          shift, and go to state 10
+    TAG            shift, and go to state 11
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+    LITERAL        shift, and go to state 15
+    FOLDED         shift, and go to state 16
+
+    LBRACKET       [reduce using rule 23 (optional_node)]
+    LBRACE         [reduce using rule 23 (optional_node)]
+    SEQ_ENTRY      [reduce using rule 23 (optional_node)]
+    MAP_KEY        [reduce using rule 23 (optional_node)]
+    INDENT         [reduce using rule 23 (optional_node)]
+    ANCHOR         [reduce using rule 23 (optional_node)]
+    ALIAS          [reduce using rule 23 (optional_node)]
+    TAG            [reduce using rule 23 (optional_node)]
+    PLAIN_SCALAR   [reduce using rule 23 (optional_node)]
+    DQUOTE_STRING  [reduce using rule 23 (optional_node)]
+    SQUOTE_STRING  [reduce using rule 23 (optional_node)]
+    LITERAL        [reduce using rule 23 (optional_node)]
+    FOLDED         [reduce using rule 23 (optional_node)]
+    $default       reduce using rule 23 (optional_node)
+
+    optional_node        go to state 76
+    node                 go to state 50
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 41
+
+    8 document: DOC_END opt_newlines •
+
+    $default  reduce using rule 8 (document)
+
+
+State 42
+
+   50 flow_seq_items: optional_flow_node •
+
+    $default  reduce using rule 50 (flow_seq_items)
+
+
+State 43
+
+   24 optional_flow_node: flow_node •
+
+    $default  reduce using rule 24 (optional_flow_node)
+
+
+State 44
+
+   40 flow_node: LBRACKET flow_seq_items • RBRACKET
+   51 flow_seq_items: flow_seq_items • COMMA optional_flow_node
+
+    RBRACKET  shift, and go to state 77
+    COMMA     shift, and go to state 78
+
+
+State 45
+
+   57 flow_map_entry: MAP_KEY • optional_flow_node COLON optional_flow_node
+   58               | MAP_KEY • optional_flow_node
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    ALIAS          shift, and go to state 10
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+
+    $default  reduce using rule 25 (optional_flow_node)
+
+    optional_flow_node   go to state 79
+    flow_node            go to state 43
+    merged_plain_scalar  go to state 33
+
+
+State 46
+
+   55 flow_map_entry: flow_node • COLON optional_flow_node
+   56               | flow_node •
+
+    COLON  shift, and go to state 80
+
+    $default  reduce using rule 56 (flow_map_entry)
+
+
+State 47
+
+   41 flow_node: LBRACE flow_map_entries • RBRACE
+   53 flow_map_entries: flow_map_entries • COMMA flow_map_entry
+   54                 | flow_map_entries • COMMA
+
+    RBRACE  shift, and go to state 81
+    COMMA   shift, and go to state 82
+
+
+State 48
+
+   52 flow_map_entries: flow_map_entry •
+
+    $default  reduce using rule 52 (flow_map_entries)
+
+
+State 49
+
+   60 block_seq_items: SEQ_ENTRY optional_node •
+
+    $default  reduce using rule 60 (block_seq_items)
+
+
+State 50
+
+   22 optional_node: node •
+   65 map_entry: node • COLON opt_newlines optional_node
+   66          | node • COLON newlines INDENT node DEDENT
+
+    COLON  shift, and go to state 68
+
+    COLON     [reduce using rule 22 (optional_node)]
+    $default  reduce using rule 22 (optional_node)
+
+
+State 51
+
+   21 newlines: newlines • NEWLINE
+   69 map_entry: MAP_KEY newlines • INDENT optional_node DEDENT COLON opt_newlines optional_node
+   70          | MAP_KEY newlines • INDENT optional_node DEDENT
+
+    NEWLINE  shift, and go to state 67
+    INDENT   shift, and go to state 83
+
+
+State 52
+
+   67 map_entry: MAP_KEY optional_node • COLON opt_newlines optional_node
+   68          | MAP_KEY optional_node •
+
+    COLON  shift, and go to state 84
+
+    COLON     [reduce using rule 68 (map_entry)]
+    $default  reduce using rule 68 (map_entry)
+
+
+State 53
+
+   46 block_node: INDENT node • DEDENT
+   65 map_entry: node • COLON opt_newlines optional_node
+   66          | node • COLON newlines INDENT node DEDENT
+
+    COLON   shift, and go to state 68
+    DEDENT  shift, and go to state 85
+
+
+State 54
+
+   33 anchored_node: ANCHOR opt_newlines • node
+   34              | ANCHOR opt_newlines •
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    SEQ_ENTRY      shift, and go to state 5
+    MAP_KEY        shift, and go to state 6
+    INDENT         shift, and go to state 8
+    ANCHOR         shift, and go to state 9
+    ALIAS          shift, and go to state 10
+    TAG            shift, and go to state 11
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+    LITERAL        shift, and go to state 15
+    FOLDED         shift, and go to state 16
+
+    LBRACKET       [reduce using rule 34 (anchored_node)]
+    LBRACE         [reduce using rule 34 (anchored_node)]
+    SEQ_ENTRY      [reduce using rule 34 (anchored_node)]
+    MAP_KEY        [reduce using rule 34 (anchored_node)]
+    INDENT         [reduce using rule 34 (anchored_node)]
+    ANCHOR         [reduce using rule 34 (anchored_node)]
+    ALIAS          [reduce using rule 34 (anchored_node)]
+    PLAIN_SCALAR   [reduce using rule 34 (anchored_node)]
+    DQUOTE_STRING  [reduce using rule 34 (anchored_node)]
+    SQUOTE_STRING  [reduce using rule 34 (anchored_node)]
+    LITERAL        [reduce using rule 34 (anchored_node)]
+    FOLDED         [reduce using rule 34 (anchored_node)]
+    $default       reduce using rule 34 (anchored_node)
+
+    node                 go to state 86
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 55
+
+   19 opt_newlines: newlines •
+   21 newlines: newlines • NEWLINE
+   35 anchored_node: ANCHOR newlines • INDENT node DEDENT
+
+    NEWLINE  shift, and go to state 67
+    INDENT   shift, and go to state 87
+
+    NEWLINE   [reduce using rule 19 (opt_newlines)]
+    INDENT    [reduce using rule 19 (opt_newlines)]
+    $default  reduce using rule 19 (opt_newlines)
+
+
+State 56
+
+   30 tagged_node: TAG opt_newlines • node
+   31            | TAG opt_newlines •
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    SEQ_ENTRY      shift, and go to state 5
+    MAP_KEY        shift, and go to state 6
+    INDENT         shift, and go to state 8
+    ANCHOR         shift, and go to state 9
+    ALIAS          shift, and go to state 10
+    TAG            shift, and go to state 11
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+    LITERAL        shift, and go to state 15
+    FOLDED         shift, and go to state 16
+
+    LBRACKET       [reduce using rule 31 (tagged_node)]
+    LBRACE         [reduce using rule 31 (tagged_node)]
+    SEQ_ENTRY      [reduce using rule 31 (tagged_node)]
+    MAP_KEY        [reduce using rule 31 (tagged_node)]
+    INDENT         [reduce using rule 31 (tagged_node)]
+    ANCHOR         [reduce using rule 31 (tagged_node)]
+    ALIAS          [reduce using rule 31 (tagged_node)]
+    PLAIN_SCALAR   [reduce using rule 31 (tagged_node)]
+    DQUOTE_STRING  [reduce using rule 31 (tagged_node)]
+    SQUOTE_STRING  [reduce using rule 31 (tagged_node)]
+    LITERAL        [reduce using rule 31 (tagged_node)]
+    FOLDED         [reduce using rule 31 (tagged_node)]
+    $default       reduce using rule 31 (tagged_node)
+
+    node                 go to state 88
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 57
+
+   19 opt_newlines: newlines •
+   21 newlines: newlines • NEWLINE
+   32 tagged_node: TAG newlines • INDENT node DEDENT
+
+    NEWLINE  shift, and go to state 67
+    INDENT   shift, and go to state 89
+
+    NEWLINE   [reduce using rule 19 (opt_newlines)]
+    INDENT    [reduce using rule 19 (opt_newlines)]
+    $default  reduce using rule 19 (opt_newlines)
+
+
+State 58
+
+   44 block_node: LITERAL LITERAL_CONTENT •
+
+    $default  reduce using rule 44 (block_node)
+
+
+State 59
+
+   45 block_node: FOLDED LITERAL_CONTENT •
+
+    $default  reduce using rule 45 (block_node)
+
+
+State 60
+
+   16 TAG_DIRECTIVE_LINE: TAG_DIRECTIVE TAG • directive_args NEWLINE
+
+    PLAIN_SCALAR  shift, and go to state 61
+
+    directive_args  go to state 90
+
+
+State 61
+
+   14 directive_args: PLAIN_SCALAR •
+
+    $default  reduce using rule 14 (directive_args)
+
+
+State 62
+
+   15 directive_args: directive_args • PLAIN_SCALAR
+   17 YAML_DIRECTIVE_LINE: YAML_DIRECTIVE directive_args • NEWLINE
+
+    NEWLINE       shift, and go to state 91
+    PLAIN_SCALAR  shift, and go to state 92
+
+
+State 63
+
+    0 $accept: stream $end •
+
+    $default  accept
+
+
+State 64
+
+    4 document_list: document_list document •
+
+    $default  reduce using rule 4 (document_list)
+
+
+State 65
+
+    7 document: directives DOC_START • opt_newlines optional_node opt_newlines
+
+    NEWLINE  shift, and go to state 7
+
+    NEWLINE   [reduce using rule 18 (opt_newlines)]
+    $default  reduce using rule 18 (opt_newlines)
+
+    opt_newlines  go to state 93
+    newlines      go to state 27
+
+
+State 66
+
+   11 directives: directives directive •
+
+    $default  reduce using rule 11 (directives)
+
+
+State 67
+
+   21 newlines: newlines NEWLINE •
+
+    $default  reduce using rule 21 (newlines)
+
+
+State 68
+
+   65 map_entry: node COLON • opt_newlines optional_node
+   66          | node COLON • newlines INDENT node DEDENT
+
+    NEWLINE  shift, and go to state 7
+
+    NEWLINE   [reduce using rule 18 (opt_newlines)]
+    $default  reduce using rule 18 (opt_newlines)
+
+    opt_newlines  go to state 94
+    newlines      go to state 95
+
+
+State 69
+
+    5 document: node opt_newlines •
+
+    $default  reduce using rule 5 (document)
+
+
+State 70
+
+   48 merged_plain_scalar: merged_plain_scalar NEWLINE • INDENT PLAIN_SCALAR opt_newlines DEDENT
+
+    INDENT  shift, and go to state 96
+
+
+State 71
+
+   49 merged_plain_scalar: merged_plain_scalar PLAIN_SCALAR •
+
+    $default  reduce using rule 49 (merged_plain_scalar)
+
+
+State 72
+
+   59 block_sequence: block_seq_items opt_newlines •
+   61 block_seq_items: block_seq_items opt_newlines • SEQ_ENTRY optional_node
+
+    SEQ_ENTRY  shift, and go to state 97
+
+    SEQ_ENTRY  [reduce using rule 59 (block_sequence)]
+    $default   reduce using rule 59 (block_sequence)
+
+
+State 73
+
+   62 block_mapping: block_map_entries opt_newlines •
+
+    $default  reduce using rule 62 (block_mapping)
+
+
+State 74
+
+   19 opt_newlines: newlines •
+   21 newlines: newlines • NEWLINE
+   64 block_map_entries: block_map_entries newlines • map_entry
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    SEQ_ENTRY      shift, and go to state 5
+    MAP_KEY        shift, and go to state 6
+    NEWLINE        shift, and go to state 67
+    INDENT         shift, and go to state 8
+    ANCHOR         shift, and go to state 9
+    ALIAS          shift, and go to state 10
+    TAG            shift, and go to state 11
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+    LITERAL        shift, and go to state 15
+    FOLDED         shift, and go to state 16
+
+    LBRACKET       [reduce using rule 19 (opt_newlines)]
+    LBRACE         [reduce using rule 19 (opt_newlines)]
+    SEQ_ENTRY      [reduce using rule 19 (opt_newlines)]
+    MAP_KEY        [reduce using rule 19 (opt_newlines)]
+    NEWLINE        [reduce using rule 19 (opt_newlines)]
+    INDENT         [reduce using rule 19 (opt_newlines)]
+    ANCHOR         [reduce using rule 19 (opt_newlines)]
+    ALIAS          [reduce using rule 19 (opt_newlines)]
+    TAG            [reduce using rule 19 (opt_newlines)]
+    PLAIN_SCALAR   [reduce using rule 19 (opt_newlines)]
+    DQUOTE_STRING  [reduce using rule 19 (opt_newlines)]
+    SQUOTE_STRING  [reduce using rule 19 (opt_newlines)]
+    LITERAL        [reduce using rule 19 (opt_newlines)]
+    FOLDED         [reduce using rule 19 (opt_newlines)]
+    $default       reduce using rule 19 (opt_newlines)
+
+    node                 go to state 98
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 99
+
+
+State 75
+
+    9 document: DOC_START DOC_END opt_newlines •
+
+    $default  reduce using rule 9 (document)
+
+
+State 76
+
+    6 document: DOC_START opt_newlines optional_node • opt_newlines
+
+    NEWLINE  shift, and go to state 7
+
+    $default  reduce using rule 18 (opt_newlines)
+
+    opt_newlines  go to state 100
+    newlines      go to state 27
+
+
+State 77
+
+   40 flow_node: LBRACKET flow_seq_items RBRACKET •
+
+    $default  reduce using rule 40 (flow_node)
+
+
+State 78
+
+   51 flow_seq_items: flow_seq_items COMMA • optional_flow_node
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    ALIAS          shift, and go to state 10
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+
+    $default  reduce using rule 25 (optional_flow_node)
+
+    optional_flow_node   go to state 101
+    flow_node            go to state 43
+    merged_plain_scalar  go to state 33
+
+
+State 79
+
+   57 flow_map_entry: MAP_KEY optional_flow_node • COLON optional_flow_node
+   58               | MAP_KEY optional_flow_node •
+
+    COLON  shift, and go to state 102
+
+    $default  reduce using rule 58 (flow_map_entry)
+
+
+State 80
+
+   55 flow_map_entry: flow_node COLON • optional_flow_node
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    ALIAS          shift, and go to state 10
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+
+    $default  reduce using rule 25 (optional_flow_node)
+
+    optional_flow_node   go to state 103
+    flow_node            go to state 43
+    merged_plain_scalar  go to state 33
+
+
+State 81
+
+   41 flow_node: LBRACE flow_map_entries RBRACE •
+
+    $default  reduce using rule 41 (flow_node)
+
+
+State 82
+
+   53 flow_map_entries: flow_map_entries COMMA • flow_map_entry
+   54                 | flow_map_entries COMMA •
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    MAP_KEY        shift, and go to state 45
+    ALIAS          shift, and go to state 10
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+
+    $default  reduce using rule 54 (flow_map_entries)
+
+    flow_node            go to state 46
+    merged_plain_scalar  go to state 33
+    flow_map_entry       go to state 104
+
+
+State 83
+
+   69 map_entry: MAP_KEY newlines INDENT • optional_node DEDENT COLON opt_newlines optional_node
+   70          | MAP_KEY newlines INDENT • optional_node DEDENT
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    SEQ_ENTRY      shift, and go to state 5
+    MAP_KEY        shift, and go to state 6
+    INDENT         shift, and go to state 8
+    ANCHOR         shift, and go to state 9
+    ALIAS          shift, and go to state 10
+    TAG            shift, and go to state 11
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+    LITERAL        shift, and go to state 15
+    FOLDED         shift, and go to state 16
+
+    $default  reduce using rule 23 (optional_node)
+
+    optional_node        go to state 105
+    node                 go to state 50
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 84
+
+   67 map_entry: MAP_KEY optional_node COLON • opt_newlines optional_node
+
+    NEWLINE  shift, and go to state 7
+
+    NEWLINE   [reduce using rule 18 (opt_newlines)]
+    $default  reduce using rule 18 (opt_newlines)
+
+    opt_newlines  go to state 106
+    newlines      go to state 27
+
+
+State 85
+
+   46 block_node: INDENT node DEDENT •
+
+    $default  reduce using rule 46 (block_node)
+
+
+State 86
+
+   33 anchored_node: ANCHOR opt_newlines node •
+   65 map_entry: node • COLON opt_newlines optional_node
+   66          | node • COLON newlines INDENT node DEDENT
+
+    COLON  shift, and go to state 68
+
+    COLON     [reduce using rule 33 (anchored_node)]
+    $default  reduce using rule 33 (anchored_node)
+
+
+State 87
+
+   35 anchored_node: ANCHOR newlines INDENT • node DEDENT
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    SEQ_ENTRY      shift, and go to state 5
+    MAP_KEY        shift, and go to state 6
+    INDENT         shift, and go to state 8
+    ANCHOR         shift, and go to state 9
+    ALIAS          shift, and go to state 10
+    TAG            shift, and go to state 11
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+    LITERAL        shift, and go to state 15
+    FOLDED         shift, and go to state 16
+
+    node                 go to state 107
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 88
+
+   30 tagged_node: TAG opt_newlines node •
+   65 map_entry: node • COLON opt_newlines optional_node
+   66          | node • COLON newlines INDENT node DEDENT
+
+    COLON  shift, and go to state 68
+
+    $default  reduce using rule 30 (tagged_node)
+
+
+State 89
+
+   32 tagged_node: TAG newlines INDENT • node DEDENT
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    SEQ_ENTRY      shift, and go to state 5
+    MAP_KEY        shift, and go to state 6
+    INDENT         shift, and go to state 8
+    ANCHOR         shift, and go to state 9
+    ALIAS          shift, and go to state 10
+    TAG            shift, and go to state 11
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+    LITERAL        shift, and go to state 15
+    FOLDED         shift, and go to state 16
+
+    node                 go to state 108
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 90
+
+   15 directive_args: directive_args • PLAIN_SCALAR
+   16 TAG_DIRECTIVE_LINE: TAG_DIRECTIVE TAG directive_args • NEWLINE
+
+    NEWLINE       shift, and go to state 109
+    PLAIN_SCALAR  shift, and go to state 92
+
+
+State 91
+
+   17 YAML_DIRECTIVE_LINE: YAML_DIRECTIVE directive_args NEWLINE •
+
+    $default  reduce using rule 17 (YAML_DIRECTIVE_LINE)
+
+
+State 92
+
+   15 directive_args: directive_args PLAIN_SCALAR •
+
+    $default  reduce using rule 15 (directive_args)
+
+
+State 93
+
+    7 document: directives DOC_START opt_newlines • optional_node opt_newlines
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    SEQ_ENTRY      shift, and go to state 5
+    MAP_KEY        shift, and go to state 6
+    INDENT         shift, and go to state 8
+    ANCHOR         shift, and go to state 9
+    ALIAS          shift, and go to state 10
+    TAG            shift, and go to state 11
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+    LITERAL        shift, and go to state 15
+    FOLDED         shift, and go to state 16
+
+    LBRACKET       [reduce using rule 23 (optional_node)]
+    LBRACE         [reduce using rule 23 (optional_node)]
+    SEQ_ENTRY      [reduce using rule 23 (optional_node)]
+    MAP_KEY        [reduce using rule 23 (optional_node)]
+    INDENT         [reduce using rule 23 (optional_node)]
+    ANCHOR         [reduce using rule 23 (optional_node)]
+    ALIAS          [reduce using rule 23 (optional_node)]
+    TAG            [reduce using rule 23 (optional_node)]
+    PLAIN_SCALAR   [reduce using rule 23 (optional_node)]
+    DQUOTE_STRING  [reduce using rule 23 (optional_node)]
+    SQUOTE_STRING  [reduce using rule 23 (optional_node)]
+    LITERAL        [reduce using rule 23 (optional_node)]
+    FOLDED         [reduce using rule 23 (optional_node)]
+    $default       reduce using rule 23 (optional_node)
+
+    optional_node        go to state 110
+    node                 go to state 50
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 94
+
+   65 map_entry: node COLON opt_newlines • optional_node
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    SEQ_ENTRY      shift, and go to state 5
+    MAP_KEY        shift, and go to state 6
+    INDENT         shift, and go to state 8
+    ANCHOR         shift, and go to state 9
+    ALIAS          shift, and go to state 10
+    TAG            shift, and go to state 11
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+    LITERAL        shift, and go to state 15
+    FOLDED         shift, and go to state 16
+
+    LBRACKET       [reduce using rule 23 (optional_node)]
+    LBRACE         [reduce using rule 23 (optional_node)]
+    SEQ_ENTRY      [reduce using rule 23 (optional_node)]
+    MAP_KEY        [reduce using rule 23 (optional_node)]
+    INDENT         [reduce using rule 23 (optional_node)]
+    ANCHOR         [reduce using rule 23 (optional_node)]
+    ALIAS          [reduce using rule 23 (optional_node)]
+    TAG            [reduce using rule 23 (optional_node)]
+    PLAIN_SCALAR   [reduce using rule 23 (optional_node)]
+    DQUOTE_STRING  [reduce using rule 23 (optional_node)]
+    SQUOTE_STRING  [reduce using rule 23 (optional_node)]
+    LITERAL        [reduce using rule 23 (optional_node)]
+    FOLDED         [reduce using rule 23 (optional_node)]
+    $default       reduce using rule 23 (optional_node)
+
+    optional_node        go to state 111
+    node                 go to state 50
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 95
+
+   19 opt_newlines: newlines •
+   21 newlines: newlines • NEWLINE
+   66 map_entry: node COLON newlines • INDENT node DEDENT
+
+    NEWLINE  shift, and go to state 67
+    INDENT   shift, and go to state 112
+
+    NEWLINE   [reduce using rule 19 (opt_newlines)]
+    INDENT    [reduce using rule 19 (opt_newlines)]
+    $default  reduce using rule 19 (opt_newlines)
+
+
+State 96
+
+   48 merged_plain_scalar: merged_plain_scalar NEWLINE INDENT • PLAIN_SCALAR opt_newlines DEDENT
+
+    PLAIN_SCALAR  shift, and go to state 113
+
+
+State 97
+
+   61 block_seq_items: block_seq_items opt_newlines SEQ_ENTRY • optional_node
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    SEQ_ENTRY      shift, and go to state 5
+    MAP_KEY        shift, and go to state 6
+    INDENT         shift, and go to state 8
+    ANCHOR         shift, and go to state 9
+    ALIAS          shift, and go to state 10
+    TAG            shift, and go to state 11
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+    LITERAL        shift, and go to state 15
+    FOLDED         shift, and go to state 16
+
+    LBRACKET       [reduce using rule 23 (optional_node)]
+    LBRACE         [reduce using rule 23 (optional_node)]
+    SEQ_ENTRY      [reduce using rule 23 (optional_node)]
+    MAP_KEY        [reduce using rule 23 (optional_node)]
+    INDENT         [reduce using rule 23 (optional_node)]
+    ANCHOR         [reduce using rule 23 (optional_node)]
+    ALIAS          [reduce using rule 23 (optional_node)]
+    TAG            [reduce using rule 23 (optional_node)]
+    PLAIN_SCALAR   [reduce using rule 23 (optional_node)]
+    DQUOTE_STRING  [reduce using rule 23 (optional_node)]
+    SQUOTE_STRING  [reduce using rule 23 (optional_node)]
+    LITERAL        [reduce using rule 23 (optional_node)]
+    FOLDED         [reduce using rule 23 (optional_node)]
+    $default       reduce using rule 23 (optional_node)
+
+    optional_node        go to state 114
+    node                 go to state 50
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 98
+
+   65 map_entry: node • COLON opt_newlines optional_node
+   66          | node • COLON newlines INDENT node DEDENT
+
+    COLON  shift, and go to state 68
+
+
+State 99
+
+   63 block_map_entries: map_entry •
+   64                  | block_map_entries newlines map_entry •
+
+    COLON     reduce using rule 63 (block_map_entries)
+    COLON     [reduce using rule 64 (block_map_entries)]
+    NEWLINE   reduce using rule 63 (block_map_entries)
+    NEWLINE   [reduce using rule 64 (block_map_entries)]
+    $default  reduce using rule 64 (block_map_entries)
+
+
+State 100
+
+    6 document: DOC_START opt_newlines optional_node opt_newlines •
+
+    $default  reduce using rule 6 (document)
+
+
+State 101
+
+   51 flow_seq_items: flow_seq_items COMMA optional_flow_node •
+
+    $default  reduce using rule 51 (flow_seq_items)
+
+
+State 102
+
+   57 flow_map_entry: MAP_KEY optional_flow_node COLON • optional_flow_node
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    ALIAS          shift, and go to state 10
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+
+    $default  reduce using rule 25 (optional_flow_node)
+
+    optional_flow_node   go to state 115
+    flow_node            go to state 43
+    merged_plain_scalar  go to state 33
+
+
+State 103
+
+   55 flow_map_entry: flow_node COLON optional_flow_node •
+
+    $default  reduce using rule 55 (flow_map_entry)
+
+
+State 104
+
+   53 flow_map_entries: flow_map_entries COMMA flow_map_entry •
+
+    $default  reduce using rule 53 (flow_map_entries)
+
+
+State 105
+
+   69 map_entry: MAP_KEY newlines INDENT optional_node • DEDENT COLON opt_newlines optional_node
+   70          | MAP_KEY newlines INDENT optional_node • DEDENT
+
+    DEDENT  shift, and go to state 116
+
+
+State 106
+
+   67 map_entry: MAP_KEY optional_node COLON opt_newlines • optional_node
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    SEQ_ENTRY      shift, and go to state 5
+    MAP_KEY        shift, and go to state 6
+    INDENT         shift, and go to state 8
+    ANCHOR         shift, and go to state 9
+    ALIAS          shift, and go to state 10
+    TAG            shift, and go to state 11
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+    LITERAL        shift, and go to state 15
+    FOLDED         shift, and go to state 16
+
+    LBRACKET       [reduce using rule 23 (optional_node)]
+    LBRACE         [reduce using rule 23 (optional_node)]
+    SEQ_ENTRY      [reduce using rule 23 (optional_node)]
+    MAP_KEY        [reduce using rule 23 (optional_node)]
+    INDENT         [reduce using rule 23 (optional_node)]
+    ANCHOR         [reduce using rule 23 (optional_node)]
+    ALIAS          [reduce using rule 23 (optional_node)]
+    TAG            [reduce using rule 23 (optional_node)]
+    PLAIN_SCALAR   [reduce using rule 23 (optional_node)]
+    DQUOTE_STRING  [reduce using rule 23 (optional_node)]
+    SQUOTE_STRING  [reduce using rule 23 (optional_node)]
+    LITERAL        [reduce using rule 23 (optional_node)]
+    FOLDED         [reduce using rule 23 (optional_node)]
+    $default       reduce using rule 23 (optional_node)
+
+    optional_node        go to state 117
+    node                 go to state 50
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 107
+
+   35 anchored_node: ANCHOR newlines INDENT node • DEDENT
+   65 map_entry: node • COLON opt_newlines optional_node
+   66          | node • COLON newlines INDENT node DEDENT
+
+    COLON   shift, and go to state 68
+    DEDENT  shift, and go to state 118
+
+
+State 108
+
+   32 tagged_node: TAG newlines INDENT node • DEDENT
+   65 map_entry: node • COLON opt_newlines optional_node
+   66          | node • COLON newlines INDENT node DEDENT
+
+    COLON   shift, and go to state 68
+    DEDENT  shift, and go to state 119
+
+
+State 109
+
+   16 TAG_DIRECTIVE_LINE: TAG_DIRECTIVE TAG directive_args NEWLINE •
+
+    $default  reduce using rule 16 (TAG_DIRECTIVE_LINE)
+
+
+State 110
+
+    7 document: directives DOC_START opt_newlines optional_node • opt_newlines
+
+    NEWLINE  shift, and go to state 7
+
+    $default  reduce using rule 18 (opt_newlines)
+
+    opt_newlines  go to state 120
+    newlines      go to state 27
+
+
+State 111
+
+   65 map_entry: node COLON opt_newlines optional_node •
+
+    $default  reduce using rule 65 (map_entry)
+
+
+State 112
+
+   66 map_entry: node COLON newlines INDENT • node DEDENT
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    SEQ_ENTRY      shift, and go to state 5
+    MAP_KEY        shift, and go to state 6
+    INDENT         shift, and go to state 8
+    ANCHOR         shift, and go to state 9
+    ALIAS          shift, and go to state 10
+    TAG            shift, and go to state 11
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+    LITERAL        shift, and go to state 15
+    FOLDED         shift, and go to state 16
+
+    node                 go to state 121
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 113
+
+   48 merged_plain_scalar: merged_plain_scalar NEWLINE INDENT PLAIN_SCALAR • opt_newlines DEDENT
+
+    NEWLINE  shift, and go to state 7
+
+    $default  reduce using rule 18 (opt_newlines)
+
+    opt_newlines  go to state 122
+    newlines      go to state 27
+
+
+State 114
+
+   61 block_seq_items: block_seq_items opt_newlines SEQ_ENTRY optional_node •
+
+    $default  reduce using rule 61 (block_seq_items)
+
+
+State 115
+
+   57 flow_map_entry: MAP_KEY optional_flow_node COLON optional_flow_node •
+
+    $default  reduce using rule 57 (flow_map_entry)
+
+
+State 116
+
+   69 map_entry: MAP_KEY newlines INDENT optional_node DEDENT • COLON opt_newlines optional_node
+   70          | MAP_KEY newlines INDENT optional_node DEDENT •
+
+    COLON  shift, and go to state 123
+
+    $default  reduce using rule 70 (map_entry)
+
+
+State 117
+
+   67 map_entry: MAP_KEY optional_node COLON opt_newlines optional_node •
+
+    $default  reduce using rule 67 (map_entry)
+
+
+State 118
+
+   35 anchored_node: ANCHOR newlines INDENT node DEDENT •
+
+    $default  reduce using rule 35 (anchored_node)
+
+
+State 119
+
+   32 tagged_node: TAG newlines INDENT node DEDENT •
+
+    $default  reduce using rule 32 (tagged_node)
+
+
+State 120
+
+    7 document: directives DOC_START opt_newlines optional_node opt_newlines •
+
+    $default  reduce using rule 7 (document)
+
+
+State 121
+
+   65 map_entry: node • COLON opt_newlines optional_node
+   66          | node • COLON newlines INDENT node DEDENT
+   66          | node COLON newlines INDENT node • DEDENT
+
+    COLON   shift, and go to state 68
+    DEDENT  shift, and go to state 124
+
+
+State 122
+
+   48 merged_plain_scalar: merged_plain_scalar NEWLINE INDENT PLAIN_SCALAR opt_newlines • DEDENT
+
+    DEDENT  shift, and go to state 125
+
+
+State 123
+
+   69 map_entry: MAP_KEY newlines INDENT optional_node DEDENT COLON • opt_newlines optional_node
+
+    NEWLINE  shift, and go to state 7
+
+    NEWLINE   [reduce using rule 18 (opt_newlines)]
+    $default  reduce using rule 18 (opt_newlines)
+
+    opt_newlines  go to state 126
+    newlines      go to state 27
+
+
+State 124
+
+   66 map_entry: node COLON newlines INDENT node DEDENT •
+
+    $default  reduce using rule 66 (map_entry)
+
+
+State 125
+
+   48 merged_plain_scalar: merged_plain_scalar NEWLINE INDENT PLAIN_SCALAR opt_newlines DEDENT •
+
+    $default  reduce using rule 48 (merged_plain_scalar)
+
+
+State 126
+
+   69 map_entry: MAP_KEY newlines INDENT optional_node DEDENT COLON opt_newlines • optional_node
+
+    LBRACKET       shift, and go to state 3
+    LBRACE         shift, and go to state 4
+    SEQ_ENTRY      shift, and go to state 5
+    MAP_KEY        shift, and go to state 6
+    INDENT         shift, and go to state 8
+    ANCHOR         shift, and go to state 9
+    ALIAS          shift, and go to state 10
+    TAG            shift, and go to state 11
+    PLAIN_SCALAR   shift, and go to state 12
+    DQUOTE_STRING  shift, and go to state 13
+    SQUOTE_STRING  shift, and go to state 14
+    LITERAL        shift, and go to state 15
+    FOLDED         shift, and go to state 16
+
+    LBRACKET       [reduce using rule 23 (optional_node)]
+    LBRACE         [reduce using rule 23 (optional_node)]
+    SEQ_ENTRY      [reduce using rule 23 (optional_node)]
+    MAP_KEY        [reduce using rule 23 (optional_node)]
+    INDENT         [reduce using rule 23 (optional_node)]
+    ANCHOR         [reduce using rule 23 (optional_node)]
+    ALIAS          [reduce using rule 23 (optional_node)]
+    TAG            [reduce using rule 23 (optional_node)]
+    PLAIN_SCALAR   [reduce using rule 23 (optional_node)]
+    DQUOTE_STRING  [reduce using rule 23 (optional_node)]
+    SQUOTE_STRING  [reduce using rule 23 (optional_node)]
+    LITERAL        [reduce using rule 23 (optional_node)]
+    FOLDED         [reduce using rule 23 (optional_node)]
+    $default       reduce using rule 23 (optional_node)
+
+    optional_node        go to state 127
+    node                 go to state 50
+    tagged_node          go to state 29
+    anchored_node        go to state 30
+    flow_node            go to state 31
+    block_node           go to state 32
+    merged_plain_scalar  go to state 33
+    block_sequence       go to state 34
+    block_seq_items      go to state 35
+    block_mapping        go to state 36
+    block_map_entries    go to state 37
+    map_entry            go to state 38
+
+
+State 127
+
+   69 map_entry: MAP_KEY newlines INDENT optional_node DEDENT COLON opt_newlines optional_node •
+
+    $default  reduce using rule 69 (map_entry)

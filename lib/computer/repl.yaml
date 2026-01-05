@@ -1,0 +1,13 @@
+# titi/computer/repl.yaml
+# Read-Eval-Print Loop Implementation in YAML
+
+REPL:
+  !WhileLoop:
+    test: !TRUE {}
+    body:
+      !Sequential:
+        - !read: !stdin {}
+        - !interpreter:
+            program: !yaml: !stdin {}
+            arg: !stdin {}
+        - !write: !stdout {}

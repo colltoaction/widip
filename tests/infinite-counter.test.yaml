@@ -1,2 +1,4 @@
-- !bin/yaml/range.yaml
-- !head { -n, 5 }
+!echo 1: &loop
+  !awk '$1 <= 5 { print $1 }':
+    - ? !cat
+      ? !awk '{ print $1 + 1 }': *loop

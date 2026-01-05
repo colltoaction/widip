@@ -1,0 +1,4 @@
+&countdown
+!seq:
+  - !echo:
+  - *countdown

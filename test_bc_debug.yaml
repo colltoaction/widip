@@ -1,0 +1,5 @@
+- 1
+- !xargs { -I, "{}", printf, "{} + 1\n" }
+- !tee { /dev/stderr }
+- !bc { }
+- !tee { /dev/stderr }

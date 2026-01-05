@@ -1,0 +1,14 @@
+# titi/computer/__init__.yaml
+# Monoidal Computer - Root Implementation
+
+import:
+  - !file composition.yaml
+  - !file super.yaml
+  - !file hyper.yaml
+  - !file io.yaml
+  - !file run.yaml
+
+# Bootstrapping
+languages:
+  py: !file py.py
+  yaml: !file yaml.yaml

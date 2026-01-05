@@ -1,0 +1,4 @@
+!echo 5:
+  !awk '$1 > 0 { print $1 }': !echo Greater
+  !awk '$1 < 0 { print $1 }': !echo Lesser
+  !awk '$1 == 5 { print $1 }': !awk '{ print $1 - 3 }'

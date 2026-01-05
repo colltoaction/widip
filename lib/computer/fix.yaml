@@ -1,0 +1,100 @@
+# lib/computer/fix.yaml
+# Fixed Points and Recursion Combinators
+
+# --- Fixed Point Combinators ---
+
+y_combinator: &y_combinator
+  !box
+    name: Υ
+    type: [Language, Language]
+    desc: "Y combinator - fixed point combinator for recursion"
+
+kleene_fixpoint: &kleene_fixpoint
+  !box
+    name: fix
+    type: [Language, Language]
+    desc: "Kleene fixed point operator"
+
+# --- Recursion Schemes ---
+
+induction: &induction
+  !box
+    name: induction
+    type: [Language2, Language]
+    desc: "Mathematical induction: ⟦base, step⟧"
+
+recursion: &recursion
+  !box
+    name: recursion
+    type: [Language2, Language]
+    desc: "Primitive recursion: ⟦g, h⟧"
+
+minimization: &minimization
+  !box
+    name: μ
+    type: [Language, Language]
+    desc: "Minimization operator (μ-operator)"
+
+# --- Loop Constructs ---
+
+while_loop: &while_loop
+  !box
+    name: while
+    type: [Language2, Language]
+    desc: "While loop: while(test, body)"
+
+for_loop: &for_loop
+  !box
+    name: for
+    type: [Language3, Language]
+    desc: "For loop: for(init, test, body)"
+
+# --- Iteration Combinators ---
+
+iterate: &iterate
+  !box
+    name: iterate
+    type: [Language2, Language]
+    desc: "Iterate function n times"
+
+fold: &fold
+  !box
+    name: fold
+    type: [Language2, Language]
+    desc: "Fold (catamorphism) over structure"
+
+unfold: &unfold
+  !box
+    name: unfold
+    type: [Language2, Language]
+    desc: "Unfold (anamorphism) from seed"
+
+# --- Advanced Recursion ---
+
+mutual_recursion: &mutual_recursion
+  !box
+    name: mutual
+    type: [Language2, Language]
+    desc: "Mutual recursion for two functions"
+
+corecursion: &corecursion
+  !box
+    name: corec
+    type: [Language, Language]
+    desc: "Corecursion for infinite structures"
+
+# --- Exports ---
+
+__all__:
+  - y_combinator
+  - kleene_fixpoint
+  - induction
+  - recursion
+  - minimization
+  - while_loop
+  - for_loop
+  - iterate
+  - fold
+  - unfold
+  - mutual_recursion
+  - corecursion

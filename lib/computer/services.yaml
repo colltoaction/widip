@@ -1,0 +1,63 @@
+# lib/computer/services.yaml
+# Core services for the monoidal computer
+
+# --- Algebraic Operations ---
+
+copy: &copy
+  !box
+    name: Δ
+    type: [Language, Language2]
+    desc: "Copy operation - duplicate data"
+    draw_as_spider: true
+
+merge: &merge
+  !box
+    name: μ
+    type: [Language2, Language]
+    desc: "Merge operation - combine data"
+    draw_as_spider: true
+
+discard: &discard
+  !box
+    name: ε
+    type: [Language, !ty]
+    desc: "Discard operation - eliminate data"
+    draw_as_spider: true
+
+swap: &swap
+  !box
+    name: ς
+    type: [Language2, Language2]
+    desc: "Swap operation - exchange positions"
+    draw_as_spider: true
+
+# --- I/O Services ---
+
+read_stdin: &read_stdin
+  !box
+    name: read_stdin
+    type: [!ty, Language]
+    desc: "Read from standard input"
+
+printer: &printer
+  !box
+    name: print
+    type: [Language, !ty]
+    desc: "Print to standard output"
+
+cat: &cat
+  !box
+    name: cat
+    type: [Language, Language]
+    desc: "Identity operation for I/O"
+
+# --- Exports ---
+
+__all__:
+  - copy
+  - merge
+  - discard
+  - swap
+  - read_stdin
+  - printer
+  - cat

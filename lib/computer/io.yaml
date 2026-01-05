@@ -1,0 +1,27 @@
+# titi/computer/io.yaml
+# System I/O operations for the monoidal computer
+
+read: &read
+  !desc: "Read from a source"
+  !type: [IO, Bytes]
+  !id: read
+
+write: &write
+  !desc: "Write to a sink"
+  !type: [Bytes, IO]
+  !id: write
+
+stdin: &stdin
+  !desc: "Standard input"
+  !type: [!ty, IO]
+  !id: stdin
+
+stdout: &stdout
+  !desc: "Standard output"
+  !type: [!ty, IO]
+  !id: stdout
+
+stderr: &stderr
+  !desc: "Standard error"
+  !type: [!ty, IO]
+  !id: stderr

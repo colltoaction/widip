@@ -1,4 +1,0 @@
-!cat examples/shell.yaml:
-  ? !wc -c
-  ? !grep grep: !wc -c
-  ? !tail -2

@@ -2,6 +2,7 @@ import pytest
 import subprocess
 import glob
 import os
+import sys
 
 # Find all test cases
 TEST_DIR = os.path.dirname(__file__)
@@ -24,14 +25,25 @@ def test_case(test_file):
 
     # Run the shell
     # Assuming running from repo root
-    cmd = ["bin/widish", test_file]
+    cmd = ["bin/titi", test_file]
 
-    result = subprocess.run(
-        cmd,
-        text=True,
-        capture_output=True,
-        check=False
-    )
+    try:
+        proc = subprocess.run(
+            ["python", "-m", "titi", test_file],
+            capture_output=True,
+            text=True,
+            timeout=2.0
+        )
+    except subprocess.TimeoutExpired as e:
+        proc = e # Store the exception object to access stdout/stderr if needed, or handle differently
+        # For this specific case, we might want to assert on the timeout itself or its output
+        # For now, we'll let the assert below fail if proc doesn't have .stdout
+        # Or, more robustly, handle the timeout as a specific test outcome.
+        # Given the original code structure, we'll assume `proc` should behave like `result`.
+        # If a timeout occurs, e.stdout and e.stderr contain the output captured before timeout.
+        pass # The assert below will then use proc.stdout (which is e.stdout)
 
     # Assert output
-    assert result.stdout == expected_output
+    if proc.stdout != expected_output:
+         print(f"DEBUG: Stderr for {test_file}:\n{proc.stderr}", file=sys.stderr)
+    assert proc.stdout == expected_output

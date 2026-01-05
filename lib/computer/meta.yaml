@@ -1,0 +1,89 @@
+# lib/computer/meta.yaml
+# Metaprogramming and Reflection
+
+# --- Core Meta Boxes ---
+
+specializer: &specializer
+  !box
+    name: specializer
+    type: [Language2, Language]
+    desc: "Partial evaluator / Specializer for metacompilation"
+
+interpreter: &interpreter
+  !box
+    name: interpreter
+    type: [Language2, Language]
+    desc: "Meta-circular interpreter"
+
+compiler: &compiler
+  !box
+    name: compiler
+    type: [Language2, Language]
+    desc: "Compiler (via Futamura projection 2)"
+
+compiler_generator: &compiler_generator
+  !box
+    name: compiler_generator
+    type: [Language, Language]
+    desc: "Compiler generator (via Futamura projection 3)"
+
+# --- Reflection Operations ---
+
+quote: &quote
+  !box
+    name: quote
+    type: [Language, Language]
+    desc: "Quote - convert code to data"
+
+eval: &eval
+  !box
+    name: eval
+    type: [Language, Language]
+    desc: "Eval - execute code from data"
+
+reify: &reify
+  !box
+    name: reify
+    type: [Language, Language]
+    desc: "Reify - make abstract concrete"
+
+reflect: &reflect
+  !box
+    name: reflect
+    type: [Language, Language]
+    desc: "Reflect - examine structure"
+
+# --- Code Transformation ---
+
+macro: &macro
+  !box
+    name: macro
+    type: [Language, Language]
+    desc: "Macro expansion"
+
+inline: &inline
+  !box
+    name: inline
+    type: [Language, Language]
+    desc: "Inline expansion"
+
+optimize: &optimize
+  !box
+    name: optimize
+    type: [Language, Language]
+    desc: "Code optimization"
+
+# --- Exports ---
+
+__all__:
+  - specializer
+  - interpreter
+  - compiler
+  - compiler_generator
+  - quote
+  - eval
+  - reify
+  - reflect
+  - macro
+  - inline
+  - optimize

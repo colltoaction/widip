@@ -1,0 +1,61 @@
+# lib/computer/eval.yaml
+# Evaluation and Execution
+
+# --- Evaluation Boxes ---
+
+eval: &eval
+  !box
+    name: "{−}"
+    type: [Language2, Language]
+    desc: "Evaluate code: apply function to data"
+
+partial_eval: &partial_eval
+  !box
+    name: "[−]"
+    type: [Language2, Language]
+    desc: "Partial evaluation: specialize with static data"
+
+# --- Execution Modes ---
+
+eval_python: &eval_python
+  !box
+    name: eval_python
+    type: [Language, Language]
+    desc: "Evaluate Python code"
+
+eval_yaml: &eval_yaml
+  !box
+    name: eval_yaml
+    type: [Language, Language]
+    desc: "Evaluate YAML code"
+
+eval_diagram: &eval_diagram
+  !box
+    name: eval_diagram
+    type: [Language, Language]
+    desc: "Evaluate categorical diagram"
+
+# --- Application ---
+
+apply: &apply
+  !box
+    name: apply
+    type: [Language2, Language]
+    desc: "Function application"
+
+compose: &compose
+  !box
+    name: compose
+    type: [Language2, Language]
+    desc: "Function composition"
+
+# --- Exports ---
+
+__all__:
+  - eval
+  - partial_eval
+  - eval_python
+  - eval_yaml
+  - eval_diagram
+  - apply
+  - compose

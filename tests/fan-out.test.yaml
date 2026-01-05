@@ -1,4 +1,4 @@
-- !echo { "widip", "project" }
+- !echo { "titi", "project" }
 - !tr { "[:lower:]", "[:upper:]" }
 - ? !wc -w
   ? !sed "s/PROJECT/STUFF/"

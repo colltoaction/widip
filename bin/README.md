@@ -1,6 +1,6 @@
 # Execution Model
 
-In `widip`, YAML tags such as `!eval`, `!read`, or `!print` are interpreted as **commands to execute**.
+In `titi`, YAML tags such as `!eval`, `!read`, or `!print` are interpreted as **commands to execute**.
 
 ## Using Executables
 
@@ -13,7 +13,7 @@ You can use **any executable** that exists in your system's `$PATH` or by provid
 
 ## Using Other YAML Files
 
-You can also use other `widip` YAML files as commands, provided they are executable (e.g., they have a valid shebang like `#!bin/widish`). This allows you to compose complex pipelines from smaller, reusable diagrams.
+You can also use other `titi` YAML files as commands, provided they are executable (e.g., they have a valid shebang like `#!bin/titi`). This allows you to compose complex pipelines from smaller, reusable diagrams.
 
 **Example:**
 
