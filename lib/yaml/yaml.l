@@ -1,5 +1,5 @@
 %{
-/* YAML Lexer - LALR-friendly with debug */
+/* YAML Lexer - LALR friendly with Proactive Synthesized Tokens */
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -39,7 +39,7 @@ int real_yylex();
 
 const char* tok_name(int tok) {
     if (tok < 256) {
-        static char buf[3] = {0};
+        static char buf[4] = {0};
         if (tok == '\n') return "NEWLINE_CHAR";
         buf[0] = (char)tok; buf[1] = 0;
         return buf;
@@ -59,6 +59,7 @@ const char* tok_name(int tok) {
         case INDENT: return "INDENT";
         case DEDENT: return "DEDENT";
         case NEWLINE_DEDENT: return "NEWLINE_DEDENT";
+        case NEWLINE_INDENT: return "NEWLINE_INDENT";
         case ANCHOR: return "ANCHOR";
         case ALIAS: return "ALIAS";
         case TAG: return "TAG";
@@ -73,26 +74,24 @@ const char* tok_name(int tok) {
 }
 
 int yylex() {
+    static int next_tok = 0;
     int tok;
-    while (1) {
-        if (!q_empty()) tok = dequeue();
-        else tok = real_yylex();
-        if (tok == 0 && q_empty()) return 0;
-        
-        if (tok == NEWLINE && !q_empty() && q_peek() == DEDENT) {
-            dequeue();
-            return NEWLINE_DEDENT;
-        }
-        
-        if (tok != 0) {
-            if (!q_empty() && tok > 0 && tok != INDENT && tok != DEDENT) {
-                enqueue(tok);
-                return dequeue();
-            }
-            // fprintf(stderr, "LEX: %s [%s]\n", tok_name(tok), yytext);
-            return tok;
-        }
+    
+    if (next_tok) { tok = next_tok; next_tok = 0; return tok; }
+    
+    if (!q_empty()) tok = dequeue();
+    else tok = real_yylex();
+    
+    if (tok == NEWLINE) {
+        /* Proactively call real_yylex to see if an INDENT/DEDENT follows from BOL */
+        int following = real_yylex();
+        if (following == INDENT) return NEWLINE_INDENT;
+        if (following == DEDENT) return NEWLINE_DEDENT;
+        next_tok = following;
+        return NEWLINE;
     }
+    
+    return tok;
 }
 
 #define yylex real_yylex
@@ -107,9 +106,7 @@ int yylex() {
 
 NEWLINE     \n|\r\n|\r
 SEP         [ \t\n\r,\[\]\{\}]
-/* SAFE_S_BLK: cannot start with indicator */
 SAFE_S_BLK  [^ \t\n\r\-\?:,\[\]\{\}!#&*|>\x22\x27%@\x60]
-/* SAFE_C_BLK: inner characters except structural ones and colon */
 SAFE_C_BLK  [^ \t\n\r,\[\]\{\}:!]
 
 %%
@@ -136,9 +133,8 @@ SAFE_C_BLK  [^ \t\n\r,\[\]\{\}:!]
                           if (tok) return tok;
                         }
 <BOL><<EOF>>            {
-                          while (indent_level > 0) { indent_level--; enqueue(DEDENT); }
-                          if (!q_empty()) return dequeue();
-                          return 0;
+                          while (indent_level >= 0) { indent_level--; enqueue(DEDENT); }
+                          return dequeue();
                         }
 
 <INITIAL,FLOW>"---"/({SEP}|$) { return DOC_START; }
@@ -176,7 +172,6 @@ SAFE_C_BLK  [^ \t\n\r,\[\]\{\}:!]
                         }
 
 <INITIAL,FLOW>{SAFE_S_BLK}({SAFE_C_BLK}|":"[^ \t\n\r,\[\]\{\}]|[!#&*|%>])* {
-    /* YAML 1.2 Plain Scalar - carefully exclude structural colon/space */
     yylval.str = strdup(yytext);
     return PLAIN_SCALAR;
 }
@@ -185,20 +180,10 @@ SAFE_C_BLK  [^ \t\n\r,\[\]\{\}:!]
 
 <INITIAL>{NEWLINE}      { 
                           if (flow_level == 0) {
-                              int c; int ni = 0; int pc[128]; int pcc = 0;
-                              while (pcc < 127 && ((c = input()) == ' ' || c == '\t')) {
-                                  pc[pcc++] = c;
-                                  if (c == ' ') ni++; else ni = (ni + 8) & ~7;
-                              }
-                              if (c == EOF || c == 0 || (c != '\n' && c != '\r' && ni < indent_stack[indent_level])) {
-                                  while (ni < indent_stack[indent_level] && indent_level > 0) {
-                                      indent_level--; enqueue(DEDENT);
-                                  }
-                              }
-                              if (c != EOF && c != 0) unput(c);
-                              for (int i = pcc - 1; i >= 0; i--) unput(pc[i]);
+                              /* Transition to BOL to check for indentation on next call or current lookahead */
+                              BEGIN(BOL);
                           }
-                          BEGIN(BOL); return NEWLINE; 
+                          return NEWLINE; 
                         }
 
 <FLOW>{NEWLINE}         { /* ignore */ }
@@ -206,7 +191,7 @@ SAFE_C_BLK  [^ \t\n\r,\[\]\{\}:!]
 .                       { return yytext[0]; }
 
 <<EOF>>                 {
-                          while (indent_level > 0) { indent_level--; enqueue(DEDENT); }
+                          while (indent_level >= 0) { indent_level--; enqueue(DEDENT); }
                           if (!q_empty()) return dequeue();
                           return 0;
                         }
