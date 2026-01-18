@@ -7,7 +7,7 @@ $ python -m widip examples/hello-world.yaml
 Hello world!
 ```
 
-![](hello-world.jpg)
+![](hello-world.svg)
 
 ## Script
 
@@ -19,7 +19,7 @@ $ python -m widip examples/shell.yaml
   ? !tail -2
 ```
 
-![IMG](shell.jpg)
+![IMG](shell.svg)
 
 
 # Working with the CLI
