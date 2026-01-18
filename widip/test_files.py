@@ -1,8 +1,16 @@
 from discopy.closed import Box, Ty, Diagram, Id
 from discopy.hypergraph import Hypergraph
 
+from discopy.closed import Box, Ty, Diagram, Id
+from discopy.frobenius import Spider, Functor
+from discopy.hypergraph import Hypergraph
+
+_to_frobenius = Functor(lambda x: x, lambda f: f)
+
 def assert_hg_eq(d1, d2):
-    assert Hypergraph.from_diagram(d1) == Hypergraph.from_diagram(d2)
+    h1 = Hypergraph.from_diagram(_to_frobenius(d1))
+    h2 = Hypergraph.from_diagram(_to_frobenius(d2))
+    assert h1 == h2
 
 from .files import repl_read as stream_diagram
 
