@@ -1,3 +1,4 @@
+import pytest
 from discopy.closed import Box, Ty, Diagram, Id
 from discopy.hypergraph import Hypergraph
 

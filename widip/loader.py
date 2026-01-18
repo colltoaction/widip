@@ -5,10 +5,15 @@ from contextvars import ContextVar
 from itertools import batched
 
 from discopy import closed
+from nx_yaml import nx_compose_all
 from nx_hif.hif import HyperGraph
 
 from . import hif
 from .yaml import *
+
+def repl_read(stream):
+    incidences = nx_compose_all(stream)
+    return incidences_to_diagram(incidences)
 
 diagram_var: ContextVar[closed.Diagram] = ContextVar("diagram")
 
