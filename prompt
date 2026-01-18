@@ -1,0 +1,5 @@
+%YAML 1.2.2
+--- !titi
+name: titi
+version: 1.5.2026
+description: "Categorical YAML Computer - Bootstrap Configuration"

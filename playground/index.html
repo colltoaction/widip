@@ -1,0 +1,154 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YAML Parser Playground</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+            --accent-color: #58a6ff;
+            --error-color: #f85149;
+            --success-color: #3fb950;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 { margin: 0; font-size: 1.2rem; }
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-color);
+            min-width: 0;
+        }
+        .pane:last-child { border-right: none; }
+        .pane-header {
+            padding: 0.5rem 1rem;
+            background-color: #161b22;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        textarea {
+            flex: 1;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: none;
+            padding: 1rem;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+        }
+        #output {
+            white-space: pre-wrap;
+            overflow-y: auto;
+        }
+        .error { color: var(--error-color); }
+        .status-bar {
+            padding: 0.5rem 1rem;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { opacity: 0.9; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>YAML Parser Playground</h1>
+        <button id="parseBtn">Parse (Ctrl+Enter)</button>
+    </header>
+    <div class="container">
+        <div class="pane">
+            <div class="pane-header">Input YAML</div>
+            <textarea id="input" spellcheck="false" placeholder="Enter YAML here...">---
+- :,</textarea>
+        </div>
+        <div class="pane">
+            <div class="pane-header">Parser Output</div>
+            <textarea id="output" readonly></textarea>
+        </div>
+    </div>
+    <div class="status-bar">
+        <span id="status">Ready</span>
+        <span>Using ./bin/yaml/parse</span>
+    </div>
+
+    <script>
+        const input = document.getElementById('input');
+        const output = document.getElementById('output');
+        const status = document.getElementById('status');
+        const parseBtn = document.getElementById('parseBtn');
+
+        async function parse() {
+            status.textContent = 'Parsing...';
+            output.value = '';
+            
+            try {
+                const response = await fetch('/parse', {
+                    method: 'POST',
+                    body: input.value
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    output.value = result.stdout;
+                    output.classList.remove('error');
+                    status.textContent = 'Parsed successfully';
+                    status.style.color = 'var(--success-color)';
+                } else {
+                    output.value = result.stderr || result.stdout || 'Unknown error';
+                    output.classList.add('error');
+                    status.textContent = 'Parse error';
+                    status.style.color = 'var(--error-color)';
+                }
+            } catch (e) {
+                output.value = 'Error: ' + e.message;
+                status.textContent = 'Network error';
+                status.style.color = 'var(--error-color)';
+            }
+        }
+
+        parseBtn.addEventListener('click', parse);
+        input.addEventListener('keydown', e => {
+            if (e.ctrlKey && e.key === 'Enter') parse();
+        });
+        
+        // Initial parse
+        parse();
+    </script>
+</body>
+</html>
