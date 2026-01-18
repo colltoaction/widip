@@ -17,4 +17,7 @@ def draw(diagram, **params):
     """
     return diagram.draw(**params)
 
-__all__ = ['draw']
+# Alias for compatibility
+diagram_draw = draw
+
+__all__ = ['draw', 'diagram_draw']
