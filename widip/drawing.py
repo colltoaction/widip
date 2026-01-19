@@ -122,6 +122,78 @@ def get_recursive_stats(d, visited=None):
     walk(d)
     return max_cpw, max_lpl, box_count
 
+def get_style(box):
+     cls_name = type(box).__name__
+     name_str = str(getattr(box, "drawing_name", getattr(box, "name", "")))
+     
+     # Defaults
+     final_name = name_str
+     color = "#f0f0f0"
+     draw_as_spider = False
+     draw_as_swap = False
+     draw_as_bubble = False
+
+     if cls_name == "Scalar" or name_str.startswith("Scalar"):
+          tag, val = getattr(box, "tag", ""), getattr(box, "value", "")
+          if not tag and not val:
+               final_name = ""
+               color = "#ffffff"
+               draw_as_spider = True
+          else:
+               final_name = f"{tag} {val}" if tag and val else (tag or val)
+               color = "#ffffff"
+     elif cls_name == "Alias" or name_str.startswith("*"):
+              final_name = f"*{getattr(box, 'name', name_str.lstrip('*'))}"
+              color = "#3498db" 
+              draw_as_spider = True
+     elif cls_name == "Anchor" or name_str.startswith("&"):
+              final_name = f"&{getattr(box, 'name', name_str.lstrip('&'))}"
+              color = "#2980b9" 
+              draw_as_spider = True
+     elif cls_name == "Label":
+              final_name = name_str
+              color = "#ffffff"
+     elif cls_name == "Data" or name_str.startswith("⌜"):
+              final_name = name_str
+              color = "#fff9c4" 
+     elif cls_name == "Eval" or name_str == "eval":
+              final_name = "exec" 
+              color = "#ffccbc" 
+     elif cls_name == "Curry" or name_str == "curry":
+              final_name = "Λ"
+              color = "#d1c4e9" 
+     elif cls_name == "Program":
+              final_name = name_str
+              color = "#ffffff" 
+     elif cls_name == "Copy" or name_str.startswith("Copy("):
+              final_name = "Δ"
+              color = "#2ecc71" 
+              draw_as_spider = True
+     elif cls_name == "Merge" or name_str.startswith("Merge("):
+              final_name = "μ"
+              color = "#27ae60" 
+              draw_as_spider = True
+     elif cls_name == "Discard" or name_str.startswith("Discard("):
+              if box.dom.name == "":
+                   final_name = ""
+                   color = "#ffffff"
+              else:
+                   final_name = "ε"
+                   color = "#e74c3c" 
+              draw_as_spider = True
+     elif cls_name == "Swap":
+              final_name = ""
+              color = "#f1c40f" 
+              draw_as_swap = True
+     elif cls_name in ["Sequence", "Mapping"]:
+          tag = getattr(box, "tag", "")
+          final_name = f"[{tag}]" if cls_name == "Sequence" else f"{{{tag}}}"
+          if not tag: final_name = ""
+          draw_as_bubble = True
+          color = "#ffffff"
+     
+     return final_name, color, draw_as_spider, draw_as_swap, draw_as_bubble
+
 def diagram_draw(path: Path, fd):
     """
     Renders a DisCoPy diagram to SVG using the Complexity Attribution Model.
@@ -162,80 +234,8 @@ def diagram_draw(path: Path, fd):
         return monoidal.Ty(*[getattr(o, "name", str(o)) for o in ob.inside])
 
     def map_ar(box):
-         cls_name = type(box).__name__
+         final_name, color, draw_as_spider, draw_as_swap, draw_as_bubble = get_style(box)
          
-         # styling
-         # use more premium, vibrant colors
-         color = "#f0f0f0" # very light grey
-         draw_as_spider = False
-         draw_as_swap = False
-         draw_as_bubble = False
-         final_name = ""
-         
-         # Get the semantic name and identify spiders robustly
-         name_str = str(getattr(box, "drawing_name", getattr(box, "name", "")))
-         
-         if cls_name == "Scalar" or name_str.startswith("Scalar"):
-              tag, val = getattr(box, "tag", ""), getattr(box, "value", "")
-              if not tag and not val:
-                   final_name = ""
-                   color = "#ffffff"
-                   draw_as_spider = True
-              else:
-                   final_name = f"{tag} {val}" if tag and val else (tag or val)
-                   color = "#ffffff"
-         elif cls_name == "Alias" or name_str.startswith("*"):
-                  final_name = f"*{getattr(box, 'name', name_str.lstrip('*'))}"
-                  color = "#3498db" # vibrant blue 
-                  draw_as_spider = True
-         elif cls_name == "Anchor" or name_str.startswith("&"):
-                  final_name = f"&{getattr(box, 'name', name_str.lstrip('&'))}"
-                  color = "#2980b9" # slightly darker vibrant blue
-                  draw_as_spider = True
-         elif cls_name == "Label":
-                  final_name = name_str
-                  color = "#ffffff"
-         elif cls_name == "Data" or name_str.startswith("⌜"):
-                  final_name = name_str
-                  color = "#fff9c4" # Light yellow for Data
-         elif cls_name == "Eval" or name_str == "eval":
-                  final_name = "exec" # Using 'exec' to represent evaluation
-                  color = "#ffccbc" # Light orange/red
-         elif cls_name == "Curry" or name_str == "curry":
-                  final_name = "Λ"
-                  color = "#d1c4e9" # Light purple
-         elif cls_name == "Program":
-                  final_name = name_str
-                  color = "#ffffff" # Programs are white standard boxes
-         elif cls_name == "Copy" or name_str.startswith("Copy("):
-                  final_name = "Δ"
-                  color = "#2ecc71" # vibrant green
-                  draw_as_spider = True
-         elif cls_name == "Merge" or name_str.startswith("Merge("):
-                  final_name = "μ"
-                  color = "#27ae60" # darker vibrant green
-                  draw_as_spider = True
-         elif cls_name == "Discard" or name_str.startswith("Discard("):
-                  if box.dom.name == "":
-                       final_name = ""
-                       color = "#ffffff"
-                  else:
-                       final_name = "ε"
-                       color = "#e74c3c" # vibrant red
-                  draw_as_spider = True
-         elif cls_name == "Swap":
-                  final_name = ""
-                  color = "#f1c40f" # vibrant yellow
-                  draw_as_swap = True
-         elif cls_name in ["Sequence", "Mapping"]:
-              tag = getattr(box, "tag", "")
-              final_name = f"[{tag}]" if cls_name == "Sequence" else f"{{{tag}}}"
-              if not tag: final_name = ""
-              draw_as_bubble = True
-              color = "#ffffff"
-         else:
-              final_name = name_str
-
          # Padded name for left-alignment
          lines = str(final_name).split('\n')
          # Map dom/cod

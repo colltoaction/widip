@@ -37,28 +37,21 @@ def watch_main():
     observer.start()
     return observer
 
+def process_command(file_name):
+    prompt = f"--- !{file_name}\n"
+    source = input(prompt)
+    source_d = repl_read(source)
+    path = Path(file_name)
+    diagram_draw(path, source_d)
+    result_ev = SHELL_RUNNER(source_d)()
+    print(result_ev)
+
 def shell_main(file_name):
     try:
         while True:
             observer = watch_main()
             try:
-                prompt = f"--- !{file_name}\n"
-                source = input(prompt)
-                source_d = repl_read(source)
-                # source_d.draw(
-                #         textpad=(0.3, 0.1),
-                #         fontsize=12,
-                #         fontsize_types=8)
-                path = Path(file_name)
-                diagram_draw(path, source_d)
-                # source_d = compile_shell_program(source_d)
-                # diagram_draw(Path(file_name+".2"), source_d)
-                # source_d = Spider(0, len(source_d.dom), Ty("io")) \
-                #     >> source_d \
-                #     >> Spider(len(source_d.cod), 1, Ty("io"))
-                # diagram_draw(path, source_d)
-                result_ev = SHELL_RUNNER(source_d)()
-                print(result_ev)
+                process_command(file_name)
             except KeyboardInterrupt:
                 print()
             except YAMLError as e:

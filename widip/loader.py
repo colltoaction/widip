@@ -7,6 +7,20 @@ from discopy.closed import Id, Ty, Box, Eval
 P = Ty() << Ty("")
 
 
+
+def iter_linked_list(node, index):
+    """
+    Yields nodes in a linked list structure.
+    First edge is 'next', subsequent are 'forward'.
+    """
+    edges = tuple(hif_node_incidences(node, index, key="next"))
+    while edges:
+        ((edge, _, _, _), ) = edges
+        ((_, target, _, _), ) = hif_edge_incidences(node, edge, key="start")
+        yield target
+        edges = tuple(hif_node_incidences(node, target, key="forward"))
+
+
 def repl_read(stream):
     incidences = nx_compose_all(stream)
     diagrams = incidences_to_diagram(incidences)
@@ -51,27 +65,19 @@ def load_scalar(node, index, tag):
             >> Box("e", Ty(v), Ty(v))
     if tag and v:
         return Box(tag, Ty(v), Ty(tag) >> Ty(tag))
-        return Box("run", Ty(tag) @ Ty(v), Ty(tag)).curry(left=False)
     elif tag:
         return Box(tag, Ty(v), Ty(tag) >> Ty(tag))
-        return Box("run", Ty(tag), Ty(tag)).curry(left=False)
-        return Box(tag, Ty(), Ty() << Ty(""))
     elif v:
         return Box("⌜−⌝", Ty(v), Ty() >> Ty(v))
-        return Box("⌜−⌝", Ty(v), Ty(tag)).curry(0, left=False)
-        return Box("⌜−⌝", Ty(v), Ty() << Ty(""))
     else:
         return Box("⌜−⌝", Ty(), Ty() >> Ty(v))
-        return Box("⌜−⌝", Ty(), Ty(tag)).curry(0, left=False)
 
 def load_mapping(node, index, tag):
     ob = Id()
     i = 0
-    nxt = tuple(hif_node_incidences(node, index, key="next"))
-    while True:
-        if not nxt:
-            break
-        ((k_edge, _, _, _), ) = nxt
+    edges = tuple(hif_node_incidences(node, index, key="next"))
+    while edges:
+        ((k_edge, _, _, _), ) = edges
         ((_, k, _, _), ) = hif_edge_incidences(node, k_edge, key="start")
         ((v_edge, _, _, _), ) = hif_node_incidences(node, k, key="forward")
         ((_, v, _, _), ) = hif_edge_incidences(node, v_edge, key="start")
@@ -89,7 +95,7 @@ def load_mapping(node, index, tag):
             ob = ob @ kv
 
         i += 1
-        nxt = tuple(hif_node_incidences(node, v, key="forward"))
+        edges = tuple(hif_node_incidences(node, v, key="forward"))
     exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
     bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
     par_box = Box("(||)", ob.cod, exps >> bases)
@@ -97,19 +103,13 @@ def load_mapping(node, index, tag):
     if tag:
         ob = (ob @ exps >> Eval(exps >> bases))
         box = Box(tag, ob.cod, Ty(tag) >> Ty(tag))
-        # box = Box("run", Ty(tag) @ ob.cod, Ty(tag)).curry(left=False)
         ob = ob >> box
     return ob
 
 def load_sequence(node, index, tag):
     ob = Id()
     i = 0
-    nxt = tuple(hif_node_incidences(node, index, key="next"))
-    while True:
-        if not nxt:
-            break
-        ((v_edge, _, _, _), ) = nxt
-        ((_, v, _, _), ) = hif_edge_incidences(node, v_edge, key="start")
+    for i, v in enumerate(iter_linked_list(node, index)):
         value = _incidences_to_diagram(node, v)
         if i==0:
             ob = value
@@ -118,9 +118,6 @@ def load_sequence(node, index, tag):
             bases = ob.cod[0].inside[0].exponent
             exps = value.cod[0].inside[0].base
             ob = ob >> Box("(;)", ob.cod, bases >> exps)
-
-        i += 1
-        nxt = tuple(hif_node_incidences(node, v, key="forward"))
     if tag:
         bases = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
         exps = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
@@ -139,20 +136,10 @@ def load_document(node, index):
 
 def load_stream(node, index):
     ob = Id()
-    nxt = tuple(hif_node_incidences(node, index, key="next"))
-    while True:
-        if not nxt:
-            break
-        ((nxt_edge, _, _, _), ) = nxt
-        starts = tuple(hif_edge_incidences(node, nxt_edge, key="start"))
-        if not starts:
-            break
-        ((_, nxt_node, _, _), ) = starts
+    for nxt_node in iter_linked_list(node, index):
         doc = _incidences_to_diagram(node, nxt_node)
         if ob == Id():
             ob = doc
         else:
             ob = ob @ doc
-
-        nxt = tuple(hif_node_incidences(node, nxt_node, key="forward"))
     return ob
