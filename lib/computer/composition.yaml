@@ -1,0 +1,10 @@
+# titi/computer/composition.yaml
+# Represents (→) sequential composition and (⊗) parallel composition
+
+Sequential:
+  !desc: "A → B → C"
+  !type: [Language, Language]
+
+Parallel:
+  !desc: "A⊗U → B⊗V"
+  !type: [[Language, Language], [Language, Language]]

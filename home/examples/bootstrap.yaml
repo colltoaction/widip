@@ -1,0 +1,25 @@
+#!/usr/bin/env titi
+# Bootstrap Example - Self-Hosting Monoidal Computer
+# Demonstrates rebuilding the YAML parser and applying supercompilation
+
+- "╔════════════════════════════════════════╗"
+- "║  MONOIDAL COMPUTER BOOTSTRAP SEQUENCE  ║"
+- "╚════════════════════════════════════════╝"
+
+- "\n=== Step 1: Rebuild YAML Parser ==="
+- !lex "lib/computer/yaml.l"
+- !yacc ["-d", "lib/computer/yaml.y"]
+- !cc ["lex.yy.c", "y.tab.c", "-lfl", "-o", "_yaml_parser"]
+- "✓ Parser rebuilt successfully"
+
+- "\n=== Step 2: Demonstrate Supercompilation ==="
+- "Applying supercompilation to optimize code..."
+- !supercompile "example_program"
+
+- "\n=== Step 3: Demonstrate Hypercomputation ==="
+- "Computing Ackermann(2, 2)..."
+- !ackermann {m: 2, n: 2}
+
+- "\n╔════════════════════════════════════════╗"
+- "║     BOOTSTRAP COMPLETE - SELF-HOSTED   ║"
+- "╚════════════════════════════════════════╝"

@@ -1,0 +1,50 @@
+
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.13"
+
+    - name: Clone YAML Test Suite
+      run: git clone https://github.com/yaml/yaml-test-suite tests/yaml-test-suite
+
+    - name: Install System Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y flex bison build-essential libfl-dev
+
+    - name: Build YAML Parser
+      run: make parser
+
+    - name: Install Package and Dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -e ".[test]"
+
+    - name: Verify Build
+      run: make verify-build
+
+    - name: Run Demo (Hello World)
+      run: make demo-hello
+
+    - name: Run Core Tests
+      run: make test
+
+    - name: Run YAML Test Suite
+      run: make test-suite
+      continue-on-error: true
+

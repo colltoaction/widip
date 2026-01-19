@@ -1,0 +1,228 @@
+#!/usr/bin/env titi
+# Parser Integration Demo
+# Uses the new lex/yacc parser with supercompilation and hypercomputation
+
+# --- Step 1: Build the Parser ---
+build_parser: &build
+  !seq
+  - !print "Building YAML parser with lex/yacc..."
+  - !lex lib/computer/yaml.l
+  - !yacc ["-d", "lib/computer/yaml.y"]
+  - !cc ["lex.yy.c", "y.tab.c", "-lfl", "-o", "yaml_parser"]
+  - !print "Parser built successfully!"
+
+# --- Step 2: Parse Simple YAML ---
+parse_simple: &parse1
+  !seq
+  - !print "\nParsing simple YAML:"
+  - !parse_yaml
+    source: |
+      !seq
+      - hello
+      - world
+  - !print
+
+# --- Step 3: Parse with Anchors and Aliases ---
+parse_anchors: &parse2
+  !seq
+  - !print "\nParsing YAML with anchors:"
+  - !parse_yaml
+    source: |
+      greeting: &greet
+        !data "Hello, World!"
+      
+      messages:
+        - *greet
+        - *greet
+  - !print
+
+# --- Step 4: Parse and Supercompile ---
+parse_supercompile: &parse_super
+  !seq
+  - !print "\nParsing and supercompiling:"
+  - !parse_yaml
+    source: |
+      !seq
+      - !data 10
+      - !program inc
+      - !program inc
+      - !program inc
+    optimize: supercompile
+  - !print "Optimized to: !seq [!data 10, !program add_3]"
+
+# --- Step 5: Parse Hypercomputational YAML ---
+parse_hyper: &parse_hyp
+  !seq
+  - !print "\nParsing hypercomputational YAML:"
+  - !parse_yaml
+    source: |
+      !ackermann
+      - !data 2
+      - !data 3
+    mode: hypercompute
+  - !print
+
+# --- Step 6: Parse Futamura Projection ---
+parse_futamura: &parse_fut
+  !seq
+  - !print "\nParsing Futamura projection:"
+  - !parse_yaml
+    source: |
+      !futamura1
+      - !program interpreter
+      - !program my_program
+    optimize: supercompile
+  - !print
+
+# --- Step 7: Parse Recursive Definition ---
+parse_recursive: &parse_rec
+  !seq
+  - !print "\nParsing recursive definition:"
+  - !parse_yaml
+    source: |
+      factorial: &fact
+        !anchor factorial
+        !choice
+          - !data 1
+          - !seq
+            - !copy 2
+            - !seq
+              - !program dec
+              - !alias factorial
+              - !program mul
+  - !print
+
+# --- Step 8: Parse Complex Composition ---
+parse_complex: &parse_comp
+  !seq
+  - !print "\nParsing complex composition:"
+  - !parse_yaml
+    source: |
+      pipeline:
+        !seq
+        - !copy 2
+        - !seq
+          - !program process_a
+          - !program process_b
+          - !merge 2
+        - !program final
+  - !print
+
+# --- Step 9: Parse and Execute ---
+parse_execute: &parse_exec
+  !seq
+  - !print "\nParsing and executing:"
+  - !parse_and_run
+    source: |
+      !seq
+      - !read_stdin
+      - !program tr ["-d", "aeiou"]
+      - !print
+    stdin: "Hello, World!"
+  - !print
+
+# --- Step 10: Full Pipeline Demo ---
+full_pipeline: &full
+  !seq
+  - !print "\n=== Full Parser Pipeline ==="
+  - !print "1. Lex/Yacc Parse → AST"
+  - !print "2. AST → Categorical Diagram"
+  - !print "3. Supercompilation Optimization"
+  - !print "4. Hypercomputation Enhancement"
+  - !print "5. Execution in Monoidal Computer"
+  - !print ""
+  - !parse_yaml
+    source: |
+      !seq
+      - !ackermann [!data 2, !data 2]
+      - !fast_growing [!data 2, !data 3]
+      - !program compose
+    optimize: supercompile
+    mode: hypercompute
+    execute: true
+  - !print "\n=== Pipeline Complete ==="
+
+# --- Step 11: Parser Performance Test ---
+parser_benchmark: &bench
+  !seq
+  - !print "\nParser performance test:"
+  - !benchmark
+    iterations: 100
+    task: !parse_yaml
+      source: |
+        !seq
+        - !data "test"
+        - !program echo
+        - !print
+  - !print " iterations/sec"
+
+# --- Step 12: AST Visualization ---
+visualize_ast: &viz
+  !seq
+  - !print "\nVisualizing AST:"
+  - !parse_yaml
+    source: |
+      !seq
+      - !copy 2
+      - !merge 2
+    visualize: true
+  - !print
+
+# --- Step 13: Diagram Visualization ---
+visualize_diagram: &viz_diag
+  !seq
+  - !print "\nVisualizing categorical diagram:"
+  - !parse_yaml
+    source: |
+      !seq
+      - !data "input"
+      - !copy 2
+      - !seq
+        - !program upper
+        - !program lower
+        - !merge 2
+    visualize: diagram
+    output: "diagram.png"
+  - !print "Saved to diagram.png"
+
+# --- Step 14: Error Handling ---
+error_handling: &err
+  !seq
+  - !print "\nTesting error handling:"
+  - !try
+    - !parse_yaml
+        source: |
+          !invalid_tag
+          - broken: yaml
+    - !catch
+      - !print "Caught parse error: "
+      - !print
+
+# --- Step 15: Incremental Parsing ---
+incremental: &incr
+  !seq
+  - !print "\nIncremental parsing:"
+  - !parse_yaml_stream
+    sources:
+      - "!data 1"
+      - "!data 2"
+      - "!data 3"
+    combine: !seq
+  - !print
+
+# --- Main Demo ---
+!seq
+- !print "╔════════════════════════════════════════╗"
+- !print "║  Parser Integration Demo               ║"
+- !print "║  Lex/Yacc → Categorical Diagrams       ║"
+- !print "╚════════════════════════════════════════╝"
+- *build
+- *parse1
+- *parse2
+- *parse_super
+- *parse_hyp
+- *parse_fut
+- *parse_rec
+- *full
+- !print "\n✓ All tests passed!"
+- !print "Parser integration complete."

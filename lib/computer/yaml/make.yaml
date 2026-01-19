@@ -1,0 +1,3 @@
+# Recreates the make.yaml script.
+- !cat { titi/computer/make.yaml }
+- !stdout {}

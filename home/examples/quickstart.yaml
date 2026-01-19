@@ -1,0 +1,112 @@
+#!/usr/bin/env titi
+# Quick Start Guide for Supercompilation & Hypercomputation
+
+# This file demonstrates how to use the new parser with supercompilation
+# and hypercomputation features in the monoidal computer.
+
+## Step 1: Build the Parser (if not already built)
+# Uncomment and run if yaml_parser doesn't exist:
+# !seq
+# - !lex lib/computer/yaml.l
+# - !yacc ["-d", "lib/computer/yaml.y"]
+# - !cc ["lex.yy.c", "y.tab.c", "-lfl", "-o", "yaml_parser"]
+
+## Step 2: Simple Supercompilation Example
+
+# Define a simple function
+simple_func: &func
+  !seq
+  - !data 10
+  - !program inc
+  - !program inc
+  - !program inc
+
+# Optimize it with supercompilation
+optimized: &opt
+  !supercompile *func
+
+# Run both versions
+!seq
+- !print "Original function:"
+- *func
+- !print "\nOptimized version:"
+- *opt
+
+## Step 3: Hypercomputation Example
+
+# Compute Ackermann function
+!seq
+- !print "\nAckermann A(2,3):"
+- !ackermann
+  - !data 2
+  - !data 3
+- !print
+
+## Step 4: Futamura Projection Example
+
+# Define a simple interpreter
+my_interpreter: &interp
+  !program simple_eval
+
+# Define a program
+my_program: &prog
+  !data "x * 2 + 1"
+
+# Apply first Futamura projection to compile the program
+compiled: &comp
+  !futamura1
+  - *interp
+  - *prog
+
+!seq
+- !print "\nCompiled program:"
+- *comp
+
+## Step 5: Ordinal Arithmetic
+
+!seq
+- !print "\nOrdinal ω:"
+- !omega
+- !print "\nOrdinal ε₀:"
+- !epsilon_0
+
+## Step 6: Fast-Growing Hierarchy
+
+!seq
+- !print "\nFast-growing f_2(3):"
+- !fast_growing
+  - !data 2
+  - !data 3
+- !print
+
+## Complete Example: Optimized Recursive Function
+
+fibonacci: &fib
+  !anchor fib
+  !choice
+    - !data 1                    # Base case: fib(0) = 1
+    - !choice
+      - !data 1                  # Base case: fib(1) = 1
+      - !seq                     # Recursive case
+        - !copy 2
+        - !seq
+          - !program dec
+          - !alias fib
+        - !seq
+          - !program dec
+          - !program dec
+          - !alias fib
+        - !program add
+
+# Optimize with supercompilation
+optimized_fib: &opt_fib
+  !supercompile *fib
+
+!seq
+- !print "\n=== Fibonacci Example ==="
+- !print "Computing fib(5) with optimized version:"
+- !data 5
+- *opt_fib
+- !print
+
+!print "\n✓ Quick start complete!"

@@ -1,0 +1,11 @@
+#!/usr/bin/env titi
+# Self-Compilation Example
+# Demonstrates system rebuilding its own parser
+
+!seq
+- !print "Self-compiling YAML parser..."
+- !lex lib/computer/yaml.l
+- !yacc ["-d", "lib/computer/yaml.y"]
+- !cc ["lex.yy.c", "y.tab.c", "-lfl", "-o", "yaml_parser"]
+- !print "✓ Self-compilation complete!"
+

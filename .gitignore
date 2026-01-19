@@ -1,3 +1,5 @@
+# Widip
+*.shell.svg
 # VS code
 .vscode
 
@@ -21,7 +23,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/ removed to allow tracking the new library location.
 lib64/
 parts/
 sdist/
@@ -64,6 +66,7 @@ cover/
 
 # Django stuff:
 *.log
+!tests/*.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
@@ -165,3 +168,18 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# Generated files
+lex.yy.c
+y.tab.c
+y.tab.h
+yaml_parser
+_yaml_parser
+lib/computer/lex.yy.c
+lib/computer/y.tab.c
+lib/computer/y.tab.h
+lib/computer/_yaml_parser
+lib/computer/yaml_parser
+titi/yaml_parser
+tests/yaml-test-suite
+bin/yaml/parse

@@ -1,0 +1,219 @@
+#!/usr/bin/env titi
+# Hypercomputation Examples for Monoidal Computer
+# Demonstrates functions beyond primitive recursion and transfinite operations
+
+# --- Example 1: Ackermann Function ---
+# Grows faster than any primitive recursive function
+
+ackermann_demo: &ack
+  !seq
+  - !print "Computing Ackermann function..."
+  - !ackermann
+    - !data 2
+    - !data 3
+  - !print "A(2,3) = "
+
+# --- Example 2: Fast-Growing Hierarchy ---
+# f_α(n) for various ordinals α
+
+fast_grow_demo: &fg
+  !seq
+  - !print "Fast-growing hierarchy:"
+  - !fast_growing
+    - !data 3              # α = 3
+    - !data 4              # n = 4
+  - !print "f_3(4) = "
+
+# --- Example 3: Goodstein Sequence ---
+# Demonstrates transfinite descent
+
+goodstein_demo: &good
+  !seq
+  - !print "Goodstein sequence starting from 4:"
+  - !goodstein
+    - !data 4
+  - !print
+
+# --- Example 4: Busy Beaver ---
+# Uncomputable function (only known for small values)
+
+busy_beaver_demo: &bb
+  !seq
+  - !print "Busy Beaver values:"
+  - !seq
+    - !busy_beaver
+      - !data 1
+    - !print "BB(1) = "
+  - !seq
+    - !busy_beaver
+      - !data 2
+    - !print "BB(2) = "
+  - !seq
+    - !busy_beaver
+      - !data 3
+    - !print "BB(3) = "
+
+# --- Example 5: Ordinal Arithmetic ---
+# Working with transfinite ordinals
+
+ordinal_demo: &ord
+  !seq
+  - !print "Ordinal arithmetic:"
+  - !ordinal
+    - !omega                    # ω
+  - !print "ω = "
+  - !ordinal
+    - !omega_squared            # ω²
+  - !print "ω² = "
+  - !ordinal
+    - !epsilon_0                # ε₀
+  - !print "ε₀ = "
+
+# --- Example 6: Transfinite Recursion ---
+# Recursion indexed by ordinals
+
+transfinite_demo: &trans
+  !transfinite
+    base: !data 0
+    successor: !program inc
+    limit: !program sup
+    ordinal: !omega
+
+# --- Example 7: Diagonal Construction ---
+# Self-application and diagonalization
+
+diagonal_demo: &diag
+  !seq
+  - !print "Diagonalization:"
+  - !diagonal
+    - !program self_apply
+  - !print
+
+# --- Example 8: Omega Iteration ---
+# Iterate a function ω times
+
+omega_iter_demo: &omega_it
+  !seq
+  - !print "ω-iteration of successor:"
+  - !omega_iterate
+    - !program succ
+  - !data 0
+  - !print
+
+# --- Example 9: Hypercomputation Composition ---
+# Combine multiple hypercomputational operations
+
+hyper_compose: &hcomp
+  !seq
+  - !ackermann
+    - !data 2
+    - !data 2
+  - !fast_growing
+    - !data 2
+    - !data 3
+  - !program compose
+
+# --- Example 10: Ordinal Comparison ---
+# Compare transfinite ordinals
+
+ordinal_compare: &ord_cmp
+  !seq
+  - !print "Comparing ordinals:"
+  - !ordinal_lt
+    - !omega
+    - !omega_squared
+  - !print "ω < ω² : "
+  - !ordinal_lt
+    - !omega_squared
+    - !epsilon_0
+  - !print "ω² < ε₀ : "
+
+# --- Example 11: Primitive Recursion vs Ackermann ---
+# Show that Ackermann dominates all primitive recursive functions
+
+comparison: &comp
+  !seq
+  - !print "Primitive recursive (tetration):"
+  - !tetration
+    - !data 2
+    - !data 3
+  - !print "2↑↑3 = "
+  - !print "\nAckermann (grows faster):"
+  - !ackermann
+    - !data 3
+    - !data 3
+  - !print "A(3,3) = "
+
+# --- Example 12: Hyperoperations ---
+# Generalized arithmetic operations
+
+hyperop_demo: &hyperop
+  !seq
+  - !print "Hyperoperations:"
+  - !hyperop
+    - !data 0              # Addition
+    - !data 5
+    - !data 3
+  - !print "5 + 3 = "
+  - !hyperop
+    - !data 1              # Multiplication
+    - !data 5
+    - !data 3
+  - !print "5 × 3 = "
+  - !hyperop
+    - !data 2              # Exponentiation
+    - !data 5
+    - !data 3
+  - !print "5³ = "
+  - !hyperop
+    - !data 3              # Tetration
+    - !data 2
+    - !data 3
+  - !print "2↑↑3 = "
+
+# --- Example 13: Fixed Point at Infinity ---
+# Compute fixed points of increasing functions
+
+fixed_point_demo: &fp
+  !seq
+  - !print "Fixed point of x ↦ ω^x:"
+  - !fixed_point
+    - !program omega_exp
+  - !print "ε₀ = "
+
+# --- Example 14: Collatz Conjecture ---
+# Unproven but computable sequence
+
+collatz_demo: &collatz
+  !seq
+  - !print "Collatz sequence from 27:"
+  - !collatz
+    - !data 27
+  - !print
+
+# --- Example 15: Chaitin's Omega ---
+# Uncomputable real number (halting probability)
+
+omega_demo: &omega
+  !seq
+  - !print "Chaitin's Ω (first 10 bits approximation):"
+  - !chaitin_omega
+    - !data 10
+  - !print
+
+# --- Main Demo: Run Selected Examples ---
+!seq
+- !print "=== Hypercomputation Demo ==="
+- !print "\n--- Ackermann Function ---"
+- *ack
+- !print "\n--- Fast-Growing Hierarchy ---"
+- *fg
+- !print "\n--- Busy Beaver ---"
+- *bb
+- !print "\n--- Ordinal Arithmetic ---"
+- *ord
+- !print "\n--- Diagonalization ---"
+- *diag
+- !print "\n--- Hyperoperations ---"
+- *hyperop
+- !print "\n=== Demo Complete ==="

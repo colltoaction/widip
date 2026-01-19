@@ -1,0 +1,54 @@
+#!/usr/bin/env titi
+# Supercompilation Example
+# Demonstrates Futamura projections and program specialization
+
+- "╔════════════════════════════════════════╗"
+- "║   SUPERCOMPILATION & SPECIALIZATION    ║"
+- "╚════════════════════════════════════════╝"
+
+- "\n=== Step 1: Program Specialization ==="
+- "Specializing a simple addition program..."
+
+- &add_five !specializer [ !program "increment", 5 ]
+
+- "Executing specialized add_five(10)..."
+- !seq [ 10, *add_five, !print "" ]
+
+- "\n=== Step 2: Futamura Projections ==="
+
+- &compiled !futamura1 [ !program "python_interpreter", "x = x * x" ]
+
+- "Running compiled program on 4..."
+- !seq [ 4, *compiled, !print "" ]
+
+- &compiler !futamura2 [ !program "python_interpreter", !program "specializer" ]
+
+- "Compiler generated."
+
+- &cogen !futamura3 [ !program "specializer" ]
+
+- "COGEN generated."
+
+- "\n=== Step 3: Recursive Factorial Supercompilation ==="
+- "Optimization of recursive factorial..."
+
+- recursive_definitions:
+    factorial: &fact
+      - !program "test_zero"
+      - !choice
+        - 1
+        - !seq 
+            - !copy 2 
+            - !mapping
+                - !id ""
+                - !seq [ !program "dec", *fact ]
+            - !program "mul"
+
+- &opt_fact !supercompile *fact
+
+- "Executing optimized factorial(5)..."
+- !seq [ 5, *opt_fact, !print "" ]
+
+- "\n╔════════════════════════════════════════╗"
+- "║       SUPERCOMPILATION COMPLETE        ║"
+- "╚════════════════════════════════════════╝"

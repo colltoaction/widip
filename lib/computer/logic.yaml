@@ -1,0 +1,100 @@
+# lib/computer/logic.yaml
+# Logic and Boolean Operations
+
+# --- Boolean Values ---
+
+true: &true
+  !box
+    name: ⊤
+    type: [!ty, Language]
+    desc: "True value"
+    draw_as_spider: true
+
+false: &false
+  !box
+    name: ⊥
+    type: [!ty, Language]
+    desc: "False value"
+    draw_as_spider: true
+
+# --- Conditional Operations ---
+
+if_then_else: &if_then_else
+  !box
+    name: ifte
+    type: [Language3, Language]
+    desc: "If-then-else conditional: if condition then branch1 else branch2"
+
+program_eq: &program_eq
+  !box
+    name: =?
+    type: [Language2, Language]
+    desc: "Program equality test"
+
+# --- Natural Numbers ---
+
+zero: &zero
+  !box
+    name: "0"
+    type: [!ty, Language]
+    desc: "Zero (Peano arithmetic)"
+
+succ: &succ
+  !box
+    name: s
+    type: [Language, Language]
+    desc: "Successor function (n → n+1)"
+
+pred: &pred
+  !box
+    name: r
+    type: [Language, Language]
+    desc: "Predecessor function (n → n-1)"
+
+is_zero: &is_zero
+  !box
+    name: 0?
+    type: [Language, Language]
+    desc: "Zero test predicate"
+
+# --- Logical Combinators ---
+
+and: &and
+  !box
+    name: ∧
+    type: [Language2, Language]
+    desc: "Logical AND"
+
+or: &or
+  !box
+    name: ∨
+    type: [Language2, Language]
+    desc: "Logical OR"
+
+not: &not
+  !box
+    name: ¬
+    type: [Language, Language]
+    desc: "Logical NOT"
+
+implies: &implies
+  !box
+    name: →
+    type: [Language2, Language]
+    desc: "Logical implication"
+
+# --- Exports ---
+
+__all__:
+  - true
+  - false
+  - if_then_else
+  - program_eq
+  - zero
+  - succ
+  - pred
+  - is_zero
+  - and
+  - or
+  - not
+  - implies
