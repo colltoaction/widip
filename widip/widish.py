@@ -1,78 +1,42 @@
 from functools import partial
-from subprocess import CalledProcessError, run
-
+from subprocess import run
+import sys
 from discopy.utils import tuplify, untuplify
 from discopy import closed, python
 
-
-io_ty = closed.Ty("io")
-
-
 def _run_subprocess(args, input_str=None):
-    io_result = run(
-        args,
-        check=True, text=True, capture_output=True,
-        input=input_str,
-        )
-    res = io_result.stdout.rstrip("\n")
-    return res
+    return run(args, check=True, text=True, capture_output=True, input=input_str).stdout.rstrip("\n")
 
-def split_args(ar, args):
+def _split_args(ar, args):
     n = len(ar.dom)
     return args[:n], args[n:]
 
-def run_native_subprocess_constant(ar, *args):
-    b, params = split_args(ar, args)
-    if not params:
-        return "" if ar.dom == closed.Ty() else ar.dom.name
-    return untuplify(params)
+def _run_constant(ar, *args):
+    _, params = _split_args(ar, args)
+    return untuplify(params) if params else ("" if ar.dom == closed.Ty() else ar.dom.name)
 
-def run_native_subprocess_map(ar, *args):
-    b, params = split_args(ar, args)
-    mapped = []
-    for kv in b:
-        res = kv(*tuplify(params))
-        mapped.append(untuplify(res))
-    return untuplify(tuple(mapped))
+def _run_map(ar, *args):
+    b, params = _split_args(ar, args)
+    return untuplify(tuple(untuplify(kv(*tuplify(params))) for kv in b))
 
-def run_native_subprocess_seq(ar, *args):
-    b, params = split_args(ar, args)
-    b0 = b[0](*tuplify(params))
-    b1 = b[1](*tuplify(b0))
-    return untuplify(b1)
+def _run_seq(ar, *args):
+    b, params = _split_args(ar, args)
+    return untuplify(b[1](*tuplify(b[0](*tuplify(params)))))
 
-def run_native_subprocess_default(ar, *args):
-    b, params = split_args(ar, args)
+def _run_default(ar, *args):
+    b, params = _split_args(ar, args)
     return _run_subprocess((ar.name,) + b, "\n".join(params) if params else None)
 
-def run_native_subprocess_g(ar, *b):
-    return _run_subprocess((ar.name,) + b, "\n".join(b) if b else None)
+def _run_widip(ar, *args):
+    b, params = _split_args(ar, args)
+    return _run_subprocess((sys.executable, "-m", "widip") + b, "\n".join(params) if params else None)
 
 SHELL_RUNNER = closed.Functor(
     lambda ob: str,
     lambda ar: {
-        "⌜−⌝": partial(partial, run_native_subprocess_constant, ar),
-        "(||)": partial(partial, run_native_subprocess_map, ar),
-        "(;)": partial(partial, run_native_subprocess_seq, ar),
-        "g": partial(run_native_subprocess_g, ar),
-    }.get(ar.name, partial(partial, run_native_subprocess_default, ar)),
+        "widip": partial(partial, _run_widip, ar),
+        "⌜−⌝": partial(partial, _run_constant, ar),
+        "(||)": partial(partial, _run_map, ar),
+        "(;)": partial(partial, _run_seq, ar),
+    }.get(ar.name, partial(partial, _run_default, ar)),
     cod=closed.Category(python.Ty, python.Function))
-
-
-SHELL_COMPILER = closed.Functor(
-    lambda ob: ob,
-    lambda ar: {
-        # "ls": ar.curry().uncurry()
-    }.get(ar.name, ar),)
-    # TODO remove .inside[0] workaround
-    # lambda ar: ar)
-
-
-def compile_shell_program(diagram):
-    """
-    close input parameters (constants)
-    drop outputs matching input parameters
-    all boxes are io->[io]"""
-    # TODO compile sequences and parallels to evals
-    diagram = SHELL_COMPILER(diagram)
-    return diagram
