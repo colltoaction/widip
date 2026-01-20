@@ -24,9 +24,7 @@ def file_diagram(file_name) -> Diagram:
     return fd
 
 def diagram_draw(path, fd):
-    fd.draw(path=str(path.with_suffix(".jpg")),
-            textpad=(0.3, 0.1),
-            fontsize=12,
-            fontsize_types=8)
+    from .drawing import diagram_draw as draw_svg
+    draw_svg(path, fd)
 
 files_f = Functor(lambda x: Ty(""), files_ar)
