@@ -1,0 +1,2 @@
+#!/bin/widish
+!seq { 1, 100 }

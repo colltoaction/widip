@@ -10,9 +10,12 @@ name = "widip"
 version = "0.1.0"
 description = "Widip is an interactive environment for computing with wiring diagrams in modern systems"
 dependencies = [
-  "discopy>=1.2.2", "pyyaml>=6.0.1", "watchdog>=4.0.1", "nx-yaml==0.4.1",
+  "discopy>=1.2.2", "watchfiles>=1.1.1", "nx-yaml>=1.0.0",
 ]
 
-[project.urls]
-"Source" = "https://github.com/colltoaction/widip"
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-asyncio",
+]
 
