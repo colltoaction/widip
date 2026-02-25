@@ -37,7 +37,7 @@ def watch_main():
     observer.start()
     return observer
 
-def shell_main(file_name):
+def shell_main(file_name, draw=True):
     try:
         while True:
             observer = watch_main()
@@ -50,7 +50,9 @@ def shell_main(file_name):
                 #         fontsize=12,
                 #         fontsize_types=8)
                 path = Path(file_name)
-                diagram_draw(path, source_d)
+
+                if draw:
+                    diagram_draw(path, source_d)
                 # source_d = compile_shell_program(source_d)
                 # diagram_draw(Path(file_name+".2"), source_d)
                 # source_d = Spider(0, len(source_d.dom), Ty("io")) \
@@ -69,10 +71,11 @@ def shell_main(file_name):
         print("⌁")
         exit(0)
 
-def widish_main(file_name, *shell_program_args: str):
+def widish_main(file_name, draw):
     fd = file_diagram(file_name)
     path = Path(file_name)
-    diagram_draw(path, fd)
+    if draw:
+        diagram_draw(path, fd)
     constants = tuple(x.name for x in fd.dom)
     runner = SHELL_RUNNER(fd)(*constants)
 

@@ -41,22 +41,13 @@ def run_native_subprocess_default(ar, *args):
     res = io_result.stdout.rstrip("\n")
     return res
 
-def run_native_subprocess_g(ar, *b):
-    io_result = run(
-        (ar.name,) + b,
-        check=True, text=True, capture_output=True,
-        input="\n".join(b) if b else None,
-        )
-    res = io_result.stdout.rstrip("\n")
-    return res
-
 SHELL_RUNNER = closed.Functor(
     lambda ob: str,
     lambda ar: {
-        "⌜−⌝": partial(partial, run_native_subprocess_constant, ar),
+        # implementar gamma
+        "⌜−⌝": partial(partial, run_native_subprocess_constant, ar), # cambiar a encode
         "(||)": partial(partial, run_native_subprocess_map, ar),
         "(;)": partial(partial, run_native_subprocess_seq, ar),
-        "g": partial(run_native_subprocess_g, ar),
     }.get(ar.name, partial(partial, run_native_subprocess_default, ar)),
     cod=closed.Category(python.Ty, python.Function))
 

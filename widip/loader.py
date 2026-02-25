@@ -2,7 +2,8 @@ from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
 from nx_hif.hif import *
 
-from discopy.markov import Id, Ty, Box, Eval
+from discopy.markov import Id, Box
+from discopy.closed import Eval, Ty
 P = Ty("io") >> Ty("io")
 
 
