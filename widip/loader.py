@@ -2,9 +2,9 @@ from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
 from nx_hif.hif import *
 
-from discopy.closed import Eval, Id
+from discopy.closed import Eval
 
-from .lang import Box, Ty
+from .lang import Box, Id, Ty
 
 
 P = Ty("io") >> Ty("io")
