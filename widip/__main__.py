@@ -32,7 +32,6 @@ def build_arguments(args):
 
 def main(argv):
     args = build_arguments(argv[1:])
-    print()
     draw = not args.no_draw
 
     logging.basicConfig(
