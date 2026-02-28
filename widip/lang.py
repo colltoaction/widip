@@ -12,8 +12,10 @@ class Box(
 
 @factory
 class Ty(
-    monoidal.Ty,
+    closed.Ty,
 ):
-    """"""
     def __rshift__(self, other):
-        return closed.Ty(*self.inside) >> closed.Ty(*other.inside)
+        return self.factory(closed.Under(self, other))
+
+    def __lshift__(self, other):
+        return self.factory(closed.Over(self, other))
