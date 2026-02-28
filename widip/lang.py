@@ -19,3 +19,8 @@ class Ty(
 
     def __lshift__(self, other):
         return self.factory(closed.Over(self, other))
+
+
+def Id(x=None):
+    """Identity diagram over widip.lang.Ty (defaults to Ty())."""
+    return closed.Diagram.id(x if x is not None else Ty())
