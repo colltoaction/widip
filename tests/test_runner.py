@@ -15,7 +15,7 @@ def run_diagram(fd, stdin):
 
 @pytest.mark.parametrize(["yaml_text", "stdin", "expected"], [
     ["scalar",             "",   "scalar"],
-    ["? scalar",           "",   "scalar"],
+    ["? scalar",           "",   ("scalar", )],
     ["- scalar",           "",   "scalar"],
     ["!printf scalar",     "",   "scalar"],
     ["!echo scalar",       "",   "scalar\n"],
@@ -25,9 +25,13 @@ def run_diagram(fd, stdin):
     ["!echo {a, b, c}",    "",   "a b c\n"],
     ["!printf { '%s %s %s', a, b, c }", "", "a b c"],
     # Test document-level tag
-    ["--- !echo doc content", "", "doc content"],
-    [open("examples/hello-world.yaml"), "", "Hello world!"],
-    [open("examples/shell.yaml"),       "", ('72', '22', '  ? !grep grep: !wc -c\n  ? !tail -2')],
+    ["--- !echo doc content", "", "doc content\n"],
+    [open("examples/hello-world.yaml"), "", "Hello world!\n"],
+    [open("examples/shell.yaml"),       "", (('73\n', '23\n', '  ? !grep grep: !wc -c\n  ? !tail -2\n'), )],
+    # Test with non-empty stdin
+    ["!cat",               "foo", "foo"],
+    ["!wc -c",             "foo", "3\n"],
+    ["!grep foo",          "foo\nbar", "foo\n"],
 ])
 def test_shell_runner(yaml_text, stdin, expected):
     result = run_diagram(repl_read(yaml_text), stdin)
