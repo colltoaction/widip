@@ -1,23 +1,31 @@
 import pytest
+from discopy.closed import Curry
 
-from discopy import closed, monoidal
-
-from widip.lang import Box, Ty, Id
+from widip.lang import Ty, Id
 from widip.loader import repl_read
 
-@pytest.mark.parametrize(["yaml_text", "expected_box"], [
+
+@pytest.mark.parametrize(["yaml_text", "expected"], [
     [
         "some spaced scalar",
-        Box("⌜−⌝", Ty("some spaced scalar"), Ty() >> Ty("some spaced scalar"))],
+        Curry(Id(Ty("some spaced scalar") >> Ty()), n=1, left=True),
+    ],
     [
         "!tagged scalar",
-        Box("tagged", Ty("scalar"), Ty("tagged") >> Ty("tagged"))],
+        Curry(Id(Ty("tagged") @ Ty("scalar") >> Ty()), n=1, left=True),
+    ],
     [
         "!just_tag",
-        Box("just_tag", Ty(""), Ty("just_tag") >> Ty("just_tag"))],
+        Curry(Id(Ty("just_tag") >> Ty()), n=1, left=False),
+    ],
+    [
+        "''",
+        Curry(Id(Ty() >> Ty()), n=1, left=True),
+    ],
     [
         "",
-        Id(Ty())],
+        Id(Ty()),
+    ],
 ])
-def test_loader_encoding(yaml_text, expected_box):
-    assert repl_read(yaml_text) == expected_box
+def test_loader_encoding(yaml_text, expected):
+    assert repl_read(yaml_text) == expected

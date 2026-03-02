@@ -47,21 +47,15 @@ def _incidences_to_diagram(node: HyperGraph, index):
 
 
 def load_scalar(node, index, tag):
+    """Figure 2.3: If g = {G}, then g ◦ (s × id) = {Gs} uses G but g ◦ (id × t) = {H} does not."""
     v = hif_node(node, index)["value"]
-    if tag and v:
-        return Box(tag, Ty(v), Ty(tag) >> Ty(tag))
-        return Box("run", Ty(tag) @ Ty(v), Ty(tag)).curry(left=False)
-    elif tag:
-        return Box(tag, Ty(v), Ty(tag) >> Ty(tag))
-        return Box("run", Ty(tag), Ty(tag)).curry(left=False)
-        return Box(tag, Ty(), Ty() << Ty(""))
-    elif v:
-        return Box("⌜−⌝", Ty(v), Ty() >> Ty(v))
-        return Box("⌜−⌝", Ty(v), Ty(tag)).curry(0, left=False)
-        return Box("⌜−⌝", Ty(v), Ty() << Ty(""))
-    else:
-        return Box("⌜−⌝", Ty(), Ty() >> Ty(v))
-        return Box("⌜−⌝", Ty(), Ty(tag)).curry(0, left=False)
+    X = Ty(tag) if tag else Ty()
+    A = Ty(v) if v else Ty()
+    if X == Ty() and A != Ty():
+        return Id(A >> Ty()).curry(1, left=True)
+    if X != Ty() and A == Ty():
+        return Id(X >> Ty()).curry(1, left=False)
+    return Id(X @ A >> Ty()).curry(1, left=True)
 
 def load_mapping(node, index, tag):
     ob = Id()
@@ -96,7 +90,6 @@ def load_mapping(node, index, tag):
     if tag:
         ob = (ob @ exps >> Eval(exps >> bases))
         box = Box(tag, ob.cod, Ty(tag) >> Ty(tag))
-        # box = Box("run", Ty(tag) @ ob.cod, Ty(tag)).curry(left=False)
         ob = ob >> box
     return ob
 
