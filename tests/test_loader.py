@@ -1,18 +1,31 @@
 import pytest
-from discopy.closed import Curry
+from discopy.closed import Curry, Eval
 
 from widip.lang import Ty, Id
 from widip.loader import repl_read
 
 
-@pytest.mark.parametrize(["yaml_text", "expected"], [
+@pytest.mark.parametrize(["path", "yaml_text", "expected"], [
     [
-        "some spaced scalar",
-        Curry(Id(Ty("some spaced scalar") >> Ty()), n=1, left=True),
+        "empty_content.svg",
+        "",
+        Id(),
     ],
     [
-        "!tagged scalar",
-        Curry(Id(Ty("tagged") @ Ty("scalar") >> Ty()), n=1, left=True),
+        "scalar_only.svg",
+        "a",
+        Curry(Eval(Ty() >> Ty("a")), n=0, left=False),
+    ],
+    [
+        "tagged_scalar.svg",
+        "!X a",
+        Curry(Eval(Ty("X") @ Ty("a") >> Ty()), n=2, left=False),
+    ],
+    [
+        # implicit empty string
+        "tag_only.svg",
+        "!X",
+        Curry(Eval(Ty("X") @ Ty("") >> Ty()), n=2, left=False),
     ],
     [
         "!just_tag",
@@ -27,5 +40,6 @@ from widip.loader import repl_read
         Id(Ty()),
     ],
 ])
-def test_loader_encoding(yaml_text, expected):
-    assert repl_read(yaml_text) == expected
+def test_loader_encoding(path, yaml_text, expected):
+    actual = repl_read(yaml_text)
+    assert actual == expected

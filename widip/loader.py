@@ -50,12 +50,11 @@ def load_scalar(node, index, tag):
     """Figure 2.3: If g = {G}, then g ◦ (s × id) = {Gs} uses G but g ◦ (id × t) = {H} does not."""
     v = hif_node(node, index)["value"]
     X = Ty(tag) if tag else Ty()
-    A = Ty(v) if v else Ty()
-    if X == Ty() and A != Ty():
-        return Id(A >> Ty()).curry(1, left=True)
-    if X != Ty() and A == Ty():
-        return Id(X >> Ty()).curry(1, left=False)
-    return Id(X @ A >> Ty()).curry(1, left=True)
+    A = Ty(v) # != Ty()
+    if not tag:
+        # Encoding of a: A as a program
+        return Eval(Ty() >> A).curry(0, left=False)
+    return Eval(X @ A >> Ty()).curry(2, left=False)
 
 def load_mapping(node, index, tag):
     ob = Id()
