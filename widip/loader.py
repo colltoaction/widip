@@ -47,7 +47,10 @@ def _incidences_to_diagram(node: HyperGraph, index):
 
 
 def load_scalar(node, index, tag):
-    """Figure 2.3: If g = {G}, then g ◦ (s × id) = {Gs} uses G but g ◦ (id × t) = {H} does not."""
+    """
+    2.3.1 (Sec:retracts): encode data as programs via retraction-style embedding.
+    Fig. 2.3 (Sec:uev): reparametrization acts on program parameters, not raw inputs.
+    """
     v = hif_node(node, index)["value"]
     X = Ty(tag) if tag else Ty()
     A = Ty(v) # != Ty()
@@ -57,6 +60,7 @@ def load_scalar(node, index, tag):
     return Eval(X @ A >> Ty()).curry(2, left=False)
 
 def load_mapping(node, index, tag):
+    """2.2.3 (Sec:compos-prog) Build keyed computations using composed programs."""
     ob = Id()
     i = 0
     nxt = tuple(hif_node_incidences(node, index, key="next"))
@@ -93,6 +97,7 @@ def load_mapping(node, index, tag):
     return ob
 
 def load_sequence(node, index, tag):
+    """2.2.3 (Sec:compos-prog) Fold a YAML sequence into repeated (;) composition."""
     ob = Id()
     i = 0
     nxt = tuple(hif_node_incidences(node, index, key="next"))

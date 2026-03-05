@@ -32,23 +32,29 @@ def run_native_subprocess_seq(ar, *args):
     return untuplify(b1)
 
 def run_native_subprocess_default(ar, *args):
+    """
+    7.4 Universality of program execution: A function {}:P×A→B is universal when any function g:X×A→B has an implementation G:X⊸P evaluated by {}.
+    We choose `subprocess.run` where X is the command name.
+    """
     b, params = split_args(ar, args)
-    io_result = run(
-        (ar.name,) + b,
-        check=True, text=True, capture_output=True,
-        input="\n".join(params) if params else None,
-        )
-    res = io_result.stdout.rstrip("\n")
-    return res
+
+def ar_mapping(ar):
+    """
+    2.5.3 (Sec:surj) Realize the run-surjection mapping into executable arrows.
+    7.4 Universality of program execution: A function : P × A B is universal when any function g:X×A→B has an implementation G:X⊸P evaluated by {}.
+    """
+    # implementar gamma
+    if isinstance(ar, closed.Curry) or ar.name == "⌜−⌝":
+        return partial(partial, run_native_subprocess_constant, ar)
+    if ar.name == "(||)":
+        return partial(partial, run_native_subprocess_map, ar)
+    if ar.name == "(;)":
+        return partial(partial, run_native_subprocess_seq, ar)
+    return partial(partial, run_native_subprocess_default, ar)
 
 SHELL_RUNNER = closed.Functor(
-    lambda ob: str,
-    lambda ar: {
-        # implementar gamma
-        "⌜−⌝": partial(partial, run_native_subprocess_constant, ar), # cambiar a encode
-        "(||)": partial(partial, run_native_subprocess_map, ar),
-        "(;)": partial(partial, run_native_subprocess_seq, ar),
-    }.get(ar.name, partial(partial, run_native_subprocess_default, ar)),
+    lambda ob: partial,
+    ar_mapping,
     cod=closed.Category(python.Ty, python.Function))
 
 
