@@ -92,56 +92,15 @@ class Swap(Box, markov.Swap):
     """1.2"""
 
 
-class Eval(Box, closed.Eval):
+class Eval(Box):
     """
+    The program evaluators are computable functions, representing typed interpreters.
     2.2.1.1
     2.5.1 c) Program evaluator {}:P×A→B
     """
     def __init__(self, A, B):
         self.A, self.B = A, B
-        closed.Eval.__init__(self, ProgramTy() >> B)
         Box.__init__(self, "{}", ProgramTy() @ A, B)
-
-
-class Partial(Box):
-    """
-    Sec. 2.2.2. []:P×A⊸P
-    A partial evaluator is a (P×Y)-indexed program satisfying {[Γ]y}a = {Γ}(y,a).
-    X=P×Y and g:P×Y×A→B
-    """
-    def __init__(self, X):
-        self.X = X if isinstance(X, Ty) else Ty(X)
-        Box.__init__(self, "[]", ProgramTy() @ self.X, ProgramTy())
-
-
-class Sequential(Box):
-    """
-    Sec. 2.2.3. (;)_ABC:P×P⊸P
-    A -{F;G}→ C = A -{F}→ B -{G}→ C
-    """
-    def __init__(self):
-        Box.__init__(self, "(;)", ProgramTy() @ ProgramTy(), ProgramTy())
-
-
-class Parallel(Box):
-    """
-    Sec. 2.2.3. (||)_AUBV:P×P⊸P
-    A×U -{F||H}→ B×V = A -{F}→ B × U-{T}→ V
-    """
-    def __init__(self):
-        Box.__init__(self, "(||)", ProgramTy() @ ProgramTy(), ProgramTy())
-
-
-class Data(Box):
-    """
-    Eq. 2.6. ⌜−⌝ : A⊸P
-    {}: P-→→A
-    ⌜a⌝: P
-    {⌜a⌝} = a
-    """
-    def __init__(self, A):
-        self.A = A if isinstance(A, Ty) else Ty(A)
-        Box.__init__(self, "⌜−⌝", ProgramTy(), self.A)
 
 
 class Uncurry(monoidal.Bubble, Box):

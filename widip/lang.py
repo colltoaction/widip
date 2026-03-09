@@ -5,30 +5,94 @@ from discopy import closed, markov, monoidal
 from . import computer
 
 
-def compile_uncurry_sequential(box: computer.Uncurry):
-    """Eq. 2.7: compile sequential `Uncurry` as closed Curry/Eval form."""
-    operator = closed.Curry(box.arg, n=len(box.dom), left=True)
-    return (operator @ box.dom) >> closed.Eval(operator.cod)
+P = computer.ProgramTy()
+
+class Partial(computer.Box, monoidal.Bubble):
+    """
+    Sec. 2.2.2. []:P×A⊸P
+    A partial evaluator is a (P×Y)-indexed program satisfying {[Γ]y}a = {Γ}(y,a).
+    X=P×Y and g:P×Y×A→B
+    """
+    def __init__(self, box, Y):
+        self.box, self.Y = box, Y
+        arg = (
+            box @ Y @ box.dom >> 
+            computer.Box("[]", P @ Y, P) @ box.dom >>
+            computer.Eval(box.dom, box.cod))
+        monoidal.Bubble.__init__(self, arg, dom=box.dom @ Y @ box.dom, cod=box.cod)
+        # self.box = box if isinstance(box, computer.Ty) else computer.Ty(box)
+        # computer.Box.__init__(self, "[]", P @ box.dom, P)
+
+    def specialize(self):
+        """Fig. 2.5: compile partial-evaluator box as operator + eval."""
+        return self.box @ self.Y @ self.box.dom >> computer.Eval(self.Y @ self.box.dom, self.box.cod)
 
 
-def compile_uncurry_parallel(box: computer.Uncurry):
-    """Eq. 2.7: compile parallel `Uncurry` as closed Curry/Eval form."""
-    operator = closed.Curry(box.arg, n=len(box.dom), left=True)
-    return (operator @ box.dom) >> closed.Eval(operator.cod)
+class Sequential(computer.Box, monoidal.Bubble):
+    """
+    Sec. 2.2.3. (;)_ABC:P×P⊸P
+    A -{F;G}→ C = A -{F}→ B -{G}→ C
+    """
+    def __init__(self, f, g):
+        self.f, self.g = f, g
+        A, C = f.dom, g.cod
+        arg = (
+            f @ g @ A
+            >> computer.Box("(;)", P @ P, P) @ A
+            >> computer.Eval(A, C))
+        monoidal.Bubble.__init__(self, arg, dom=arg.dom, draw_vertically=True)
+        # computer.Box.__init__(self, "(;)", P @ P, P)
+
+    def specialize(self):
+        A, B, C = self.f.dom, self.f.cod, self.g.cod
+        F = computer.Eval(A, B)
+        G = computer.Eval(B, C)
+        # TODO 
+        return self.f @ self.g @ A >> P @ F >> G
 
 
-def compile_data_idempotent(box: computer.Data):
-    """Eq. 2.8: compile quoted data using idempotent quote/eval structure."""
-    source = box.bubble(dom=computer.Ty(), cod=box.cod)
-    operator = closed.Curry(source, n=0, left=True)
-    return (operator @ computer.Ty()) >> closed.Eval(operator.cod)
+class Parallel(computer.Box, monoidal.Bubble):
+    """
+    Sec. 2.2.3. (||)_AUBV:P×P⊸P
+    A×U -{F||H}→ B×V = A -{F}→ B × U-{T}→ V
+    """
+    def __init__(self, f, g):
+        self.f, self.g = f, g
+        A, C = f.dom, g.cod
+        arg = (
+            f @ g @ A
+            >> computer.Box("(||)", P @ P, P) @ A
+            >> computer.Eval(A, C))
+        monoidal.Bubble.__init__(self, arg, dom=arg.dom, draw_vertically=True)
+
+    def specialize(self):
+        A, U, B, V = self.f.dom, self.g.dom, self.f.cod, self.g.cod
+        first = computer.Eval(A, B)
+        second = computer.Eval(U, V)
+        # TODO 
+        swap = computer.Swap(P, A)
+        return self.f @ self.g @ A @ U >> P @ swap @ U >> first @ second
 
 
-def compile_partial_evaluator(box: computer.Partial):
-    """Fig. 2.5: compile partial-evaluator box as operator + eval."""
-    source = box.bubble(dom=box.dom, cod=box.cod)
-    operator = closed.Curry(source, n=len(box.dom), left=True)
-    return (operator @ box.dom) >> closed.Eval(operator.cod)
+class Data(computer.Box, monoidal.Bubble):
+    """
+    Eq. 2.6. ⌜−⌝ : A⊸P
+    {}: P-→→A
+    ⌜a⌝: P
+    {⌜a⌝} = a
+    """
+    def __init__(self, A):
+        self.A = A if isinstance(A, computer.Ty) else computer.Ty(A)
+        args = (
+            computer.Box("⌜−⌝", P, self.A),
+            computer.Eval(computer.Ty(), self.A))
+        monoidal.Bubble.__init__(self, *args, dom=P, cod=self.A)
+        # computer.Box.__init__(self, "⌜−⌝", P, self.A)
+
+    def specialize(self):
+        """Eq. 2.8: compile quoted data using idempotent quote/eval structure."""
+        return computer.Id(self.A)
+
 
 
 class Compile(closed.Functor, markov.Functor):
@@ -40,34 +104,27 @@ class Compile(closed.Functor, markov.Functor):
     def __init__(self):
         super().__init__(ob=lambda ob: ob, ar=self.ar_map)
 
-    def ar_map(self, box):
-        if isinstance(box, (computer.Sequential, computer.Parallel)):
-            source = box.bubble(dom=box.dom, cod=box.cod)
-            operator = closed.Curry(source, n=len(box.dom), left=True)
-            return (operator @ box.dom) >> closed.Eval(operator.cod)
-        if isinstance(box, computer.Partial):
-            return compile_partial_evaluator(box)
-        if isinstance(box, computer.Data):
-            return compile_data_idempotent(box)
-        if isinstance(box, computer.Uncurry):
-            inner = box.arg
-            while isinstance(inner, monoidal.Bubble) and inner.name == "":
-                inner = inner.arg
-            if isinstance(inner, computer.Sequential):
-                return compile_uncurry_sequential(box)
-            if isinstance(inner, computer.Parallel):
-                return compile_uncurry_parallel(box)
-        assert not box
+    def __call__(self, box):
+        if isinstance(box, (Sequential, Parallel, Partial, Data)):
+            return box.specialize()
+        return box
 
+    def ar_map(self, box):
+        assert not isinstance(box, computer.Box)
+        return box
+
+
+### TODO
+### recover equations below
 
 def run(G: computer.Diagram, A: computer.Ty, B: computer.Ty):
-    """Eq. 2.15: an X-natural family of surjections C(X × A, B) --→ C•(X,P) for each pair of types A, B."""
+    """Eq. 2.15: an X-natural family of surjections C(X × A, B) --→ C•(X,P) for each pair of computer.types A, B."""
     del G
     return computer.Eval(A, B)
 
 
 def eval_f(G: computer.Diagram):
-    """Eq. 2.15: an X-natural family of surjections C(X × A, B) --→ C•(X,P) for each pair of types A, B."""
+    """Eq. 2.15: an X-natural family of surjections C(X × A, B) --→ C•(X,P) for each pair of computer.types A, B."""
     return computer.Eval(G.dom, G.cod)
 
 
