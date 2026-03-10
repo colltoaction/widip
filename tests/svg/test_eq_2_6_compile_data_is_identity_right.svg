@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-03-10T15:48:48.209097</dc:date>
+    <dc:date>2026-03-10T17:48:27.506785</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -35,62 +35,62 @@ L 144 288
 L 144 0 
 L 0 0 
 z
-" clip-path="url(#p7e4fa7d0d8)" style="fill: #ffffff; stroke: #ffffff; stroke-linejoin: miter"/>
+" clip-path="url(#p3bb61d9e3f)" style="fill: #ffffff; stroke: #ffffff; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
     <path d="M 72 36 
 Q 18 36 18 72 
-" clip-path="url(#p7e4fa7d0d8)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
+" clip-path="url(#p3bb61d9e3f)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
     <path d="M 72 36 
 Q 126 36 126 72 
-" clip-path="url(#p7e4fa7d0d8)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
+" clip-path="url(#p3bb61d9e3f)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
    </g>
    <g id="patch_5">
     <path d="M 72 0 
 Q 72 72 72 72 
-" clip-path="url(#p7e4fa7d0d8)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
+" clip-path="url(#p3bb61d9e3f)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
    </g>
    <g id="patch_6">
     <path d="M 18 72 
 Q 18 216 18 216 
-" clip-path="url(#p7e4fa7d0d8)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
+" clip-path="url(#p3bb61d9e3f)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
    </g>
    <g id="patch_7">
     <path d="M 72 72 
 Q 72 90 72 90 
-" clip-path="url(#p7e4fa7d0d8)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
+" clip-path="url(#p3bb61d9e3f)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
    </g>
    <g id="patch_8">
     <path d="M 126 72 
 Q 126 216 126 216 
-" clip-path="url(#p7e4fa7d0d8)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
+" clip-path="url(#p3bb61d9e3f)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
    </g>
    <g id="patch_9">
     <path d="M 72 126 
 Q 72 162 72 162 
-" clip-path="url(#p7e4fa7d0d8)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
+" clip-path="url(#p3bb61d9e3f)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
    </g>
    <g id="patch_10">
     <path d="M 72 198 
 Q 72 216 72 216 
-" clip-path="url(#p7e4fa7d0d8)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
+" clip-path="url(#p3bb61d9e3f)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
    </g>
    <g id="patch_11">
     <path d="M 18 216 
 Q 18 252 72 252 
-" clip-path="url(#p7e4fa7d0d8)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
+" clip-path="url(#p3bb61d9e3f)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
    </g>
    <g id="patch_12">
     <path d="M 72 216 
 Q 72 288 72 288 
-" clip-path="url(#p7e4fa7d0d8)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
+" clip-path="url(#p3bb61d9e3f)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
    </g>
    <g id="patch_13">
     <path d="M 126 216 
 Q 126 252 72 252 
-" clip-path="url(#p7e4fa7d0d8)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
+" clip-path="url(#p3bb61d9e3f)" style="fill: none; stroke: #000000; stroke-linejoin: miter"/>
    </g>
    <g id="patch_14">
     <path d="M 54 126 
@@ -98,7 +98,7 @@ L 54 90
 L 90 90 
 L 90 126 
 z
-" clip-path="url(#p7e4fa7d0d8)" style="fill: #ffffff; stroke: #000000; stroke-linejoin: miter"/>
+" clip-path="url(#p3bb61d9e3f)" style="fill: #ffffff; stroke: #000000; stroke-linejoin: miter"/>
    </g>
    <g id="patch_15">
     <path d="M 54 198 
@@ -106,7 +106,7 @@ L 54 162
 L 90 162 
 L 90 198 
 z
-" clip-path="url(#p7e4fa7d0d8)" style="fill: #ffffff; stroke: #000000; stroke-linejoin: miter"/>
+" clip-path="url(#p3bb61d9e3f)" style="fill: #ffffff; stroke: #000000; stroke-linejoin: miter"/>
    </g>
    <g id="text_1">
     <!-- A -->
@@ -358,7 +358,7 @@ z
   </g>
  </g>
  <defs>
-  <clipPath id="p7e4fa7d0d8">
+  <clipPath id="p3bb61d9e3f">
    <rect x="0" y="0" width="144" height="288"/>
   </clipPath>
  </defs>

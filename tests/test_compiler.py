@@ -29,11 +29,12 @@ def test_fig_2_7_compile_sequential_to_left_side(request):
     Fig. 2.7 sequential equation:
     """
     A, B, C = Ty("A"), Ty("B"), Ty("C")
-    F = Box("F", A, P)
-    G = Box("G", B, P)
+    F = Box("F", A, B << A)
+    G = Box("G", B, C << B)
+    left = G @ F @ A >> (C << B) @ Eval(B << A) >> Eval(C << B)
     right = Sequential(F, G)
+
     compiler = Compile()
-    left = F @ G @ A >> P @ Eval(A, P) >> Eval(P, P)
     compiled = compiler(right)
     assert compiled == left
     request.node.draw_objects = (left, right)
@@ -46,15 +47,17 @@ def test_fig_2_7_compile_parallel_to_left_side(request):
     right side is `Parallel(A@U, B@V)`.
     """
     A, U, B, V = Ty("A"), Ty("U"), Ty("B"), Ty("V")
-    F = Box("F", Ty(), A >> B)
-    G = Box("G", Ty(), U >> V)
+    F = Box("F", Ty(), B << A)
+    G = Box("G", Ty(), V << U)
     right = Parallel(F, G)
     compiler = Compile()
     left = (
         F @ G @ A @ U
-        >> (P @ Swap(P, A) @ U)
-        >> (Eval(A, P) @ Eval(U, P))
+        >> ((B << A) @ Swap(V << U, A) @ U)
+        >> (Eval(B << A) @ Eval(V << U))
     )
+
+    # (left @ (Eval(B << A) @ Eval(V << U))).draw()
     compiled = compiler(right)
 
     assert compiled == left
@@ -66,19 +69,19 @@ def test_eq_2_6_compile_data_is_identity(request):
     left = Id("A")
     compiler = Compile()
     compiled = compiler(right)
-    
+
     assert compiled == left
     request.node.draw_objects = (left, right)
 
 
 def test_eq_2_5_compile_partial_is_eval(request):
-    """Eq. 2.5: uncurrying `[]` compiles to direct evaluator on `Y @ A`."""
-    A, B, Y = Ty("A"), Ty("B"), Ty("Y")
-    f = Box("f", A, P)
-    right = Partial(f, Y)
+    """Eq. 2.5: uncurrying `[]` compiles to direct evaluator on `X @ A`."""
+    A, B, X = Ty("A"), Ty("B"), Ty("X")
+    gamma = Box("gamma", Ty(), B << X @ A)
+    left = gamma @ X @ A >> Eval(gamma.cod)
+    right = Partial(gamma)
     compiler = Compile()
     compiled = compiler(right)
-    left = Eval(P @ A @ A, P)
     assert compiled == left
     request.node.draw_objects = (left, right)
 

@@ -15,3 +15,10 @@ test_fig_2_7_compile_sequential_to_left_side
 |compiled| not compiled|
 | --- | --- |
 | ![](svg/test_fig_2_7_compile_sequential_to_left_side_left.svg) | ![](svg/test_fig_2_7_compile_sequential_to_left_side_right.svg) |
+
+
+test_eq_2_5_compile_partial_is_eval
+
+|compiled| not compiled|
+| --- | --- |
+| ![](svg/test_eq_2_5_compile_partial_is_eval_left.svg) | ![](svg/test_eq_2_5_compile_partial_is_eval_right.svg) |

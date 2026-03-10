@@ -5,27 +5,31 @@ from discopy import closed, markov, monoidal
 from . import computer
 
 
-P = computer.ProgramTy()
-
 class Partial(computer.Box, monoidal.Bubble):
     """
     Sec. 2.2.2. []:P×A⊸P
     A partial evaluator is a (P×Y)-indexed program satisfying {[Γ]y}a = {Γ}(y,a).
     X=P×Y and g:P×Y×A→B
     """
-    def __init__(self, box, Y):
-        self.box, self.Y = box, Y
-        arg = (
-            box @ Y @ box.dom >> 
-            computer.Box("[]", P @ Y, P) @ box.dom >>
-            computer.Eval(box.dom, box.cod))
-        monoidal.Bubble.__init__(self, arg, dom=box.dom @ Y @ box.dom, cod=box.cod)
-        # self.box = box if isinstance(box, computer.Ty) else computer.Ty(box)
-        # computer.Box.__init__(self, "[]", P @ box.dom, P)
+    def __init__(self, gamma):
+        self.gamma = gamma
+        self.X, self.A = gamma.cod.exponent
+        self.B = gamma.cod.base
 
+        arg = (
+            self.gamma @ self.X @ self.A
+            >> computer.Box("[]", self.gamma.cod @ self.X, self.B << self.A) @ self.A
+            >> computer.Eval(self.B << self.A)
+        )
+
+        monoidal.Bubble.__init__(self, arg, dom=arg.dom, cod=arg.cod)
+        
     def specialize(self):
         """Fig. 2.5: compile partial-evaluator box as operator + eval."""
-        return self.box @ self.Y @ self.box.dom >> computer.Eval(self.Y @ self.box.dom, self.box.cod)
+        return (
+            self.gamma @ self.X @ self.A
+            >> computer.Eval(self.B << self.X @ self.A)
+        )
 
 
 class Sequential(computer.Box, monoidal.Bubble):
@@ -33,22 +37,27 @@ class Sequential(computer.Box, monoidal.Bubble):
     Sec. 2.2.3. (;)_ABC:P×P⊸P
     A -{F;G}→ C = A -{F}→ B -{G}→ C
     """
-    def __init__(self, f, g):
-        self.f, self.g = f, g
-        A, C = f.dom, g.cod
+    def __init__(self, F, G):
+        self.F, self.G = F, G
+        A = F.cod.exponent
+        C = G.cod.base
         arg = (
-            f @ g @ A
-            >> computer.Box("(;)", P @ P, P) @ A
-            >> computer.Eval(A, C))
+            F @ G @ A
+            >> computer.Box("(;)", F.cod @ G.cod, C << A) @ A
+            >> computer.Eval(C << A)
+        )
+
         monoidal.Bubble.__init__(self, arg, dom=arg.dom, draw_vertically=True)
-        # computer.Box.__init__(self, "(;)", P @ P, P)
 
     def specialize(self):
-        A, B, C = self.f.dom, self.f.cod, self.g.cod
-        F = computer.Eval(A, B)
-        G = computer.Eval(B, C)
-        # TODO 
-        return self.f @ self.g @ A >> P @ F >> G
+        F, G = self.F, self.G
+        A = F.cod.exponent
+        B = F.cod.base
+        C = G.cod.base
+
+        F_Eval = computer.Eval(B << A)
+        G_Eval = computer.Eval(C << B)
+        return G @ F @ A >> (C << B) @ F_Eval >> G_Eval
 
 
 class Parallel(computer.Box, monoidal.Bubble):
@@ -56,22 +65,26 @@ class Parallel(computer.Box, monoidal.Bubble):
     Sec. 2.2.3. (||)_AUBV:P×P⊸P
     A×U -{F||H}→ B×V = A -{F}→ B × U-{T}→ V
     """
-    def __init__(self, f, g):
-        self.f, self.g = f, g
-        A, C = f.dom, g.cod
+    def __init__(self, F, T):
+        self.F, self.T = F, T
+        A, B = F.cod.exponent, F.cod.base
+        U, V = T.cod.exponent, T.cod.base
         arg = (
-            f @ g @ A
-            >> computer.Box("(||)", P @ P, P) @ A
-            >> computer.Eval(A, C))
+            A @ U @ F @ T
+            >> A @ U @ computer.Box("(||)", F.cod @ T.cod, A @ U >> B @ V)
+            >> computer.Eval(A @ U >> B @ V)
+        )
         monoidal.Bubble.__init__(self, arg, dom=arg.dom, draw_vertically=True)
 
     def specialize(self):
-        A, U, B, V = self.f.dom, self.g.dom, self.f.cod, self.g.cod
-        first = computer.Eval(A, B)
-        second = computer.Eval(U, V)
-        # TODO 
-        swap = computer.Swap(P, A)
-        return self.f @ self.g @ A @ U >> P @ swap @ U >> first @ second
+        F, T = self.F, self.T
+        A, B = F.cod.exponent, F.cod.base
+        U, V = T.cod.exponent, T.cod.base
+
+        first = computer.Eval(B << A)
+        second = computer.Eval(V << U)
+        swap = computer.Swap(V << U, A)
+        return F @ T @ A @ U >> (B << A) @ swap @ U >> first @ second
 
 
 class Data(computer.Box, monoidal.Bubble):
@@ -83,10 +96,10 @@ class Data(computer.Box, monoidal.Bubble):
     """
     def __init__(self, A):
         self.A = A if isinstance(A, computer.Ty) else computer.Ty(A)
-        args = (
-            computer.Box("⌜−⌝", P, self.A),
-            computer.Eval(computer.Ty(), self.A))
-        monoidal.Bubble.__init__(self, *args, dom=P, cod=self.A)
+        arg = (
+            computer.Box("⌜−⌝", self.A, computer.Ty() >> self.A) >>
+            computer.Eval(computer.Ty() >> self.A))
+        monoidal.Bubble.__init__(self, arg, dom=self.A, cod=self.A)
         # computer.Box.__init__(self, "⌜−⌝", P, self.A)
 
     def specialize(self):

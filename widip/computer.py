@@ -34,7 +34,7 @@ class Diagram(markov.Diagram):
     ty_factory = Ty
 
 
-class Box(markov.Box, closed.Box):
+class Box(markov.Box, closed.Box, Diagram):
    """"""
 
 
