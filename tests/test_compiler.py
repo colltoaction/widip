@@ -2,11 +2,30 @@ import pytest
 
 from widip.computer import *
 from widip.lang import *
+from os import path
 
+SVG_ROOT_PATH = path.join("tests", "svg")
+
+def svg_path(basename):
+    return path.join(SVG_ROOT_PATH, basename)
 
 P = ProgramTy()
 
-def test_fig_2_7_compile_sequential_to_left_side():
+@pytest.fixture(autouse=True)
+def after_each_test(request):
+    yield
+    test_name = request.node.name
+
+    data = getattr(request.node, "draw_objects", None)
+    if not data:
+        raise AttributeError(f"test {test_name} did not set draw_objects (left, right) attribute for drawing")
+        
+    left, right = data
+    
+    left.draw(path=svg_path(f"{test_name}_left.svg"))
+    right.draw(path=svg_path(f"{test_name}_right.svg"))
+
+def test_fig_2_7_compile_sequential_to_left_side(request):
     """
     Fig. 2.7 sequential equation:
     """
@@ -18,9 +37,11 @@ def test_fig_2_7_compile_sequential_to_left_side():
     left = F @ G @ A >> P @ Eval(A, P) >> Eval(P, P)
     compiled = compiler(right)
     assert compiled == left
+    request.node.draw_objects = (left, right)
 
 
-def test_fig_2_7_compile_parallel_to_left_side():
+
+def test_fig_2_7_compile_parallel_to_left_side(request):
     """
     Fig. 2.7 parallel equation:
     right side is `Parallel(A@U, B@V)`.
@@ -36,25 +57,29 @@ def test_fig_2_7_compile_parallel_to_left_side():
         >> (Eval(A, P) @ Eval(U, P))
     )
     compiled = compiler(right)
+
     assert compiled == left
+    request.node.draw_objects = (left, right)
 
-
-def test_eq_2_6_compile_data_is_identity():
+def test_eq_2_6_compile_data_is_identity(request):
     """Eq. 2.6: uncurrying quoted data compiles to its uncurried form (box @ Id) >> Eval."""
     f = Data("A")
     left = Id("A")
     compiler = Compile()
     compiled = compiler(f)
     assert compiled == left
+    right = f
+    request.node.draw_objects = (left, right)
 
 
-def test_eq_2_5_compile_partial_is_eval():
+def test_eq_2_5_compile_partial_is_eval(request):
     """Eq. 2.5: uncurrying `[]` compiles to direct evaluator on `Y @ A`."""
     A, B, Y = Ty("A"), Ty("B"), Ty("Y")
     f = Box("f", A, P)
     right = Partial(f, Y)
-    right.draw(path="test_compiler.svg")
     compiler = Compile()
     compiled = compiler(right)
-    compiled.draw(path="test_compiler_left.svg")
-    assert compiled == Eval(P @ A @ A, P)
+    left = Eval(P @ A @ A, P)
+    assert compiled == left
+    request.node.draw_objects = (left, right)
+
