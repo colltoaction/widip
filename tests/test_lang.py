@@ -5,9 +5,15 @@ import pytest
 from widip.to_py import to_py
 from widip.lang import *
 from discopy import closed, python
+from os import path
 
 
 X, A = Ty("X"), Ty("A")
+
+SVG_ROOT_PATH = path.join("tests", "svg")
+
+def svg_path(filename):
+    return path.join(SVG_ROOT_PATH, filename)
 
 
 def test_distinguished_program_type():

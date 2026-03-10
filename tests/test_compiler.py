@@ -9,7 +9,6 @@ SVG_ROOT_PATH = path.join("tests", "svg")
 def svg_path(basename):
     return path.join(SVG_ROOT_PATH, basename)
 
-P = ProgramTy()
 
 @pytest.fixture(autouse=True)
 def after_each_test(request):
@@ -47,12 +46,12 @@ def test_fig_2_7_compile_parallel_to_left_side(request):
     right side is `Parallel(A@U, B@V)`.
     """
     A, U, B, V = Ty("A"), Ty("U"), Ty("B"), Ty("V")
-    f = Box("f", A, P)
-    g = Box("g", U, P)
-    right = Parallel(f, g)
+    F = Box("F", Ty(), A >> B)
+    G = Box("G", Ty(), U >> V)
+    right = Parallel(F, G)
     compiler = Compile()
     left = (
-        f @ g @ A @ U
+        F @ G @ A @ U
         >> (P @ Swap(P, A) @ U)
         >> (Eval(A, P) @ Eval(U, P))
     )
@@ -63,12 +62,12 @@ def test_fig_2_7_compile_parallel_to_left_side(request):
 
 def test_eq_2_6_compile_data_is_identity(request):
     """Eq. 2.6: uncurrying quoted data compiles to its uncurried form (box @ Id) >> Eval."""
-    f = Data("A")
+    right = Data("A")
     left = Id("A")
     compiler = Compile()
-    compiled = compiler(f)
+    compiled = compiler(right)
+    
     assert compiled == left
-    right = f
     request.node.draw_objects = (left, right)
 
 

@@ -1,11 +1,7 @@
 """Section 2.5 monoidal-computer core and Run-language primitives."""
 
-from discopy import closed, markov, monoidal, cat
+from discopy import closed, markov, monoidal
 from discopy.utils import factory
-
-
-class ProgramOb(cat.Ob):
-    """Internal object tag for the distinguished program type."""
 
 
 @factory
@@ -28,31 +24,9 @@ class Ty(closed.Ty):
                 return self
         return closed.Ty.tensor(self, *others)
 
-    # 2.5.1 b) Distinguished program type has decidable equality.
-    def __eq__(self, other):
-        return not isinstance(other, ProgramTy) \
-            and closed.Ty.__eq__(self, other)
-
 
 # factory = closed.Ty so discopy's Curry/Eval can use closed.Ty objects.
 Ty.factory = closed.Ty
-
-
-class ProgramTy(Ty):
-    """2.5.1 b) Distinguished type P of programs with a decidable equality predicate"""
-    def __init__(self):
-        Ty.__init__(self, ProgramOb('P'))
-
-    def __eq__(self, other):
-        # Also accept closed.Ty(ProgramOb()) produced by factory reconstruction
-        # inside discopy's Layer composability checks.
-        if isinstance(other, ProgramTy):
-            return True
-        inside = getattr(other, 'inside', ())
-        return len(inside) == 1 and isinstance(inside[0], ProgramOb)
-
-    def __hash__(self):
-        return hash(type(self))
 
 
 @factory
@@ -60,7 +34,7 @@ class Diagram(markov.Diagram):
     ty_factory = Ty
 
 
-class Box(markov.Box, Diagram):
+class Box(markov.Box, closed.Box):
    """"""
 
 
@@ -92,15 +66,12 @@ class Swap(Box, markov.Swap):
     """1.2"""
 
 
-class Eval(Box):
+class Eval(closed.Eval, Box):
     """
     The program evaluators are computable functions, representing typed interpreters.
     2.2.1.1
     2.5.1 c) Program evaluator {}:P×A→B
     """
-    def __init__(self, A, B):
-        self.A, self.B = A, B
-        Box.__init__(self, "{}", ProgramTy() @ A, B)
 
 
 class Uncurry(monoidal.Bubble, Box):
