@@ -33,6 +33,10 @@ Ty.factory = closed.Ty
 class Diagram(markov.Diagram):
     ty_factory = Ty
 
+    def to_drawing(self):
+        # Fix exponential type drawing recursion.
+        return markov.Diagram.to_drawing(self, functor_factory=closed.Functor)
+
 
 class Box(markov.Box, closed.Box, Diagram):
    """"""
@@ -66,7 +70,7 @@ class Swap(Box, markov.Swap):
     """1.2"""
 
 
-class Eval(closed.Eval, Box):
+class Eval(Box, closed.Eval):
     """
     The program evaluators are computable functions, representing typed interpreters.
     2.2.1.1

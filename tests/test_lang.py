@@ -2,6 +2,7 @@ from functools import partial
 
 import pytest
 
+from widip.computer import *
 from widip.to_py import to_py
 from widip.lang import *
 from discopy import closed, python
@@ -40,12 +41,12 @@ def test_eq_2_15():
 def test_fig_2_16():
     """Fig 2.16: {} == runAB_P(id)"""
     G = Id(ProgramTy())
-    assert Eval(Ty(), Ty()) == run(G, Ty(), Ty())
+    assert Eval(Ty() << Ty()) == run(G, Ty(), Ty())
 
 def test_fig_7_2():
     """Eq 2.2: g = (G × A) ; {} with G : X⊸P and g : X×A→B."""
     X, A, B = Ty("X"), Ty("A"), Ty("B")
-    G = Box("G", X, ProgramTy())
+    G = Box("G", X, B << A)
     g = (G @ A) >> run(G, A, B)
     assert g == (G @ A) >> Eval(A, B)
     assert g.dom == X @ A

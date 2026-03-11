@@ -5,7 +5,7 @@ from discopy import closed, markov, monoidal
 from . import computer
 
 
-class Partial(computer.Box, monoidal.Bubble):
+class Partial(monoidal.Bubble, computer.Box):
     """
     Sec. 2.2.2. []:P×A⊸P
     A partial evaluator is a (P×Y)-indexed program satisfying {[Γ]y}a = {Γ}(y,a).
@@ -32,7 +32,7 @@ class Partial(computer.Box, monoidal.Bubble):
         )
 
 
-class Sequential(computer.Box, monoidal.Bubble):
+class Sequential(monoidal.Bubble, computer.Box):
     """
     Sec. 2.2.3. (;)_ABC:P×P⊸P
     A -{F;G}→ C = A -{F}→ B -{G}→ C
@@ -60,7 +60,7 @@ class Sequential(computer.Box, monoidal.Bubble):
         return G @ F @ A >> (C << B) @ F_Eval >> G_Eval
 
 
-class Parallel(computer.Box, monoidal.Bubble):
+class Parallel(monoidal.Bubble, computer.Box):
     """
     Sec. 2.2.3. (||)_AUBV:P×P⊸P
     A×U -{F||H}→ B×V = A -{F}→ B × U-{T}→ V
@@ -70,9 +70,9 @@ class Parallel(computer.Box, monoidal.Bubble):
         A, B = F.cod.exponent, F.cod.base
         U, V = T.cod.exponent, T.cod.base
         arg = (
-            A @ U @ F @ T
-            >> A @ U @ computer.Box("(||)", F.cod @ T.cod, A @ U >> B @ V)
-            >> computer.Eval(A @ U >> B @ V)
+            F @ T @ A @ U
+            >> computer.Box("(||)", F.cod @ T.cod, B @ V << A @ U) @ A @ U
+            >> computer.Eval(B @ V << A @ U)
         )
         monoidal.Bubble.__init__(self, arg, dom=arg.dom, draw_vertically=True)
 
@@ -87,7 +87,7 @@ class Parallel(computer.Box, monoidal.Bubble):
         return F @ T @ A @ U >> (B << A) @ swap @ U >> first @ second
 
 
-class Data(computer.Box, monoidal.Bubble):
+class Data(monoidal.Bubble, computer.Box):
     """
     Eq. 2.6. ⌜−⌝ : A⊸P
     {}: P-→→A
@@ -97,8 +97,8 @@ class Data(computer.Box, monoidal.Bubble):
     def __init__(self, A):
         self.A = A if isinstance(A, computer.Ty) else computer.Ty(A)
         arg = (
-            computer.Box("⌜−⌝", self.A, computer.Ty() >> self.A) >>
-            computer.Eval(computer.Ty() >> self.A))
+            computer.Box("⌜−⌝", self.A, self.A << computer.Ty()) >>
+            computer.Eval(self.A << computer.Ty()))
         monoidal.Bubble.__init__(self, arg, dom=self.A, cod=self.A)
         # computer.Box.__init__(self, "⌜−⌝", P, self.A)
 

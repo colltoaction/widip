@@ -2,9 +2,9 @@ from itertools import batched
 from nx_yaml import nx_compose_all, nx_serialize_all
 from nx_hif.hif import *
 
-from discopy.closed import Eval
+from discopy.closed import Eval, Curry
 
-from .lang import Box, Id, Ty
+from .computer import Box, Id, Ty
 
 
 P = Ty("io") >> Ty("io")
@@ -52,12 +52,13 @@ def load_scalar(node, index, tag):
     Fig. 2.3 (Sec:uev): reparametrization acts on program parameters, not raw inputs.
     """
     v = hif_node(node, index)["value"]
+    if not tag and not v:
+        return Curry(Id(Ty() << Ty()), n=1)
     X = Ty(tag) if tag else Ty()
     A = Ty(v) # != Ty()
     if not tag:
-        # Encoding of a: A as a program
-        return Eval(Ty() >> A).curry(0, left=False)
-    return Eval(X @ A >> Ty()).curry(2, left=False)
+        return Curry(Eval(A << Ty(), n=0))
+    return Curry(Eval(Ty() << X @ A), n=2)
 
 def load_mapping(node, index, tag):
     """2.2.3 (Sec:compos-prog) Build keyed computations using composed programs."""
@@ -88,11 +89,11 @@ def load_mapping(node, index, tag):
         nxt = tuple(hif_node_incidences(node, v, key="forward"))
     exps = Ty().tensor(*map(lambda x: x.inside[0].exponent, ob.cod))
     bases = Ty().tensor(*map(lambda x: x.inside[0].base, ob.cod))
-    par_box = Box("(||)", ob.cod, exps >> bases)
+    par_box = Box("(||)", ob.cod, bases << exps)
     ob = ob >> par_box
     if tag:
-        ob = (ob @ exps >> Eval(exps >> bases))
-        box = Box(tag, ob.cod, Ty(tag) >> Ty(tag))
+        ob = (ob @ exps >> Eval(bases << exps))
+        box = Box(tag, ob.cod, Ty(tag) << Ty(tag))
         ob = ob >> box
     return ob
 

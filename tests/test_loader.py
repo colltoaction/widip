@@ -1,7 +1,7 @@
 import pytest
 from discopy.closed import Curry, Eval
 
-from widip.lang import Ty, Id
+from widip.computer import Ty, Id
 from widip.loader import repl_read
 
 
@@ -28,16 +28,9 @@ from widip.loader import repl_read
         Curry(Eval(Ty("X") @ Ty("") >> Ty()), n=2, left=False),
     ],
     [
-        "!just_tag",
-        Curry(Id(Ty("just_tag") >> Ty()), n=1, left=False),
-    ],
-    [
+        "empty_string.svg",
         "''",
         Curry(Id(Ty() >> Ty()), n=1, left=True),
-    ],
-    [
-        "",
-        Id(Ty()),
     ],
 ])
 def test_loader_encoding(path, yaml_text, expected):

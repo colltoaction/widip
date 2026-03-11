@@ -5,6 +5,7 @@ import operator
 from discopy import python, symmetric
 from discopy.utils import tuplify as discopy_tuplify
 from .lang import *
+from .computer import *
 
 
 tuplify = partial(operator.call, discopy_tuplify)
@@ -27,5 +28,5 @@ def to_py_ar(ar):
 to_py = symmetric.Functor(
     partial_const,
     to_py_ar,
-    dom=Category(),
+    dom=computer.Category(),
     cod=python.Category())
