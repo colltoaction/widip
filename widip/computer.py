@@ -37,6 +37,15 @@ class Diagram(markov.Diagram):
         # Fix exponential type drawing recursion.
         return markov.Diagram.to_drawing(self, functor_factory=closed.Functor)
 
+class Functor(markov.Functor, closed.Functor):
+    """
+    Preserves markov, closed, and computer boxes.
+    """
+    def __call__(self, other):
+        if isinstance(other, Diagram):
+            return other
+        return Functor.__call__(self, other)
+
 
 class Box(markov.Box, closed.Box, Diagram):
    """"""

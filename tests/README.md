@@ -22,3 +22,9 @@ test_eq_2_5_compile_partial_is_eval
 |compiled| not compiled|
 | --- | --- |
 | ![](svg/test_eq_2_5_compile_partial_is_eval_left.svg) | ![](svg/test_eq_2_5_compile_partial_is_eval_right.svg) |
+
+test_fig_6_1_program_and_metaprogram
+
+|computation|program| metaprogram|
+| --- | --- | --- |
+| ![](svg/test_fig_6_1_program_and_metaprogram_comp.svg) | ![](svg/test_fig_6_1_program_and_metaprogram_prog.svg) | ![](svg/test_fig_6_1_program_and_metaprogram_mprog.svg) |
